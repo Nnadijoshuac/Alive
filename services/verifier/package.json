@@ -15,7 +15,8 @@
     "pretypecheck": "pnpm --filter @alive/shared build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "pretest": "pnpm --filter @alive/shared build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke:local": "pnpm build && pnpm --filter @alive/contracts compile && node scripts/local-protocol-smoke.mjs"
   },
   "dependencies": {
     "@alive/shared": "workspace:*",
