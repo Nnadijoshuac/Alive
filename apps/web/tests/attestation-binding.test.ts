@@ -54,6 +54,7 @@ const result: VerificationResult = {
 const signed: SignedAttestation = {
   attestation: {
     assetId,
+    fingerprintHash: `0x${"15".repeat(32)}`,
     sessionId,
     subject: wallet,
     context,
@@ -90,6 +91,12 @@ describe("attestation consumer binding", () => {
       attestation: { ...signed.attestation, identityScore: 8999 },
     };
     await expect(validateAttestationBinding(session, result, mismatched, 1952, registry)).resolves.toMatch(/scores/);
+  });
+
+  it("rejects a fingerprint commitment that differs from the asset baseline", async () => {
+    await expect(
+      validateAttestationBinding(session, result, signed, 1952, registry, undefined, `0x${"16".repeat(32)}`),
+    ).resolves.toMatch(/fingerprint commitment/);
   });
 
   it("rejects a signer that is not authorized by the onchain registry", async () => {

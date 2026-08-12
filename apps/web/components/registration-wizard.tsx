@@ -16,16 +16,17 @@ import {
 } from "@phosphor-icons/react";
 import { keccak256, stringToHex } from "viem";
 import { usePublicClient, useWriteContract } from "wagmi";
-import { createAsset, finalizeAsset, uploadRegistrationCapture } from "@/lib/api";
+import { createAsset, finalizeAsset, requestAssetAuthorization, uploadRegistrationCapture } from "@/lib/api";
+import { authorizationTypedData, type AuthorizationSigner } from "@/lib/authorization";
 import { activeChain, contractAddresses, contractsConfigured, explorerTransactionUrl } from "@/lib/chain";
-import { assetRegistryAbi } from "@/lib/contracts";
+import { assetRegistrationArgs, assetRegistryAbi } from "@/lib/contracts";
 import { truncateHash } from "@/lib/format";
-import { localSubjectAddress, rememberAsset } from "@/lib/local-state";
+import { localSubjectAccount, rememberAsset } from "@/lib/local-state";
 import type { AssetCategory, AssetMetadata, AssetRecord, CaptureFrame, Hex, RegistrationView } from "@/lib/types";
 import { CameraCapture, type CameraFrame } from "./camera-capture";
 import { FingerprintVisualization } from "./fingerprint-visualization";
 import { Button, Field, InlineNotice, KeyValue, StatusBadge } from "./ui";
-import { useWalletSnapshot, WalletButton, WalletRequirement } from "./wallet-shell";
+import { useWalletAuthorizationSigner, useWalletSnapshot, WalletButton, WalletRequirement } from "./wallet-shell";
 import { TransactionFlow, type TransactionStep } from "./transaction-flow";
 
 const stages = ["Describe", "Connect", "Privacy", "Capture", "Build", "Review", "Commit", "Alive"] as const;
@@ -46,6 +47,7 @@ function asOptional(value: string): string | undefined {
 
 export function RegistrationWizard() {
   const wallet = useWalletSnapshot();
+  const walletSigner = useWalletAuthorizationSigner();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [stage, setStage] = useState(0);
@@ -54,6 +56,8 @@ export function RegistrationWizard() {
   const [captures, setCaptures] = useState<Partial<Record<RegistrationView, CaptureFrame>>>({});
   const [activeView, setActiveView] = useState(0);
   const [asset, setAsset] = useState<AssetRecord | null>(null);
+  const [registrationNonce, setRegistrationNonce] = useState<Hex | null>(null);
+  const [assetWasLocallyAuthorized, setAssetWasLocallyAuthorized] = useState(false);
   const [transactionHash, setTransactionHash] = useState<Hex | null>(null);
   const [working, setWorking] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -86,22 +90,36 @@ export function RegistrationWizard() {
   };
 
   const buildFingerprint = async () => {
-    const owner = wallet.address ?? (localMode ? localSubjectAddress() : undefined);
-    if (!owner) { setError("Connect a wallet or explicitly choose local capture mode."); return; }
+    let signer: AuthorizationSigner | undefined = walletSigner;
+    let locallyAuthorized = false;
+    if (!signer && localMode) {
+      const account = localSubjectAccount();
+      signer = {
+        address: account.address,
+        sign: (authorization, domain) => account.signTypedData(authorizationTypedData(authorization, domain)),
+      };
+      locallyAuthorized = true;
+    }
+    if (!signer) { setError("Connect a wallet or explicitly choose local capture mode."); return; }
     if (capturedCount !== views.length) { setError("All six physical views are required before fingerprint generation."); return; }
     setWorking(true);
     setError(null);
     setProgress(4);
     try {
-      let record = await createAsset(owner, metadata);
+      const challenge = await requestAssetAuthorization(signer.address, metadata);
+      const signature = await signer.sign(challenge.authorization, challenge.domain);
+      const created = await createAsset(signer.address, metadata, challenge, signature);
+      setRegistrationNonce(challenge.authorization.nonce);
+      let record = created.asset;
+      setAssetWasLocallyAuthorized(locallyAuthorized);
       const orderedFrames = views.map((view) => captures[view.key]).filter((frame): frame is CaptureFrame => Boolean(frame));
       for (let index = 0; index < orderedFrames.length; index += 1) {
         const frame = orderedFrames[index];
         if (!frame) continue;
-        await uploadRegistrationCapture(record.assetId, frame);
+        await uploadRegistrationCapture(record.assetId, frame, created.capability.token);
         setProgress(Math.round(((index + 1) / orderedFrames.length) * 78));
       }
-      record = await finalizeAsset(record.assetId);
+      record = await finalizeAsset(record.assetId, created.capability.token);
       setProgress(100);
       setAsset(record);
       rememberAsset({ asset: record });
@@ -114,7 +132,7 @@ export function RegistrationWizard() {
   };
 
   const registerOnchain = async () => {
-    if (!asset?.fingerprintHash || !contractAddresses.assetRegistry || !wallet.address) return;
+    if (!asset?.fingerprintHash || !registrationNonce || !contractAddresses.assetRegistry || !wallet.address || !wallet.correctNetwork || assetWasLocallyAuthorized || wallet.address.toLowerCase() !== asset.owner.toLowerCase()) return;
     setWorking(true);
     setError(null);
     try {
@@ -123,7 +141,13 @@ export function RegistrationWizard() {
         abi: assetRegistryAbi,
         functionName: "registerAsset",
         chainId: activeChain.id,
-        args: [asset.assetId, asset.fingerprintHash, keccak256(stringToHex(JSON.stringify(metadata))), ""],
+        args: assetRegistrationArgs({
+          assetId: asset.assetId,
+          registrationNonce,
+          fingerprintHash: asset.fingerprintHash,
+          metadataHash: keccak256(stringToHex(JSON.stringify(metadata))),
+          metadataURI: "",
+        }),
       });
       setTransactionHash(hash);
       const receipt = await publicClient?.waitForTransactionReceipt({ hash });
@@ -144,7 +168,7 @@ export function RegistrationWizard() {
 
   const transactionSteps: TransactionStep[] = [
     { label: "Evidence finalized", detail: "The verifier returned a fingerprint commitment.", state: asset?.fingerprintHash ? "confirmed" : "idle" },
-    { label: "Wallet signature", detail: contractsConfigured ? "Confirm asset registration in your wallet." : "Unavailable until contracts are deployed.", state: working && !transactionHash ? "pending" : transactionHash ? "confirmed" : contractsConfigured ? "idle" : "blocked" },
+    { label: "Wallet signature", detail: assetWasLocallyAuthorized ? "Ephemeral browser authorization cannot register onchain" : contractsConfigured ? "Confirm asset registration in your wallet." : "Unavailable until contracts are deployed.", state: working && !transactionHash ? "pending" : transactionHash ? "confirmed" : contractsConfigured && !assetWasLocallyAuthorized ? "idle" : "blocked" },
     { label: "X Layer confirmation", detail: transactionHash ? truncateHash(transactionHash) : "No transaction hash exists yet.", state: working && transactionHash ? "pending" : transactionHash && stage === 7 ? "confirmed" : "idle" },
   ];
 
@@ -236,9 +260,9 @@ export function RegistrationWizard() {
           <div className="wizard-content commit-stage">
             <header><UploadSimpleIcon size={30} /><div><h2>Commit registration to X Layer</h2><p>A real wallet transaction is used only when registry deployment settings are present.</p></div></header>
             <TransactionFlow steps={transactionSteps} />
-            {!contractsConfigured ? <InlineNotice tone="warning" title="Contracts not deployed">The offchain asset is ready. Set the public registry addresses to enable a real transaction.</InlineNotice> : !wallet.connected ? <InlineNotice tone="warning" title="Connected wallet required">Local capture mode cannot create an onchain registration.</InlineNotice> : !wallet.correctNetwork ? <WalletRequirement /> : null}
+            {assetWasLocallyAuthorized ? <InlineNotice tone="warning" title="Ephemeral signer asset">This asset is owned by a session-only browser signer. It cannot be registered onchain from a different connected wallet.</InlineNotice> : !contractsConfigured ? <InlineNotice tone="warning" title="Contracts not deployed">The offchain asset is ready. Set the public registry addresses to enable a real transaction.</InlineNotice> : !wallet.connected ? <InlineNotice tone="warning" title="Connected wallet required">Connect the same wallet that authorized this asset before onchain registration.</InlineNotice> : !wallet.correctNetwork ? <WalletRequirement /> : null}
             {error ? <InlineNotice tone="warning" title="Transaction not completed">{error}</InlineNotice> : null}
-            <div className="wizard-footer"><Button className="button-secondary" onClick={retreat} disabled={working}><ArrowLeftIcon size={17} />Back</Button>{contractsConfigured && wallet.connected && wallet.correctNetwork ? <Button className="button-primary" disabled={working || !asset.fingerprintHash} onClick={() => void registerOnchain()}>{working ? "Awaiting confirmation" : `Register on ${activeChain.name}`}<ArrowRightIcon size={17} /></Button> : <Button className="button-secondary" onClick={finishLocal}>Complete offchain record<ArrowRightIcon size={17} /></Button>}</div>
+            <div className="wizard-footer"><Button className="button-secondary" onClick={retreat} disabled={working}><ArrowLeftIcon size={17} />Back</Button>{!assetWasLocallyAuthorized && contractsConfigured && wallet.connected && wallet.correctNetwork && wallet.address?.toLowerCase() === asset.owner.toLowerCase() ? <Button className="button-primary" disabled={working || !asset.fingerprintHash || !registrationNonce} onClick={() => void registerOnchain()}>{working ? "Awaiting confirmation" : `Register on ${activeChain.name}`}<ArrowRightIcon size={17} /></Button> : <Button className="button-secondary" onClick={finishLocal}>Complete offchain record<ArrowRightIcon size={17} /></Button>}</div>
           </div>
         ) : null}
 

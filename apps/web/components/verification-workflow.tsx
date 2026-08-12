@@ -11,18 +11,19 @@ import {
   ShieldCheckIcon,
 } from "@phosphor-icons/react";
 import { usePublicClient, useWriteContract } from "wagmi";
-import { analyzeVerification, createVerificationSession, uploadVerificationCapture } from "@/lib/api";
+import { analyzeVerification, createVerificationSession, getAsset, requestVerificationAuthorization, uploadVerificationCapture, ZERO_CONTEXT } from "@/lib/api";
+import { authorizationTypedData, type AuthorizationSigner } from "@/lib/authorization";
 import { validateAttestationBinding } from "@/lib/attestation-binding";
 import { activeChain, contractAddresses, contractsConfigured, explorerTransactionUrl } from "@/lib/chain";
 import { attestationRegistryAbi, escrowAbi } from "@/lib/contracts";
 import { humanizeCode, truncateHash } from "@/lib/format";
-import { localSubjectAddress, rememberVerification } from "@/lib/local-state";
-import type { Address, Hex, VerificationAnalysis, VerificationSession } from "@/lib/types";
+import { localSubjectAccount, rememberVerification } from "@/lib/local-state";
+import type { Address, Hex, ResourceCapability, VerificationAnalysis, VerificationSession } from "@/lib/types";
 import { AttestationCard } from "./attestation-card";
 import { CameraCapture, type CameraFrame } from "./camera-capture";
 import { Button, InlineNotice, KeyValue, StatusBadge } from "./ui";
 import { TransactionFlow, type TransactionStep } from "./transaction-flow";
-import { useWalletSnapshot, WalletButton } from "./wallet-shell";
+import { useWalletAuthorizationSigner, useWalletSnapshot, WalletButton, WalletRequirement } from "./wallet-shell";
 
 type WorkflowState = "intro" | "capturing" | "ready" | "analyzing" | "result";
 
@@ -42,10 +43,12 @@ export function VerificationWorkflow({
   onSettled?: () => void | Promise<void>;
 }) {
   const wallet = useWalletSnapshot();
+  const walletSigner = useWalletAuthorizationSigner();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const [state, setState] = useState<WorkflowState>("intro");
   const [session, setSession] = useState<VerificationSession | null>(null);
+  const [sessionCapability, setSessionCapability] = useState<ResourceCapability | null>(null);
   const [challengeIndex, setChallengeIndex] = useState(0);
   const [analysis, setAnalysis] = useState<VerificationAnalysis | null>(null);
   const [localMode, setLocalMode] = useState(false);
@@ -53,6 +56,7 @@ export function VerificationWorkflow({
   const [error, setError] = useState<string | null>(null);
   const [motionSamples, setMotionSamples] = useState<number[]>([]);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [authorizationChainId, setAuthorizationChainId] = useState<number | null>(null);
   const [submittedSettlementHash, setSubmittedSettlementHash] = useState<Hex | null>(null);
   const [settlementHash, setSettlementHash] = useState<Hex | null>(null);
   const [settling, setSettling] = useState(false);
@@ -67,15 +71,25 @@ export function VerificationWorkflow({
   }, [session]);
 
   const begin = async () => {
-    const subject = wallet.address ?? (localMode && !expectedSubject ? localSubjectAddress() : undefined);
-    if (!subject) { setError(expectedSubject ? "Connect the recorded seller wallet to verify this escrow." : "Connect a wallet or choose local verification mode."); return; }
-    if (expectedSubject && subject.toLowerCase() !== expectedSubject.toLowerCase()) { setError("The connected wallet is not the seller recorded by this escrow."); return; }
+    let signer: AuthorizationSigner | undefined = walletSigner;
+    if (!signer && localMode && !expectedSubject && !escrowId) {
+      const account = localSubjectAccount();
+      signer = { address: account.address, sign: (authorization, domain) => account.signTypedData(authorizationTypedData(authorization, domain)) };
+    }
+    if (!signer) { setError(expectedSubject ? "Connect the recorded seller wallet to verify this escrow." : "Connect a wallet or choose local verification mode."); return; }
+    if (escrowId && !wallet.correctNetwork) { setError(`Switch to ${activeChain.name} before authorizing escrow verification.`); return; }
+    if (expectedSubject && signer.address.toLowerCase() !== expectedSubject.toLowerCase()) { setError("The connected wallet is not the seller recorded by this escrow."); return; }
     if (!/^0x[0-9a-fA-F]{64}$/.test(assetId)) { setError("The asset ID must be a 32-byte hexadecimal identifier."); return; }
     setWorking(true);
     setError(null);
     try {
-      const created = await createVerificationSession(assetId as Hex, subject, context);
-      setSession(created);
+      const boundContext = context ?? ZERO_CONTEXT;
+      const challenge = await requestVerificationAuthorization(assetId as Hex, signer.address, boundContext);
+      const signature = await signer.sign(challenge.authorization, challenge.domain);
+      const created = await createVerificationSession(assetId as Hex, signer.address, boundContext, challenge, signature);
+      setAuthorizationChainId(challenge.domain.chainId);
+      setSession(created.session);
+      setSessionCapability(created.capability);
       setChallengeIndex(0);
       setMotionSamples([]);
       setState("capturing");
@@ -87,11 +101,12 @@ export function VerificationWorkflow({
   };
 
   const submitChallenge = async (frame: CameraFrame) => {
-    if (!session || !currentChallenge) return;
+    if (!session || !currentChallenge || !sessionCapability) return;
     setWorking(true);
     setError(null);
     try {
-      await uploadVerificationCapture(session.sessionId, currentChallenge.id, frame.imageBase64, frame.capturedAt);
+      if (frame.burstFrames.length !== 3) throw new Error("Active verification requires exactly three live burst frames.");
+      await uploadVerificationCapture(session.sessionId, currentChallenge.id, frame.burstFrames, sessionCapability.token);
       setMotionSamples((items) => [...items, frame.motionSample]);
       if (challengeIndex >= session.challenges.length - 1) setState("ready");
       else setChallengeIndex((value) => value + 1);
@@ -104,13 +119,14 @@ export function VerificationWorkflow({
   };
 
   const analyze = async () => {
-    if (!session) return;
+    if (!session || !sessionCapability) return;
     setWorking(true);
     setState("analyzing");
     setError(null);
     try {
-      let returned = await analyzeVerification(session.sessionId);
+      let returned = await analyzeVerification(session.sessionId, sessionCapability.token);
       if (returned.signedAttestation) {
+        const verifiedAsset = await getAsset(session.assetId);
         const expectedVerifier = contractAddresses.attestationRegistry && publicClient
           ? await publicClient.readContract({
               address: contractAddresses.attestationRegistry,
@@ -125,6 +141,7 @@ export function VerificationWorkflow({
           activeChain.id,
           contractAddresses.attestationRegistry,
           expectedVerifier,
+          verifiedAsset.fingerprintHash ?? undefined,
         );
         if (bindingError) returned = { result: returned.result, attestationError: bindingError };
       }
@@ -140,7 +157,7 @@ export function VerificationWorkflow({
   };
 
   const settle = async () => {
-    if (!analysis?.signedAttestation || !escrowId || !contractAddresses.escrow) return;
+    if (!analysis?.signedAttestation || !escrowId || !contractAddresses.escrow || !wallet.correctNetwork) return;
     setSettling(true);
     setError(null);
     try {
@@ -181,7 +198,7 @@ export function VerificationWorkflow({
     <div className="verification-layout">
       <aside className="verification-rail">
         <TransactionFlow steps={transactionSteps} />
-        {session ? <div className="session-metadata"><KeyValue label="Expires in">{secondsLeft}s</KeyValue><KeyValue label="Nonce">{truncateHash(session.nonce)}</KeyValue>{intentLabel ? <KeyValue label="Test intent">{intentLabel}</KeyValue> : null}</div> : null}
+        {session ? <div className="session-metadata"><KeyValue label="Expires in">{secondsLeft}s</KeyValue><KeyValue label="Nonce">{truncateHash(session.nonce)}</KeyValue>{authorizationChainId ? <KeyValue label="Authorization domain">Chain {authorizationChainId}</KeyValue> : null}{intentLabel ? <KeyValue label="Test intent">{intentLabel}</KeyValue> : null}</div> : null}
       </aside>
 
       <section className="verification-main">
@@ -191,10 +208,11 @@ export function VerificationWorkflow({
             <h2>Start a fresh physical challenge.</h2>
             <p>The verifier chooses an unpredictable sequence after session creation. Sessions expire and can be used only once.</p>
             <div className="verification-prereqs"><article><ClockCountdownIcon size={22} /><strong>Time bound</strong><span>Complete every observation before expiry.</span></article><article><CameraRotateIcon size={22} /><strong>Active views</strong><span>Respond with live camera frames in order.</span></article><article><FingerprintIcon size={22} /><strong>Multi-signal</strong><span>Identity is not decided by one classifier.</span></article></div>
-            <div className="verification-connect">{wallet.connected ? <InlineNotice tone={expectedSubject && wallet.address?.toLowerCase() !== expectedSubject.toLowerCase() ? "warning" : "success"} title={expectedSubject && wallet.address?.toLowerCase() !== expectedSubject.toLowerCase() ? "Seller wallet required" : "Wallet subject ready"}>{wallet.address ? truncateHash(wallet.address) : "Connected"}</InlineNotice> : <><WalletButton />{!expectedSubject ? <Button className={localMode ? "button-primary" : "button-secondary"} onClick={() => setLocalMode(true)}>Use local mode</Button> : null}</>}</div>
-            {localMode && !wallet.connected && !expectedSubject ? <InlineNotice title="Local verification">The verifier remains real. No wallet ownership or onchain settlement is claimed.</InlineNotice> : null}
+            <div className="verification-connect">{escrowId && wallet.connected && !wallet.correctNetwork ? <WalletButton /> : wallet.connected ? <InlineNotice tone={expectedSubject && wallet.address?.toLowerCase() !== expectedSubject.toLowerCase() ? "warning" : "success"} title={expectedSubject && wallet.address?.toLowerCase() !== expectedSubject.toLowerCase() ? "Seller wallet required" : "Wallet subject ready"}>{wallet.address ? truncateHash(wallet.address) : "Connected"}</InlineNotice> : <><WalletButton />{!expectedSubject && !escrowId ? <Button className={localMode ? "button-primary" : "button-secondary"} onClick={() => setLocalMode(true)}>Use ephemeral signer</Button> : null}</>}</div>
+            {escrowId && wallet.connected && !wallet.correctNetwork ? <WalletRequirement /> : null}
+            {localMode && !wallet.connected && !expectedSubject && !escrowId ? <InlineNotice title="Session-only ephemeral signer">A generated private key in sessionStorage signs the exact verifier authorization. It is cleared with browser session data and cannot settle an escrow.</InlineNotice> : null}
             {error ? <InlineNotice tone="warning" title="Session not started">{error}</InlineNotice> : null}
-            <Button className="button-primary verify-primary" disabled={working || (!wallet.connected && (!localMode || Boolean(expectedSubject)))} onClick={() => void begin()}>{working ? "Creating session" : "Generate challenges"}<ArrowRightIcon size={18} /></Button>
+            <Button className="button-primary verify-primary" disabled={working || (!wallet.connected && (!localMode || Boolean(expectedSubject) || Boolean(escrowId))) || Boolean(escrowId && !wallet.correctNetwork)} onClick={() => void begin()}>{working ? "Authorizing session" : "Sign and generate challenges"}<ArrowRightIcon size={18} /></Button>
           </div>
         ) : null}
 
@@ -231,10 +249,10 @@ export function VerificationWorkflow({
         {state === "result" && analysis ? (
           <div className="verification-result">
             <AttestationCard result={analysis.result} {...(analysis.signedAttestation ? { signed: analysis.signedAttestation } : {})} />
-            {!analysis.result.verified ? <InlineNotice tone="warning" title="Policy rejected this observation">Reason codes are shown above. No settlement transaction is available.</InlineNotice> : !analysis.signedAttestation ? <InlineNotice tone="warning" title="No signed attestation">{analysis.attestationError ?? "The result was accepted, but the verifier did not return a consumable signature."}</InlineNotice> : escrowId && contractsConfigured ? <Button className="button-primary settlement-button" disabled={settling || Boolean(settlementHash)} onClick={() => void settle()}><ShieldCheckIcon size={18} />{settling ? submittedSettlementHash ? "Awaiting confirmation" : "Submitting settlement" : settlementHash ? "Payment released" : submittedSettlementHash && error ? "Retry settlement" : "Settle escrow"}</Button> : <InlineNotice tone="success" title="Signed proof ready">This attestation is not bound to a configured escrow, so no payment transaction will be claimed.</InlineNotice>}
+            {!analysis.result.verified ? <InlineNotice tone="warning" title="Policy rejected this observation">Reason codes are shown above. No settlement transaction is available.</InlineNotice> : !analysis.signedAttestation ? <InlineNotice tone="warning" title="No signed attestation">{analysis.attestationError ?? "The result was accepted, but the verifier did not return a consumable signature."}</InlineNotice> : escrowId && contractsConfigured ? <><Button className="button-primary settlement-button" disabled={settling || Boolean(settlementHash) || !wallet.correctNetwork} onClick={() => void settle()}><ShieldCheckIcon size={18} />{settling ? submittedSettlementHash ? "Awaiting confirmation" : "Submitting settlement" : settlementHash ? "Payment released" : submittedSettlementHash && error ? "Retry settlement" : wallet.correctNetwork ? "Settle escrow" : `Switch to ${activeChain.name}`}</Button>{!wallet.correctNetwork ? <><WalletButton /><WalletRequirement /></> : null}</> : <InlineNotice tone="success" title="Signed proof ready">This attestation is not bound to a configured escrow, so no payment transaction will be claimed.</InlineNotice>}
             {submittedSettlementHash && explorerTransactionUrl(submittedSettlementHash) ? <a className="text-link" href={explorerTransactionUrl(submittedSettlementHash)} target="_blank" rel="noreferrer">View submitted settlement transaction</a> : null}
             {error ? <InlineNotice tone="warning" title="Settlement not completed">{error}</InlineNotice> : null}
-            <Button className="button-secondary" onClick={() => { setState("intro"); setSession(null); setAnalysis(null); setSubmittedSettlementHash(null); setSettlementHash(null); setError(null); }}>Start a new session</Button>
+            <Button className="button-secondary" onClick={() => { setState("intro"); setSession(null); setSessionCapability(null); setAuthorizationChainId(null); setAnalysis(null); setSubmittedSettlementHash(null); setSettlementHash(null); setError(null); }}>Start a new session</Button>
           </div>
         ) : null}
       </section>

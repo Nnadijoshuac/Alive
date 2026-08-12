@@ -1,3 +1,5 @@
+import type { Hex } from "./types";
+
 export const assetRegistryAbi = [
   {
     type: "function",
@@ -5,6 +7,7 @@ export const assetRegistryAbi = [
     stateMutability: "nonpayable",
     inputs: [
       { name: "assetId", type: "bytes32" },
+      { name: "registrationNonce", type: "bytes32" },
       { name: "fingerprintHash", type: "bytes32" },
       { name: "metadataHash", type: "bytes32" },
       { name: "metadataURI", type: "string" },
@@ -12,6 +15,22 @@ export const assetRegistryAbi = [
     outputs: [{ name: "", type: "bytes32" }],
   },
 ] as const;
+
+export function assetRegistrationArgs(input: {
+  assetId: Hex;
+  registrationNonce: Hex;
+  fingerprintHash: Hex;
+  metadataHash: Hex;
+  metadataURI: string;
+}) {
+  return [
+    input.assetId,
+    input.registrationNonce,
+    input.fingerprintHash,
+    input.metadataHash,
+    input.metadataURI,
+  ] as const;
+}
 
 export const attestationRegistryAbi = [
   {
@@ -128,6 +147,7 @@ export const escrowAbi = [
         type: "tuple",
         components: [
           { name: "assetId", type: "bytes32" },
+          { name: "fingerprintHash", type: "bytes32" },
           { name: "sessionId", type: "bytes32" },
           { name: "subject", type: "address" },
           { name: "context", type: "bytes32" },

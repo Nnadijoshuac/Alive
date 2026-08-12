@@ -12,6 +12,7 @@ export async function validateAttestationBinding(
   expectedChainId: number,
   expectedRegistry?: Address,
   expectedVerifier?: Address,
+  expectedFingerprintHash?: string,
 ): Promise<string | undefined> {
   const attestation = signed.attestation;
   if (!sameHex(result.sessionId, session.sessionId) || !sameHex(attestation.sessionId, session.sessionId)) {
@@ -19,6 +20,9 @@ export async function validateAttestationBinding(
   }
   if (!sameHex(result.assetId, session.assetId) || !sameHex(attestation.assetId, session.assetId)) {
     return "The signed asset does not match the requested physical baseline.";
+  }
+  if (expectedFingerprintHash && !sameHex(attestation.fingerprintHash, expectedFingerprintHash)) {
+    return "The signed fingerprint commitment does not match the registered asset baseline.";
   }
   if (!sameHex(attestation.subject, session.wallet)) {
     return "The signed subject does not match the wallet bound to this session.";

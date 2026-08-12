@@ -1,3 +1,4 @@
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import type { Address, AssetRecord, Hex, SignedAttestation, VerificationResult } from "./types";
 
 const ASSET_KEY = "alive.local.assets";
@@ -35,9 +36,18 @@ export function localAssets(): LocalAssetEntry[] {
   return readArray<LocalAssetEntry>(ASSET_KEY);
 }
 
+function storableAssetEntry(entry: LocalAssetEntry): LocalAssetEntry {
+  return {
+    asset: entry.asset,
+    ...(entry.transactionHash === undefined ? {} : { transactionHash: entry.transactionHash }),
+  };
+}
+
 export function rememberAsset(entry: LocalAssetEntry): void {
-  const current = localAssets().filter((item) => item.asset.assetId !== entry.asset.assetId);
-  window.localStorage.setItem(ASSET_KEY, JSON.stringify([entry, ...current]));
+  const current = localAssets()
+    .filter((item) => item.asset.assetId !== entry.asset.assetId)
+    .map(storableAssetEntry);
+  window.localStorage.setItem(ASSET_KEY, JSON.stringify([storableAssetEntry(entry), ...current]));
 }
 
 export function localVerifications(): LocalVerificationEntry[] {
@@ -64,14 +74,20 @@ export function clearPresentationState(): void {
   window.localStorage.removeItem(ESCROW_KEY);
 }
 
-export function localSubjectAddress(): Address {
-  if (typeof window === "undefined") return `0x${"0".repeat(40)}`;
-  const key = "alive.local.subject";
+export function localSubjectAccount(): ReturnType<typeof privateKeyToAccount> {
+  if (typeof window === "undefined") throw new Error("Local signer is available only in the browser.");
+  const key = "alive.local.signing-key";
   const existing = window.sessionStorage.getItem(key);
-  if (existing?.match(/^0x[0-9a-fA-F]{40}$/)) return existing as Address;
-  const bytes = new Uint8Array(20);
-  window.crypto.getRandomValues(bytes);
-  const value = `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}` as Address;
-  window.sessionStorage.setItem(key, value);
-  return value;
+  const privateKey = existing?.match(/^0x[0-9a-fA-F]{64}$/)
+    ? existing as Hex
+    : (() => {
+        const value = generatePrivateKey();
+        window.sessionStorage.setItem(key, value);
+        return value;
+      })();
+  return privateKeyToAccount(privateKey);
+}
+
+export function localSubjectAddress(): Address {
+  return localSubjectAccount().address;
 }

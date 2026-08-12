@@ -12,6 +12,7 @@ export interface CameraFrame {
   capturedAt: string;
   quality: CaptureQuality;
   motionSample: number;
+  burstFrames: Array<{ imageBase64: string; mimeType: "image/jpeg"; capturedAt: string }>;
 }
 
 interface RawFrame {
@@ -139,6 +140,12 @@ export function CameraCapture({
         samples.push(readFrame());
       }
       const finalFrame = samples.at(-1) ?? first;
+      let previousCapturedAt = 0;
+      const burstFrames = samples.map((sample) => {
+        const capturedAt = Math.max(Date.parse(sample.capturedAt), previousCapturedAt + 1);
+        previousCapturedAt = capturedAt;
+        return { imageBase64: sample.imageBase64, mimeType: "image/jpeg" as const, capturedAt: new Date(capturedAt).toISOString() };
+      });
       const motionSample = samples.length > 1
         ? samples.slice(1).reduce((sum, sample, index) => sum + frameDifference(samples[index]?.grayscale ?? sample.grayscale, sample.grayscale), 0) / (samples.length - 1)
         : 0;
@@ -149,6 +156,7 @@ export function CameraCapture({
         capturedAt: finalFrame.capturedAt,
         quality: finalFrame.quality,
         motionSample,
+        burstFrames,
       });
       setAccepted(true);
     } catch (caught) {

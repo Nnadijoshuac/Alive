@@ -32,6 +32,11 @@ export interface AssetRecord {
   registrationViewCount: number;
 }
 
+export interface ResourceCapability {
+  token: Hex;
+  expiresAt: string;
+}
+
 export interface CaptureQuality {
   blurScore: number;
   exposureScore: number;
@@ -114,6 +119,7 @@ export interface VerificationResult {
 export interface SignedAttestation {
   attestation: {
     assetId: Hex;
+    fingerprintHash: Hex;
     sessionId: Hex;
     subject: Address;
     context: Hex;

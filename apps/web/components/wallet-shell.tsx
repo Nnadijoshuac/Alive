@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { WalletIcon, PlugsConnectedIcon, WarningIcon } from "@phosphor-icons/react";
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
+import { authorizationTypedData, type AuthorizationSigner } from "@/lib/authorization";
 import { activeChain } from "@/lib/chain";
 import { truncateHash } from "@/lib/format";
 import { Button, InlineNotice } from "./ui";
@@ -23,6 +24,21 @@ export function useWalletSnapshot(): WalletSnapshot {
     }),
     [account.address, account.chainId, account.isConnected],
   );
+}
+
+export function useWalletAuthorizationSigner(): AuthorizationSigner | undefined {
+  const account = useAccount();
+  const { data: walletClient } = useWalletClient();
+  return useMemo(() => {
+    if (!account.address || !walletClient) return undefined;
+    return {
+      address: account.address,
+      sign: async (authorization, domain) => walletClient.signTypedData({
+        account: account.address,
+        ...authorizationTypedData(authorization, domain),
+      }),
+    };
+  }, [account.address, walletClient]);
 }
 
 export function WalletButton({ compact = false }: { compact?: boolean }) {
