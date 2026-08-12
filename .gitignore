@@ -1,0 +1,54 @@
+# Dependencies and package manager state
+node_modules/
+.pnpm-store/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Web output
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Contract output
+artifacts/
+cache/
+typechain-types/
+broadcast/
+
+# Local evidence and databases
+storage/evidence/**
+!storage/evidence/.gitkeep
+storage/database/**
+!storage/database/.gitkeep
+*.sqlite
+*.sqlite3
+*.db
+
+# Local model cache and generated media
+models/
+videos/*/renders/
+videos/*/snapshots/
+videos/*/.media/
+videos/*/.hyperframes/
+*.mp4
+*.webm
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+
+# Python
+__pycache__/
+.venv/
+venv/
+.pytest_cache/
