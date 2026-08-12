@@ -39,7 +39,12 @@ export class AttestationSigner {
     return this.account?.address;
   }
 
-  async sign(session: VerificationSession, result: VerificationResult, now: Date): Promise<SignedAttestation> {
+  async sign(
+    session: VerificationSession,
+    result: VerificationResult,
+    fingerprintHash: Hex,
+    now: Date,
+  ): Promise<SignedAttestation> {
     if (this.account === undefined || this.domain === undefined) {
       throw new ProtocolError(
         503,
@@ -50,6 +55,9 @@ export class AttestationSigner {
     if (session.sessionId.toLowerCase() !== result.sessionId.toLowerCase()) {
       throw new ProtocolError(409, "RESULT_SESSION_MISMATCH", "Result does not belong to this session");
     }
+    if (now.getTime() >= Date.parse(session.expiresAt)) {
+      throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired before attestation issuance");
+    }
     const issuedAt = Math.floor(Date.parse(result.timestamp) / 1_000);
     const expiresAt = issuedAt + this.ttlSeconds;
     if (Math.floor(now.getTime() / 1_000) >= expiresAt) {
@@ -57,6 +65,7 @@ export class AttestationSigner {
     }
     const attestation: AliveAttestation = {
       assetId: result.assetId,
+      fingerprintHash,
       sessionId: result.sessionId,
       subject: session.wallet,
       context: session.context,

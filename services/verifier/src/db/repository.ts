@@ -8,6 +8,7 @@ import {
   VerificationResultSchema,
   VerificationSessionSchema,
   ViewFingerprintSchema,
+  WalletAuthorizationSchema,
   type AssetFingerprint,
   type AssetMetadata,
   type AssetRecord,
@@ -15,6 +16,7 @@ import {
   type VerificationResult,
   type VerificationSession,
   type ViewFingerprint,
+  type WalletAuthorization,
 } from "@alive/shared";
 import { ProtocolError } from "../errors.js";
 import { randomBytes32 } from "../random.js";
@@ -64,6 +66,24 @@ interface VerificationCaptureRow {
   received_at: string;
 }
 
+interface AuthorizationRow {
+  nonce: string;
+  audience: string;
+  action: WalletAuthorization["action"];
+  wallet: string;
+  resource: string;
+  context: string;
+  payload_hash: string;
+  issued_at: number;
+  expires_at: number;
+  consumed_at: number | null;
+}
+
+interface CapabilityRow {
+  capability_hash: string | null;
+  capability_expires_at: number | null;
+}
+
 export interface StoredRegistrationCapture {
   captureId: string;
   evidencePath: string;
@@ -96,12 +116,155 @@ export class AliveRepository {
     this.database.close();
   }
 
-  createAsset(input: { assetId: string; owner: string; metadata: AssetMetadata; createdAt: string }): AssetRecord {
+  createAuthorization(authorization: WalletAuthorization): WalletAuthorization {
+    const parsed = WalletAuthorizationSchema.parse(authorization);
+    try {
+      this.database
+        .prepare(
+          `INSERT INTO wallet_authorizations
+           (nonce, audience, action, wallet, resource, context, payload_hash, issued_at, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          parsed.nonce,
+          parsed.audience,
+          parsed.action,
+          parsed.wallet,
+          parsed.resource,
+          parsed.context,
+          parsed.payloadHash,
+          parsed.issuedAt,
+          parsed.expiresAt,
+        );
+    } catch (error) {
+      throw new ProtocolError(409, "AUTHORIZATION_ALREADY_EXISTS", "Wallet authorization nonce already exists", error);
+    }
+    return parsed;
+  }
+
+  getAuthorization(nonce: string): WalletAuthorization | undefined {
+    const row = this.database
+      .prepare("SELECT * FROM wallet_authorizations WHERE nonce = ?")
+      .get(nonce) as AuthorizationRow | undefined;
+    if (row === undefined) return undefined;
+    return WalletAuthorizationSchema.parse({
+      nonce: row.nonce,
+      audience: row.audience,
+      action: row.action,
+      wallet: row.wallet,
+      resource: row.resource,
+      context: row.context,
+      payloadHash: row.payload_hash,
+      issuedAt: row.issued_at,
+      expiresAt: row.expires_at,
+    });
+  }
+
+  authorizationConsumedAt(nonce: string): number | null | undefined {
+    const row = this.database
+      .prepare("SELECT consumed_at FROM wallet_authorizations WHERE nonce = ?")
+      .get(nonce) as { consumed_at: number | null } | undefined;
+    return row?.consumed_at;
+  }
+
+  pruneAuthorizations(nowSeconds: number): void {
+    this.database
+      .prepare("DELETE FROM wallet_authorizations WHERE expires_at < ?")
+      .run(nowSeconds - 300);
+  }
+
+  private consumeAuthorization(authorization: WalletAuthorization, consumedAtSeconds: number): void {
+    const parsed = WalletAuthorizationSchema.parse(authorization);
+    const update = this.database
+      .prepare(
+        `UPDATE wallet_authorizations SET consumed_at = ?
+         WHERE nonce = ? AND consumed_at IS NULL AND expires_at > ?
+           AND audience = ? AND action = ? AND lower(wallet) = lower(?)
+           AND lower(resource) = lower(?) AND lower(context) = lower(?)
+           AND lower(payload_hash) = lower(?) AND issued_at = ? AND expires_at = ?`,
+      )
+      .run(
+        consumedAtSeconds,
+        parsed.nonce,
+        consumedAtSeconds,
+        parsed.audience,
+        parsed.action,
+        parsed.wallet,
+        parsed.resource,
+        parsed.context,
+        parsed.payloadHash,
+        parsed.issuedAt,
+        parsed.expiresAt,
+      );
+    if (update.changes === 1) return;
+
+    const row = this.database
+      .prepare("SELECT consumed_at, expires_at FROM wallet_authorizations WHERE nonce = ?")
+      .get(parsed.nonce) as { consumed_at: number | null; expires_at: number } | undefined;
+    if (row === undefined) {
+      throw new ProtocolError(401, "AUTHORIZATION_REQUIRED", "Wallet authorization was not issued by this verifier");
+    }
+    if (row.consumed_at !== null) {
+      throw new ProtocolError(409, "AUTHORIZATION_ALREADY_USED", "Wallet authorization has already been consumed");
+    }
+    if (row.expires_at <= consumedAtSeconds) {
+      throw new ProtocolError(410, "AUTHORIZATION_EXPIRED", "Wallet authorization has expired");
+    }
+    throw new ProtocolError(403, "AUTHORIZATION_MISMATCH", "Wallet authorization does not match this exact request");
+  }
+
+  createAuthorizedAsset(input: {
+    authorization: WalletAuthorization;
+    assetId: string;
+    owner: string;
+    metadata: AssetMetadata;
+    createdAt: string;
+    consumedAtSeconds: number;
+    capabilityHash: string;
+    capabilityExpiresAt: number;
+  }): AssetRecord {
+    const metadata = AssetMetadataSchema.parse(input.metadata);
+    try {
+      this.database.transaction(() => {
+        this.consumeAuthorization(input.authorization, input.consumedAtSeconds);
+        this.database
+          .prepare(
+            `INSERT INTO assets
+             (asset_id, owner, metadata_json, created_at, registration_capability_hash,
+              registration_capability_expires_at, owner_authorized)
+             VALUES (?, ?, ?, ?, ?, ?, 1)`,
+          )
+          .run(
+            input.assetId,
+            input.owner,
+            JSON.stringify(metadata),
+            input.createdAt,
+            input.capabilityHash,
+            input.capabilityExpiresAt,
+          );
+      })();
+    } catch (error) {
+      if (error instanceof ProtocolError) throw error;
+      throw new ProtocolError(409, "ASSET_ALREADY_EXISTS", "Asset already exists", error);
+    }
+    return this.getAsset(input.assetId) as AssetRecord;
+  }
+
+  createAsset(input: {
+    assetId: string;
+    owner: string;
+    metadata: AssetMetadata;
+    createdAt: string;
+    ownerAuthorized?: boolean;
+  }): AssetRecord {
     const metadata = AssetMetadataSchema.parse(input.metadata);
     try {
       this.database
-        .prepare("INSERT INTO assets (asset_id, owner, metadata_json, created_at) VALUES (?, ?, ?, ?)")
-        .run(input.assetId, input.owner, JSON.stringify(metadata), input.createdAt);
+        .prepare(
+          `INSERT INTO assets (asset_id, owner, metadata_json, created_at, owner_authorized)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(input.assetId, input.owner, JSON.stringify(metadata), input.createdAt, input.ownerAuthorized ? 1 : 0);
     } catch (error) {
       throw new ProtocolError(409, "ASSET_ALREADY_EXISTS", "Asset already exists", error);
     }
@@ -132,6 +295,13 @@ export class AliveRepository {
     } as AssetRecord;
   }
 
+  isAssetOwnerAuthorized(assetId: string): boolean {
+    const row = this.database
+      .prepare("SELECT owner_authorized FROM assets WHERE asset_id = ?")
+      .get(assetId) as { owner_authorized: number } | undefined;
+    return row?.owner_authorized === 1;
+  }
+
   listAssets(owner?: string): AssetRecord[] {
     const ownerClause = owner === undefined ? "" : "WHERE lower(a.owner) = lower(?)";
     const statement = this.database.prepare(
@@ -155,6 +325,23 @@ export class AliveRepository {
       fingerprintHash: row.fingerprint_hash,
       registrationViewCount: row.registration_view_count,
     }) as AssetRecord);
+  }
+
+  assertAssetCapability(assetId: string, capabilityHash: string, nowSeconds: number): void {
+    const row = this.database
+      .prepare(
+        `SELECT registration_capability_hash AS capability_hash,
+                registration_capability_expires_at AS capability_expires_at
+         FROM assets WHERE asset_id = ?`,
+      )
+      .get(assetId) as CapabilityRow | undefined;
+    if (row === undefined) throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
+    if (row.capability_hash === null || row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()) {
+      throw new ProtocolError(403, "CAPABILITY_INVALID", "Asset registration capability is invalid");
+    }
+    if (row.capability_expires_at === null || row.capability_expires_at <= nowSeconds) {
+      throw new ProtocolError(410, "CAPABILITY_EXPIRED", "Asset registration capability has expired");
+    }
   }
 
   saveRegistrationCapture(assetId: string, evidencePath: string, fingerprint: ViewFingerprint, createdAt: string): string {
@@ -184,6 +371,20 @@ export class AliveRepository {
     return captureId;
   }
 
+  saveAuthorizedRegistrationCapture(input: {
+    assetId: string;
+    capabilityHash: string;
+    evidencePath: string;
+    fingerprint: ViewFingerprint;
+    createdAt: string;
+    nowSeconds: number;
+  }): string {
+    return this.database.transaction(() => {
+      this.assertAssetCapability(input.assetId, input.capabilityHash, input.nowSeconds);
+      return this.saveRegistrationCapture(input.assetId, input.evidencePath, input.fingerprint, input.createdAt);
+    })();
+  }
+
   listRegistrationCaptures(assetId: string): StoredRegistrationCapture[] {
     const rows = this.database
       .prepare(
@@ -210,6 +411,29 @@ export class AliveRepository {
     } catch (error) {
       throw new ProtocolError(409, "FINGERPRINT_EXISTS", "Fingerprint has already been finalized", error);
     }
+  }
+
+  saveAuthorizedFingerprint(input: {
+    fingerprint: AssetFingerprint;
+    fingerprintHash: string;
+    capabilityHash: string;
+    nowSeconds: number;
+  }): void {
+    const parsed = AssetFingerprintSchema.parse(input.fingerprint);
+    this.database.transaction(() => {
+      this.assertAssetCapability(parsed.assetId, input.capabilityHash, input.nowSeconds);
+      this.saveFingerprint(parsed, input.fingerprintHash);
+      const revoked = this.database
+        .prepare(
+          `UPDATE assets
+           SET registration_capability_hash = NULL, registration_capability_expires_at = NULL
+           WHERE asset_id = ? AND lower(registration_capability_hash) = lower(?)`,
+        )
+        .run(parsed.assetId, input.capabilityHash);
+      if (revoked.changes !== 1) {
+        throw new ProtocolError(409, "CAPABILITY_INVALID", "Asset registration capability changed concurrently");
+      }
+    })();
   }
 
   getFingerprint(assetId: string): AssetFingerprint | undefined {
@@ -257,6 +481,72 @@ export class AliveRepository {
       }
     })();
     return parsed;
+  }
+
+  createAuthorizedSession(input: {
+    authorization: WalletAuthorization;
+    session: VerificationSession;
+    consumedAtSeconds: number;
+    capabilityHash: string;
+  }): VerificationSession {
+    const parsed = VerificationSessionSchema.parse(input.session);
+    try {
+      this.database.transaction(() => {
+        this.consumeAuthorization(input.authorization, input.consumedAtSeconds);
+        this.database
+          .prepare(
+            `INSERT INTO verification_sessions
+             (session_id, asset_id, wallet, nonce, context, status, created_at, expires_at, capability_hash)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            parsed.sessionId,
+            parsed.assetId,
+            parsed.wallet,
+            parsed.nonce,
+            parsed.context,
+            parsed.status,
+            parsed.createdAt,
+            parsed.expiresAt,
+            input.capabilityHash,
+          );
+        const insert = this.database.prepare(
+          `INSERT INTO verification_challenges
+           (challenge_id, session_id, sequence, type, prompt, completed_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        );
+        for (const challenge of parsed.challenges) {
+          insert.run(
+            challenge.id,
+            parsed.sessionId,
+            challenge.sequence,
+            challenge.type,
+            challenge.prompt,
+            challenge.completedAt,
+          );
+        }
+      })();
+    } catch (error) {
+      if (error instanceof ProtocolError) throw error;
+      throw new ProtocolError(409, "SESSION_ALREADY_EXISTS", "Verification session already exists", error);
+    }
+    return parsed;
+  }
+
+  assertSessionCapability(sessionId: string, capabilityHash: string, nowSeconds: number): void {
+    const row = this.database
+      .prepare(
+        `SELECT capability_hash, CAST(strftime('%s', expires_at) AS INTEGER) AS capability_expires_at
+         FROM verification_sessions WHERE session_id = ?`,
+      )
+      .get(sessionId) as CapabilityRow | undefined;
+    if (row === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
+    if (row.capability_hash === null || row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()) {
+      throw new ProtocolError(403, "CAPABILITY_INVALID", "Verification session capability is invalid");
+    }
+    if (row.capability_expires_at === null || row.capability_expires_at <= nowSeconds) {
+      throw new ProtocolError(410, "CAPABILITY_EXPIRED", "Verification session capability has expired");
+    }
   }
 
   getSession(sessionId: string, now = new Date()): VerificationSession | undefined {
@@ -347,6 +637,25 @@ export class AliveRepository {
     return captureId;
   }
 
+  addAuthorizedVerificationCapture(input: {
+    sessionId: string;
+    challengeId: string;
+    capabilityHash: string;
+    evidencePath: string;
+    fingerprint: ViewFingerprint;
+    capturedAt: string;
+    receivedAt: string;
+  }): string {
+    return this.database.transaction(() => {
+      this.assertSessionCapability(
+        input.sessionId,
+        input.capabilityHash,
+        Math.floor(Date.parse(input.receivedAt) / 1_000),
+      );
+      return this.addVerificationCapture(input);
+    })();
+  }
+
   private listVerificationCaptures(sessionId: string): StoredVerificationCapture[] {
     const rows = this.database
       .prepare(
@@ -392,6 +701,17 @@ export class AliveRepository {
     })();
   }
 
+  beginAuthorizedAnalysis(
+    sessionId: string,
+    capabilityHash: string,
+    now: Date,
+  ): AnalysisSnapshot {
+    return this.database.transaction(() => {
+      this.assertSessionCapability(sessionId, capabilityHash, Math.floor(now.getTime() / 1_000));
+      return this.beginAnalysis(sessionId, now);
+    })();
+  }
+
   abortAnalysis(sessionId: string): void {
     this.database
       .prepare("UPDATE verification_sessions SET status = 'PENDING' WHERE session_id = ? AND status = 'ANALYZING'")
@@ -400,6 +720,16 @@ export class AliveRepository {
 
   completeAnalysis(sessionId: string, result: VerificationResult, analyzedAt: string): void {
     const parsed = VerificationResultSchema.parse(result);
+    const row = this.database
+      .prepare("SELECT expires_at FROM verification_sessions WHERE session_id = ? AND status = 'ANALYZING'")
+      .get(sessionId) as { expires_at: string } | undefined;
+    if (row === undefined) throw new ProtocolError(409, "SESSION_ALREADY_USED", "Analysis state changed concurrently");
+    if (Date.parse(analyzedAt) >= Date.parse(row.expires_at)) {
+      this.database
+        .prepare("UPDATE verification_sessions SET status = 'EXPIRED' WHERE session_id = ? AND status = 'ANALYZING'")
+        .run(sessionId);
+      throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired during analysis");
+    }
     const update = this.database
       .prepare(
         `UPDATE verification_sessions SET status = 'ANALYZED', result_json = ?, analyzed_at = ?
@@ -421,9 +751,12 @@ export class AliveRepository {
     const parsed = SignedAttestationSchema.parse(signed);
     this.database.transaction(() => {
       const row = this.database
-        .prepare("SELECT status FROM verification_sessions WHERE session_id = ?")
-        .get(sessionId) as { status: string } | undefined;
+        .prepare("SELECT status, expires_at FROM verification_sessions WHERE session_id = ?")
+        .get(sessionId) as { status: string; expires_at: string } | undefined;
       if (row === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
+      if (Date.parse(createdAt) >= Date.parse(row.expires_at)) {
+        throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired before attestation issuance");
+      }
       if (row.status !== "ANALYZED") {
         throw new ProtocolError(409, "SESSION_ALREADY_USED", "Attestation was already issued or analysis is incomplete");
       }
@@ -438,6 +771,22 @@ export class AliveRepository {
         .run(sessionId);
     })();
     return parsed;
+  }
+
+  saveAuthorizedAttestation(
+    sessionId: string,
+    capabilityHash: string,
+    signed: SignedAttestation,
+    createdAt: string,
+  ): SignedAttestation {
+    return this.database.transaction(() => {
+      this.assertSessionCapability(
+        sessionId,
+        capabilityHash,
+        Math.floor(Date.parse(createdAt) / 1_000),
+      );
+      return this.saveAttestation(sessionId, signed, createdAt);
+    })();
   }
 
   getAttestation(sessionId: string): SignedAttestation | undefined {
@@ -458,6 +807,7 @@ export class AliveRepository {
       this.database.prepare("DELETE FROM fingerprints").run();
       this.database.prepare("DELETE FROM registration_captures").run();
       this.database.prepare("DELETE FROM assets").run();
+      this.database.prepare("DELETE FROM wallet_authorizations").run();
     })();
   }
 }

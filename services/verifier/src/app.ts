@@ -1,20 +1,31 @@
 import {
   AddressSchema,
-  AssetCreateRequestSchema,
+  AuthorizedAssetCreateRequestSchema,
+  AuthorizedVerificationSessionCreateRequestSchema,
   RegistrationCaptureRequestSchema,
   REQUIRED_REGISTRATION_VIEWS,
   VerificationCaptureRequestSchema,
-  VerificationSessionCreateSchema,
+  WalletAuthorizationChallengeRequestSchema,
   createEvidenceCommitment,
+  hashCreateAssetAuthorizationPayload,
+  hashCreateVerificationSessionAuthorizationPayload,
   type AssetFingerprint,
   type IdentifierData,
   type RegistrationView,
   type VerificationSession,
+  type WalletAuthorization,
 } from "@alive/shared";
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 import type { VerifierConfig } from "./config.js";
+import {
+  assertAuthorizationIntent,
+  assertWalletAuthorizationSignature,
+  authorizationDomain,
+  hashCapabilityToken,
+  requireBearerCapability,
+} from "./auth.js";
 import { AliveRepository } from "./db/repository.js";
 import { ProtocolError } from "./errors.js";
 import { createChallenges, randomBytes32 } from "./random.js";
@@ -38,6 +49,38 @@ function params(request: FastifyRequest): Record<string, string> {
 
 function query(request: FastifyRequest): Record<string, unknown> {
   return request.query as Record<string, unknown>;
+}
+
+function unixSeconds(value: Date): number {
+  return Math.floor(value.getTime() / 1_000);
+}
+
+function requireNonzeroAddress(value: string, field: string): void {
+  if (/^0x0{40}$/i.test(value)) {
+    throw new ProtocolError(400, "INVALID_REQUEST", `${field} cannot be the zero address`);
+  }
+}
+
+function requireAuthorization(repository: AliveRepository, nonce: string): WalletAuthorization {
+  const authorization = repository.getAuthorization(nonce);
+  if (authorization === undefined) {
+    throw new ProtocolError(401, "AUTHORIZATION_REQUIRED", "Wallet authorization was not issued by this verifier");
+  }
+  return authorization;
+}
+
+function capabilityHash(request: FastifyRequest) {
+  return hashCapabilityToken(requireBearerCapability(request.headers.authorization));
+}
+
+function requireDemoResetToken(config: VerifierConfig, request: FastifyRequest): void {
+  if (config.demoResetToken === undefined) {
+    throw new ProtocolError(503, "DEMO_RESET_DISABLED", "Configure DEMO_RESET_TOKEN to enable destructive demo reset");
+  }
+  const supplied = request.headers["x-alive-demo-token"];
+  if (supplied !== config.demoResetToken) {
+    throw new ProtocolError(403, "DEMO_RESET_FORBIDDEN", "A valid demo reset token is required");
+  }
 }
 
 function requireAsset(repository: AliveRepository, assetId: string) {
@@ -106,7 +149,7 @@ function ensureFreshCapture(session: VerificationSession, capturedAt: string, re
 
 export async function buildApp(config: VerifierConfig, dependencies: AppDependencies = {}): Promise<FastifyInstance> {
   const repository = dependencies.repository ?? new AliveRepository(config.databasePath);
-  const evidenceStore = dependencies.evidenceStore ?? new FileEvidenceStore(config.evidencePath);
+  const evidenceStore = dependencies.evidenceStore ?? new FileEvidenceStore(config.evidencePath, config.evidenceResetBoundary);
   const now = dependencies.now ?? (() => new Date());
   const signer = new AttestationSigner({
     ...(config.signingPrivateKey === undefined ? {} : { privateKey: config.signingPrivateKey }),
@@ -128,6 +171,7 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
       callback(null, false);
     },
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Alive-Demo-Token", "X-Request-Id"],
   });
 
   app.setErrorHandler((error, _request, reply) => {
@@ -158,6 +202,8 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
     signingConfigured: signer.configured,
     ...(signer.address === undefined ? {} : { verifierAddress: signer.address }),
     capabilities: {
+      walletAuthorization: true,
+      hashedResourceCapabilities: true,
       deterministicVisualFallback: true,
       ocrEnabled: config.enableOcr,
       neuralEmbeddingEnabled: config.enableNeuralEmbedding,
@@ -166,15 +212,107 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
   app.get("/health", health);
   app.get("/api/health", health);
 
+  app.post("/api/auth/challenge", async (request, reply) => {
+    const input = WalletAuthorizationChallengeRequestSchema.parse(request.body);
+    const issued = now();
+    const issuedAt = unixSeconds(issued);
+    repository.pruneAuthorizations(issuedAt);
+    const resource = randomBytes32();
+    const expiresAt = issuedAt + config.authorizationTtlSeconds;
+
+    let authorization: WalletAuthorization;
+    if (input.action === "CREATE_ASSET") {
+      requireNonzeroAddress(input.request.owner, "Asset owner");
+      authorization = {
+        audience: config.authorizationAudience,
+        action: input.action,
+        wallet: input.request.owner,
+        resource,
+        context: ZERO_BYTES32,
+        payloadHash: hashCreateAssetAuthorizationPayload({
+          assetId: resource,
+          owner: input.request.owner,
+          metadata: input.request.metadata,
+        }),
+        nonce: randomBytes32(),
+        issuedAt,
+        expiresAt,
+      };
+    } else {
+      requireNonzeroAddress(input.request.wallet, "Verification wallet");
+      const asset = requireAsset(repository, input.request.assetId);
+      if (!repository.isAssetOwnerAuthorized(input.request.assetId)) {
+        throw new ProtocolError(409, "ASSET_REAUTHORIZATION_REQUIRED", "Legacy asset owner was not wallet-authenticated");
+      }
+      if (asset.owner.toLowerCase() !== input.request.wallet.toLowerCase()) {
+        throw new ProtocolError(403, "ASSET_OWNER_REQUIRED", "Verification wallet must be the authenticated asset owner");
+      }
+      if (repository.getFingerprint(input.request.assetId) === undefined) {
+        throw new ProtocolError(409, "FINGERPRINT_REQUIRED", "Asset registration is incomplete");
+      }
+      authorization = {
+        audience: config.authorizationAudience,
+        action: input.action,
+        wallet: input.request.wallet,
+        resource,
+        context: input.request.context,
+        payloadHash: hashCreateVerificationSessionAuthorizationPayload({
+          sessionId: resource,
+          assetId: input.request.assetId,
+          wallet: input.request.wallet,
+          context: input.request.context,
+        }),
+        nonce: randomBytes32(),
+        issuedAt,
+        expiresAt,
+      };
+    }
+
+    repository.createAuthorization(authorization);
+    return reply.status(201).send({
+      authorization,
+      domain: authorizationDomain(config.authorizationChainId),
+    });
+  });
+
   app.post("/api/assets", async (request, reply) => {
-    const input = AssetCreateRequestSchema.parse(request.body);
-    const asset = repository.createAsset({
-      assetId: randomBytes32(),
+    const input = AuthorizedAssetCreateRequestSchema.parse(request.body);
+    requireNonzeroAddress(input.owner, "Asset owner");
+    const requestTime = now();
+    const requestTimeSeconds = unixSeconds(requestTime);
+    const authorization = requireAuthorization(repository, input.authorization.nonce);
+    assertAuthorizationIntent(authorization, {
+      audience: config.authorizationAudience,
+      action: "CREATE_ASSET",
+      wallet: input.owner,
+      resource: input.assetId,
+      context: ZERO_BYTES32,
+      payloadHash: hashCreateAssetAuthorizationPayload(input),
+    }, requestTimeSeconds);
+    await assertWalletAuthorizationSignature(
+      authorization,
+      config.authorizationChainId,
+      input.authorization.signature,
+    );
+    const token = randomBytes32();
+    const capabilityExpiresAt = requestTimeSeconds + config.registrationCapabilityTtlSeconds;
+    const asset = repository.createAuthorizedAsset({
+      authorization,
+      assetId: input.assetId,
       owner: input.owner,
       metadata: input.metadata,
-      createdAt: now().toISOString(),
+      createdAt: requestTime.toISOString(),
+      consumedAtSeconds: requestTimeSeconds,
+      capabilityHash: hashCapabilityToken(token),
+      capabilityExpiresAt,
     });
-    return reply.status(201).send(asset);
+    return reply.status(201).send({
+      asset,
+      capability: {
+        token,
+        expiresAt: new Date(capabilityExpiresAt * 1_000).toISOString(),
+      },
+    });
   });
 
   app.get("/api/assets", async (request) => {
@@ -187,6 +325,9 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
 
   app.post("/api/assets/:assetId/captures", async (request, reply) => {
     const assetId = params(request).assetId ?? "";
+    const receivedAt = now();
+    const suppliedCapabilityHash = capabilityHash(request);
+    repository.assertAssetCapability(assetId, suppliedCapabilityHash, unixSeconds(receivedAt));
     requireAsset(repository, assetId);
     if (repository.getFingerprint(assetId) !== undefined) {
       throw new ProtocolError(409, "FINGERPRINT_EXISTS", "Registration is already finalized");
@@ -207,12 +348,22 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
       throw new ProtocolError(422, "CAPTURE_QUALITY_LOW", "Image is too blurred or poorly exposed", fingerprint.quality);
     }
     const stored = await evidenceStore.put("registration", assetId, bytes, input.mimeType);
-    const captureId = repository.saveRegistrationCapture(assetId, stored.path, fingerprint, now().toISOString());
+    const captureId = repository.saveAuthorizedRegistrationCapture({
+      assetId,
+      capabilityHash: suppliedCapabilityHash,
+      evidencePath: stored.path,
+      fingerprint,
+      createdAt: receivedAt.toISOString(),
+      nowSeconds: unixSeconds(now()),
+    });
     return reply.status(201).send({ captureId, view: input.view, evidenceHash: stored.evidenceHash, quality: fingerprint.quality });
   });
 
   app.post("/api/assets/:assetId/fingerprint", async (request, reply) => {
     const assetId = params(request).assetId ?? "";
+    const requestTime = now();
+    const suppliedCapabilityHash = capabilityHash(request);
+    repository.assertAssetCapability(assetId, suppliedCapabilityHash, unixSeconds(requestTime));
     const asset = requireAsset(repository, assetId);
     if (repository.getFingerprint(assetId) !== undefined) {
       throw new ProtocolError(409, "FINGERPRINT_EXISTS", "Registration is already finalized");
@@ -232,7 +383,12 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
       createdAt,
     };
     const fingerprintHash = createEvidenceCommitment(fingerprint);
-    repository.saveFingerprint(fingerprint, fingerprintHash);
+    repository.saveAuthorizedFingerprint({
+      fingerprint,
+      fingerprintHash,
+      capabilityHash: suppliedCapabilityHash,
+      nowSeconds: unixSeconds(now()),
+    });
     return reply.status(201).send({
       assetId,
       fingerprintHash,
@@ -244,28 +400,62 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
   });
 
   app.post("/api/verifications/session", async (request, reply) => {
-    const input = VerificationSessionCreateSchema.parse(request.body);
+    const input = AuthorizedVerificationSessionCreateRequestSchema.parse(request.body);
+    requireNonzeroAddress(input.wallet, "Verification wallet");
     const asset = requireAsset(repository, input.assetId);
+    if (!repository.isAssetOwnerAuthorized(input.assetId)) {
+      throw new ProtocolError(409, "ASSET_REAUTHORIZATION_REQUIRED", "Legacy asset owner was not wallet-authenticated");
+    }
+    if (asset.owner.toLowerCase() !== input.wallet.toLowerCase()) {
+      throw new ProtocolError(403, "ASSET_OWNER_REQUIRED", "Verification wallet must be the authenticated asset owner");
+    }
     const fingerprint = repository.getFingerprint(input.assetId);
     if (fingerprint === undefined) throw new ProtocolError(409, "FINGERPRINT_REQUIRED", "Asset registration is incomplete");
     const createdAt = now();
+    const createdAtSeconds = unixSeconds(createdAt);
+    const authorization = requireAuthorization(repository, input.authorization.nonce);
+    assertAuthorizationIntent(authorization, {
+      audience: config.authorizationAudience,
+      action: "CREATE_VERIFICATION_SESSION",
+      wallet: input.wallet,
+      resource: input.sessionId,
+      context: input.context,
+      payloadHash: hashCreateVerificationSessionAuthorizationPayload(input),
+    }, createdAtSeconds);
+    await assertWalletAuthorizationSignature(
+      authorization,
+      config.authorizationChainId,
+      input.authorization.signature,
+    );
     const session: VerificationSession = {
-      sessionId: randomBytes32(),
+      sessionId: input.sessionId,
       assetId: asset.assetId,
       wallet: input.wallet,
       nonce: randomBytes32(),
-      context: input.context ?? ZERO_BYTES32,
+      context: input.context,
       createdAt: createdAt.toISOString(),
       expiresAt: new Date(createdAt.getTime() + config.sessionTtlSeconds * 1_000).toISOString(),
       status: "PENDING",
       challenges: createChallenges(fingerprint.identifiers.serial !== undefined || fingerprint.identifiers.model !== undefined),
     };
-    return reply.status(201).send(repository.createSession(session));
+    const token = randomBytes32();
+    const created = repository.createAuthorizedSession({
+      authorization,
+      session,
+      consumedAtSeconds: createdAtSeconds,
+      capabilityHash: hashCapabilityToken(token),
+    });
+    return reply.status(201).send({
+      session: created,
+      capability: { token, expiresAt: created.expiresAt },
+    });
   });
 
   app.get("/api/verifications/:sessionId", async (request) => {
     const sessionId = params(request).sessionId ?? "";
-    const session = requireSession(repository, sessionId, now());
+    const requestTime = now();
+    repository.assertSessionCapability(sessionId, capabilityHash(request), unixSeconds(requestTime));
+    const session = requireSession(repository, sessionId, requestTime);
     const result = repository.getResult(sessionId);
     const attestation = repository.getAttestation(sessionId);
     return { session, ...(result === undefined ? {} : { result }), ...(attestation === undefined ? {} : { attestation }) };
@@ -274,6 +464,8 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
   app.post("/api/verifications/:sessionId/capture", async (request, reply) => {
     const sessionId = params(request).sessionId ?? "";
     const receivedAt = now();
+    const suppliedCapabilityHash = capabilityHash(request);
+    repository.assertSessionCapability(sessionId, suppliedCapabilityHash, unixSeconds(receivedAt));
     const input = VerificationCaptureRequestSchema.parse(request.body);
     const session = requireSession(repository, sessionId, receivedAt);
     repository.assertCaptureAllowed(sessionId, input.challengeId, receivedAt);
@@ -292,9 +484,10 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
       throw new ProtocolError(422, "CAPTURE_QUALITY_LOW", "Image is too blurred or poorly exposed", fingerprint.quality);
     }
     const stored = await evidenceStore.put("verification", sessionId, bytes, input.mimeType);
-    const captureId = repository.addVerificationCapture({
+    const captureId = repository.addAuthorizedVerificationCapture({
       sessionId,
       challengeId: input.challengeId,
+      capabilityHash: suppliedCapabilityHash,
       evidencePath: stored.path,
       fingerprint,
       capturedAt: input.capturedAt,
@@ -314,7 +507,11 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
   app.post("/api/verifications/:sessionId/analyze", async (request) => {
     const sessionId = params(request).sessionId ?? "";
     const analysisTime = now();
-    const snapshot = repository.beginAnalysis(sessionId, analysisTime);
+    const snapshot = repository.beginAuthorizedAnalysis(
+      sessionId,
+      capabilityHash(request),
+      analysisTime,
+    );
     try {
       const result = analyzeVerification({
         session: snapshot.session,
@@ -323,7 +520,7 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
         policy: config.scorePolicy,
         now: analysisTime,
       });
-      repository.completeAnalysis(sessionId, result, analysisTime.toISOString());
+      repository.completeAnalysis(sessionId, result, now().toISOString());
       return result;
     } catch (error) {
       repository.abortAnalysis(sessionId);
@@ -333,42 +530,33 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
 
   app.post("/api/verifications/:sessionId/attestation", async (request, reply) => {
     const sessionId = params(request).sessionId ?? "";
+    const requestTime = now();
+    const suppliedCapabilityHash = capabilityHash(request);
+    repository.assertSessionCapability(sessionId, suppliedCapabilityHash, unixSeconds(requestTime));
     const existing = repository.getAttestation(sessionId);
     if (existing !== undefined) return existing;
-    const session = requireSession(repository, sessionId, now());
+    const session = requireSession(repository, sessionId, requestTime);
     const result = repository.getResult(sessionId);
     if (result === undefined) throw new ProtocolError(409, "ANALYSIS_REQUIRED", "Analyze this session before attestation");
-    const signed = await signer.sign(session, result, now());
-    return reply.status(201).send(repository.saveAttestation(sessionId, signed, now().toISOString()));
+    const asset = requireAsset(repository, session.assetId);
+    if (asset.fingerprintHash === null) {
+      throw new ProtocolError(409, "FINGERPRINT_REQUIRED", "Asset registration is incomplete");
+    }
+    const signed = await signer.sign(session, result, asset.fingerprintHash, requestTime);
+    return reply.status(201).send(repository.saveAuthorizedAttestation(
+      sessionId,
+      suppliedCapabilityHash,
+      signed,
+      now().toISOString(),
+    ));
   });
 
   if (config.demoMode) {
-    app.post("/api/demo/reset", async () => {
+    app.post("/api/demo/reset", async (request) => {
+      requireDemoResetToken(config, request);
       repository.resetDemoState();
       await evidenceStore.reset();
       return { reset: true, timestamp: now().toISOString() };
-    });
-    app.post("/api/demo/seed", async (request, reply) => {
-      const owner = typeof request.body === "object" && request.body !== null && "owner" in request.body
-        ? (request.body as { owner: unknown }).owner
-        : undefined;
-      const input = AssetCreateRequestSchema.parse({
-        owner,
-        metadata: {
-          name: "ALIVE Demo Asset",
-          category: "COMPUTER",
-          manufacturer: "Demo",
-          model: "Capture required",
-          description: "Seeded metadata only. Complete real registration captures before verification.",
-        },
-      });
-      const asset = repository.createAsset({
-        assetId: randomBytes32(),
-        owner: input.owner,
-        metadata: input.metadata,
-        createdAt: now().toISOString(),
-      });
-      return reply.status(201).send({ asset, next: "Capture real FRONT, LEFT, RIGHT, BACK, and DETAIL views." });
     });
   }
 

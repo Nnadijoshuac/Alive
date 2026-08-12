@@ -17,9 +17,11 @@ describe("server-only EIP-712 signing", () => {
     const signed = await signer.sign(
       verificationSession,
       result(verificationSession.sessionId),
+      `0x${"77".repeat(32)}`,
       new Date("2026-01-01T00:00:31.000Z"),
     );
     expect(signed.attestation.context).toBe(verificationSession.context);
+    expect(signed.attestation.fingerprintHash).toBe(`0x${"77".repeat(32)}`);
     await expect(
       recoverAliveAttestationSigner(signed.attestation, signed.domain, signed.signature),
     ).resolves.toBe(privateKeyToAccount(privateKey).address);

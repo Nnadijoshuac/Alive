@@ -1,4 +1,5 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   DEFAULT_SCORE_POLICY,
   ScorePolicySchema,
@@ -6,13 +7,20 @@ import {
 } from "@alive/shared";
 import type { Address, Hex } from "viem";
 
+const workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
+
 export interface VerifierConfig {
   host: string;
   port: number;
   databasePath: string;
   evidencePath: string;
+  evidenceResetBoundary: string;
   sessionTtlSeconds: number;
   attestationTtlSeconds: number;
+  authorizationAudience: string;
+  authorizationChainId: number;
+  authorizationTtlSeconds: number;
+  registrationCapabilityTtlSeconds: number;
   demoMode: boolean;
   signingPrivateKey?: Hex;
   chainId?: number;
@@ -22,6 +30,7 @@ export interface VerifierConfig {
   neuralModel: string;
   maximumImageBytes: number;
   allowedOrigins: string[];
+  demoResetToken?: string;
   scorePolicy: ScorePolicy;
 }
 
@@ -47,10 +56,14 @@ function optionalAddress(value: string | undefined): Address | undefined {
   return value as Address;
 }
 
+function workspacePath(value: string): string {
+  return path.isAbsolute(value) ? value : path.resolve(workspaceRoot, value);
+}
+
 function databasePath(value: string | undefined): string {
   if (value === ":memory:") return value;
   const normalized = value?.startsWith("file:") ? value.slice(5) : (value ?? "./storage/database/alive.sqlite");
-  return path.resolve(normalized);
+  return workspacePath(normalized);
 }
 
 function allowedOrigins(value: string | undefined): string[] {
@@ -58,6 +71,20 @@ function allowedOrigins(value: string | undefined): string[] {
     .split(",")
     .map((origin) => origin.trim().replace(/\/$/, ""))
     .filter((origin) => origin.length > 0);
+}
+
+function authorizationAudience(value: string | undefined): string {
+  const parsed = new URL(value ?? "http://127.0.0.1:4100");
+  if (
+    !["http:", "https:"].includes(parsed.protocol)
+    || parsed.username
+    || parsed.password
+    || parsed.hash
+    || parsed.search
+  ) {
+    throw new Error("ALIVE_AUTH_AUDIENCE must be a canonical HTTP(S) URL without credentials, query, or fragment");
+  }
+  return parsed.toString().replace(/\/$/, "");
 }
 
 export function loadVerifierConfig(environment: NodeJS.ProcessEnv = process.env): VerifierConfig {
@@ -75,9 +102,22 @@ export function loadVerifierConfig(environment: NodeJS.ProcessEnv = process.env)
     host: environment.VERIFIER_HOST ?? "127.0.0.1",
     port: integer(environment.VERIFIER_PORT, 4_100, "VERIFIER_PORT"),
     databasePath: databasePath(environment.DATABASE_URL),
-    evidencePath: path.resolve(environment.EVIDENCE_STORAGE_PATH ?? "./storage/evidence"),
+    evidencePath: workspacePath(environment.EVIDENCE_STORAGE_PATH ?? "./storage/evidence"),
+    evidenceResetBoundary: workspacePath("./storage"),
     sessionTtlSeconds: integer(environment.VERIFICATION_SESSION_TTL_SECONDS, 300, "VERIFICATION_SESSION_TTL_SECONDS"),
     attestationTtlSeconds: integer(environment.ATTESTATION_TTL_SECONDS, 300, "ATTESTATION_TTL_SECONDS"),
+    authorizationAudience: authorizationAudience(environment.ALIVE_AUTH_AUDIENCE),
+    authorizationChainId: integer(
+      environment.ALIVE_AUTH_CHAIN_ID ?? chainValue,
+      31_337,
+      "ALIVE_AUTH_CHAIN_ID",
+    ),
+    authorizationTtlSeconds: integer(environment.WALLET_AUTH_TTL_SECONDS, 120, "WALLET_AUTH_TTL_SECONDS"),
+    registrationCapabilityTtlSeconds: integer(
+      environment.REGISTRATION_CAPABILITY_TTL_SECONDS,
+      1_800,
+      "REGISTRATION_CAPABILITY_TTL_SECONDS",
+    ),
     demoMode: enabled(environment.DEMO_MODE),
     ...(signingPrivateKey === undefined ? {} : { signingPrivateKey }),
     ...(chainValue === undefined ? {} : { chainId: integer(chainValue, 1_952, "ALIVE_CHAIN_ID") }),
@@ -87,6 +127,9 @@ export function loadVerifierConfig(environment: NodeJS.ProcessEnv = process.env)
     neuralModel: environment.ALIVE_NEURAL_MODEL ?? "Xenova/clip-vit-base-patch32",
     maximumImageBytes: integer(environment.ALIVE_MAX_IMAGE_BYTES, 8 * 1024 * 1024, "ALIVE_MAX_IMAGE_BYTES"),
     allowedOrigins: allowedOrigins(environment.VERIFIER_ALLOWED_ORIGINS),
+    ...(environment.DEMO_RESET_TOKEN?.trim()
+      ? { demoResetToken: environment.DEMO_RESET_TOKEN.trim() }
+      : {}),
     scorePolicy,
   };
 }

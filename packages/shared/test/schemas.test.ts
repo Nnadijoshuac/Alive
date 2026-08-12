@@ -3,6 +3,7 @@ import {
   AliveAttestationSchema,
   BasisPointsSchema,
   VerificationResultSchema,
+  WalletAuthorizationSchema,
 } from "../src/index.js";
 
 const bytes32 = `0x${"11".repeat(32)}`;
@@ -18,6 +19,7 @@ describe("protocol schema bounds", () => {
   it("requires an attestation to expire after it is issued", () => {
     const parsed = AliveAttestationSchema.safeParse({
       assetId: bytes32,
+      fingerprintHash: `0x${"12".repeat(32)}`,
       sessionId: bytes32,
       subject: `0x${"22".repeat(20)}`,
       context: bytes32,
@@ -47,6 +49,21 @@ describe("protocol schema bounds", () => {
       reasonCodes: [],
       evidenceHash: bytes32,
       timestamp: new Date().toISOString(),
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("requires wallet authorization expiry to follow issuance", () => {
+    const parsed = WalletAuthorizationSchema.safeParse({
+      audience: "https://verifier.alive.example",
+      action: "CREATE_ASSET",
+      wallet: `0x${"22".repeat(20)}`,
+      resource: bytes32,
+      context: `0x${"00".repeat(32)}`,
+      payloadHash: bytes32,
+      nonce: `0x${"33".repeat(32)}`,
+      issuedAt: 100,
+      expiresAt: 100,
     });
     expect(parsed.success).toBe(false);
   });

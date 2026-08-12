@@ -119,7 +119,10 @@ export function analyzeVerification(input: {
     const candidates = registration.views.map((view) => scorePair(view, capture.fingerprint));
     const preferred = candidates.find((candidate) => candidate.registrationView === expected);
     const best = [...candidates].sort((left, right) => right.combined - left.combined)[0];
-    const selected = preferred !== undefined && preferred.combined >= (best?.combined ?? 0) * 0.88 ? preferred : best;
+    // A response is scored against the requested viewpoint whenever that
+    // registration view exists. Silently choosing another, better-matching
+    // angle would let a presenter ignore the active challenge.
+    const selected = preferred ?? best;
     if (selected !== undefined) {
       pairScores.push(selected);
       matchedViews.add(selected.registrationView);
@@ -130,7 +133,7 @@ export function analyzeVerification(input: {
   const identifiers = expectedIdentifiers(registration);
   const identifierExpected = identifiers.length > 0;
   const identifierScores = identifiers.map((identifier) => normalizedIdentifierSimilarity(identifier, observedText));
-  const identifierSimilarity = identifierExpected ? mean(identifierScores) : undefined;
+  const identifierSimilarity = identifierExpected && observedText.length > 0 ? mean(identifierScores) : undefined;
   const serialMismatch =
     registration.identifiers.serial !== undefined &&
     observedText.length > 0 &&

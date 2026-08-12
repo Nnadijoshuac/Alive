@@ -6,8 +6,16 @@ import type {
   VerificationSession,
   ViewFingerprint,
 } from "@alive/shared";
+import {
+  getAliveAuthorizationTypedData,
+  type AssetMetadata,
+  type WalletAuthorization,
+  type WalletAuthorizationDomain,
+} from "@alive/shared";
+import { privateKeyToAccount } from "viem/accounts";
 
-export const owner = `0x${"22".repeat(20)}` as const;
+export const ownerAccount = privateKeyToAccount(`0x${"22".repeat(32)}`);
+export const owner = ownerAccount.address;
 export const assetId = `0x${"11".repeat(32)}` as const;
 export const zeroBytes32 = `0x${"00".repeat(32)}` as const;
 
@@ -88,3 +96,15 @@ export function result(sessionId: VerificationResult["sessionId"]): Verification
     timestamp: "2026-01-01T00:00:30.000Z",
   };
 }
+
+export const authorizationDomain: WalletAuthorizationDomain = {
+  name: "ALIVE Verifier Authorization",
+  version: "1",
+  chainId: 31_337,
+};
+
+export async function signAuthorization(authorization: WalletAuthorization): Promise<`0x${string}`> {
+  return ownerAccount.signTypedData(getAliveAuthorizationTypedData(authorization, authorizationDomain));
+}
+
+export const testAssetMetadata: AssetMetadata = { name: "API test asset", category: "COMPUTER" };

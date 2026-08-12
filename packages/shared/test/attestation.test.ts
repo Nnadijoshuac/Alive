@@ -21,6 +21,7 @@ describe("ALIVE EIP-712 attestation", () => {
     };
     const attestation: AliveAttestation = {
       assetId: `0x${"01".repeat(32)}`,
+      fingerprintHash: `0x${"09".repeat(32)}`,
       sessionId: `0x${"02".repeat(32)}`,
       subject: `0x${"03".repeat(20)}`,
       context: `0x${"04".repeat(32)}`,
@@ -36,11 +37,14 @@ describe("ALIVE EIP-712 attestation", () => {
 
     expect(ALIVE_ATTESTATION_PRIMARY_TYPE).toBe("Attestation");
     expect(ALIVE_ATTESTATION_TYPE_STRING).toBe(
-      "Attestation(bytes32 assetId,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)",
+      "Attestation(bytes32 assetId,bytes32 fingerprintHash,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)",
     );
     await expect(recoverAliveAttestationSigner(attestation, domain, signature)).resolves.toBe(account.address);
     expect(hashAliveAttestation(attestation, domain)).not.toBe(
       hashAliveAttestation({ ...attestation, context: `0x${"00".repeat(32)}` }, domain),
+    );
+    expect(hashAliveAttestation(attestation, domain)).not.toBe(
+      hashAliveAttestation({ ...attestation, fingerprintHash: `0x${"10".repeat(32)}` }, domain),
     );
   });
 });

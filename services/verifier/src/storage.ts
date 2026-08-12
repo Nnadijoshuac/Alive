@@ -29,9 +29,11 @@ function safeSegment(value: string): string {
 
 export class FileEvidenceStore implements EvidenceStore {
   readonly rootPath: string;
+  private readonly resetBoundary: string;
 
-  constructor(rootPath: string) {
+  constructor(rootPath: string, resetBoundary = path.dirname(path.resolve(rootPath))) {
     this.rootPath = path.resolve(rootPath);
+    this.resetBoundary = path.resolve(resetBoundary);
   }
 
   async put(
@@ -65,7 +67,14 @@ export class FileEvidenceStore implements EvidenceStore {
 
   async reset(): Promise<void> {
     const parsed = path.parse(this.rootPath);
-    if (this.rootPath === parsed.root || this.rootPath === path.resolve(process.cwd())) {
+    const relativeToBoundary = path.relative(this.resetBoundary, this.rootPath);
+    if (
+      this.rootPath === parsed.root ||
+      this.rootPath === path.resolve(process.cwd()) ||
+      relativeToBoundary === "" ||
+      relativeToBoundary.startsWith("..") ||
+      path.isAbsolute(relativeToBoundary)
+    ) {
       throw new Error("Refusing to reset an unsafe evidence root");
     }
     await mkdir(this.rootPath, { recursive: true });

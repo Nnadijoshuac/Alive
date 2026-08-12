@@ -133,4 +133,71 @@ describe("image-dependent instance matching", () => {
     });
     expect(genuine.identityScore).toBeGreaterThan(substitution.identityScore + 0.05);
   });
+
+  it("reweights identity when expected identifier text is not observed", async () => {
+    const registrationView = await extractViewFingerprint(await synthetic(7), {
+      view: "FRONT",
+      capturedAt: "2026-01-01T00:00:00.000Z",
+      enableOcr: false,
+      enableNeuralEmbedding: false,
+      neuralModel: "unused",
+    });
+    const observation = await extractViewFingerprint(await synthetic(7, 2), {
+      view: "FRONT",
+      capturedAt: "2026-01-01T00:00:02.000Z",
+      enableOcr: false,
+      enableNeuralEmbedding: false,
+      neuralModel: "unused",
+    });
+    const verificationChallenge: VerificationChallenge = {
+      id: `0x${"71".repeat(32)}`,
+      sequence: 0,
+      type: "SHOW_FRONT",
+      prompt: "Show front",
+      completedAt: "2026-01-01T00:00:02.500Z",
+    };
+    const verificationSession: VerificationSession = {
+      sessionId: `0x${"72".repeat(32)}`,
+      assetId,
+      wallet: owner,
+      nonce: `0x${"73".repeat(32)}`,
+      context: zeroBytes32,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2026-01-01T00:05:00.000Z",
+      status: "ANALYZING",
+      challenges: [verificationChallenge],
+    };
+    const captures = [{
+      challengeId: verificationChallenge.id,
+      capturedAt: "2026-01-01T00:00:02.000Z",
+      receivedAt: "2026-01-01T00:00:02.500Z",
+      fingerprint: observation,
+    }];
+    const base = {
+      fingerprintVersion: 1 as const,
+      assetId,
+      views: [registrationView],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const withoutIdentifier = analyzeVerification({
+      session: verificationSession,
+      registration: { ...base, identifiers: { normalizedText: [], source: "NONE" } },
+      captures,
+      policy: DEFAULT_SCORE_POLICY,
+      now: new Date("2026-01-01T00:00:03.000Z"),
+    });
+    const unavailableIdentifier = analyzeVerification({
+      session: verificationSession,
+      registration: {
+        ...base,
+        identifiers: { model: "MODEL-7", normalizedText: ["MODEL", "7"], source: "USER" },
+      },
+      captures,
+      policy: DEFAULT_SCORE_POLICY,
+      now: new Date("2026-01-01T00:00:03.000Z"),
+    });
+    expect(unavailableIdentifier.signals.identifierExpected).toBe(true);
+    expect(unavailableIdentifier.signals.identifierSimilarity).toBeUndefined();
+    expect(unavailableIdentifier.identityScoreBps).toBe(withoutIdentifier.identityScoreBps);
+  });
 });

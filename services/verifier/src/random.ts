@@ -33,12 +33,12 @@ export function createChallenges(hasIdentifier: boolean, count = 4): Verificatio
     "SHOW_BACK",
     "TURN_LEFT",
     "TURN_RIGHT",
-    "MOVE_CLOSER",
-    "MOVE_AWAY",
   ];
-  if (hasIdentifier) base.push("SHOW_IDENTIFIER");
-  return shuffled(base)
-    .slice(0, Math.min(count, base.length))
+  const capacity = Math.max(1, Math.min(count, base.length + (hasIdentifier ? 1 : 0)));
+  const selected = hasIdentifier
+    ? [...shuffled(base).slice(0, capacity - 1), "SHOW_IDENTIFIER" as const]
+    : shuffled(base).slice(0, capacity);
+  return shuffled(selected)
     .map((type, sequence) => ({
       id: randomBytes32(),
       sequence,

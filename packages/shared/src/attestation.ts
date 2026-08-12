@@ -19,11 +19,12 @@ export const ALIVE_ATTESTATION_DOMAIN_VERSION = "1";
 export const ALIVE_ATTESTATION_PRIMARY_TYPE = "Attestation";
 
 export const ALIVE_ATTESTATION_TYPE_STRING =
-  "Attestation(bytes32 assetId,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)";
+  "Attestation(bytes32 assetId,bytes32 fingerprintHash,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)";
 
 export const aliveAttestationTypes = {
   Attestation: [
     { name: "assetId", type: "bytes32" },
+    { name: "fingerprintHash", type: "bytes32" },
     { name: "sessionId", type: "bytes32" },
     { name: "subject", type: "address" },
     { name: "context", type: "bytes32" },
@@ -66,6 +67,7 @@ export function getAliveAttestationTypedData(attestationInput: AliveAttestation,
     primaryType: ALIVE_ATTESTATION_PRIMARY_TYPE,
     message: {
       assetId: attestation.assetId as Hex,
+      fingerprintHash: attestation.fingerprintHash as Hex,
       sessionId: attestation.sessionId as Hex,
       subject: attestation.subject as Address,
       context: attestation.context as Hex,

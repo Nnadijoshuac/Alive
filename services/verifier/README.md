@@ -38,16 +38,27 @@ The first neural run can download model files into the library cache. Model bina
 All JSON errors use `{ "error": { "code", "message", "details"? } }`.
 
 1. `GET /api/health`
-2. `POST /api/assets` with `{ owner, metadata }`
-3. `POST /api/assets/:assetId/captures` for each `FRONT`, `LEFT`, `RIGHT`, `BACK`, `DETAIL`, and optionally `IDENTIFIER`
-4. `POST /api/assets/:assetId/fingerprint`
-5. `POST /api/verifications/session` with `{ assetId, wallet, context? }`
-6. `GET /api/verifications/:sessionId`
-7. `POST /api/verifications/:sessionId/capture` once per challenge, in returned order
-8. `POST /api/verifications/:sessionId/analyze`
-9. `POST /api/verifications/:sessionId/attestation`
+2. `POST /api/auth/challenge` with `{ action: "CREATE_ASSET", request: { owner, metadata } }`
+3. Sign the returned `AliveAuthorization` EIP-712 typed data with `domain` exactly as returned
+4. `POST /api/assets` with `{ assetId: authorization.resource, owner, metadata, authorization: { nonce, signature } }`
+5. Retain the returned registration capability only in memory
+6. Send `Authorization: Bearer <capability.token>` to each registration capture and fingerprint-finalization request
+7. `POST /api/auth/challenge` with `{ action: "CREATE_VERIFICATION_SESSION", request: { assetId, wallet, context } }`
+8. Sign and submit the exact returned authorization to `POST /api/verifications/session`
+9. Send its returned bearer capability to the session GET, capture, analyze, and attestation routes
 
-`context` defaults to zero for a general inspection. For escrow settlement, use the shared `createEscrowAttestationContext(escrowContractAddress, escrowIdBytes32)` helper. The context is fixed when the session is created and cannot be replaced at signing time.
+`context` is explicit. Use zero bytes32 for a standalone inspection. For escrow settlement, use the shared `createEscrowAttestationContext(escrowContractAddress, escrowIdBytes32)` helper. The signed wallet must be the authenticated offchain asset owner, and the exact resource, asset, wallet, context, canonical request hash, audience, chain, expiry, action, and nonce are bound before session creation.
+
+The authorization domain is `ALIVE Verifier Authorization`, version `1`. Configure its canonical audience and chain separately from attestation signing when needed:
+
+```dotenv
+ALIVE_AUTH_AUDIENCE=https://verifier.example
+ALIVE_AUTH_CHAIN_ID=1952
+WALLET_AUTH_TTL_SECONDS=120
+REGISTRATION_CAPABILITY_TTL_SECONDS=1800
+```
+
+Wallet authorization nonces are stored in SQLite and consumed atomically with resource creation. Follow-up capabilities are random 32-byte bearer values; only their Keccak hashes are stored. Registration capability is revoked when fingerprint finalization succeeds. Session capability expires exactly with its session. Do not put either capability in URLs, logs, durable browser storage, or analytics.
 
 Sessions use cryptographic randomness, expire, require ordered challenges, and atomically transition through analysis to one immutable attestation. Repeating the attestation request returns the same stored signature for safe HTTP retry; it does not sign a second payload.
 
@@ -80,4 +91,4 @@ pnpm --filter @alive/verifier build
 
 This MVP surfaces probabilistic scores and machine-readable failure reasons. It does not claim perfect authenticity, financial appraisal, or resistance to sophisticated synchronized displays, deepfake video, compromised cameras, evidence-host compromise, or verifier-key theft. Visual integrity is only observable appearance consistency.
 
-`POST /api/demo/reset` and `POST /api/demo/seed` exist only when `DEMO_MODE=true`. Seed creates metadata, never fake captures, fixed passing scores, transaction hashes, or attestations.
+`POST /api/demo/reset` exists only when `DEMO_MODE=true` and additionally requires `DEMO_RESET_TOKEN` in the service environment plus the matching `x-alive-demo-token` request header. There is no demo seed route because it would bypass wallet-authenticated asset creation.

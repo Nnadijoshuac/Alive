@@ -78,6 +78,35 @@ const migrationV1 = `
   CREATE INDEX IF NOT EXISTS idx_verification_captures_session ON verification_captures(session_id);
 `;
 
+const migrationV2 = `
+  CREATE TABLE IF NOT EXISTS wallet_authorizations (
+    nonce TEXT PRIMARY KEY,
+    audience TEXT NOT NULL,
+    action TEXT NOT NULL,
+    wallet TEXT NOT NULL,
+    resource TEXT NOT NULL,
+    context TEXT NOT NULL,
+    payload_hash TEXT NOT NULL,
+    issued_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    consumed_at INTEGER
+  );
+
+  ALTER TABLE assets ADD COLUMN registration_capability_hash TEXT;
+  ALTER TABLE assets ADD COLUMN registration_capability_expires_at INTEGER;
+  ALTER TABLE assets ADD COLUMN owner_authorized INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE verification_sessions ADD COLUMN capability_hash TEXT;
+
+  CREATE INDEX IF NOT EXISTS idx_wallet_authorizations_expiry
+    ON wallet_authorizations(expires_at);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_registration_capability
+    ON assets(registration_capability_hash)
+    WHERE registration_capability_hash IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_capability
+    ON verification_sessions(capability_hash)
+    WHERE capability_hash IS NOT NULL;
+`;
+
 export function runMigrations(database: Database.Database): void {
   database.pragma("foreign_keys = ON");
   const current = database.pragma("user_version", { simple: true }) as number;
@@ -85,6 +114,12 @@ export function runMigrations(database: Database.Database): void {
     database.transaction(() => {
       database.exec(migrationV1);
       database.pragma("user_version = 1");
+    })();
+  }
+  if (current < 2) {
+    database.transaction(() => {
+      database.exec(migrationV2);
+      database.pragma("user_version = 2");
     })();
   }
 }
