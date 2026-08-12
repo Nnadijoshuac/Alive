@@ -132,6 +132,31 @@ export class AliveRepository {
     } as AssetRecord;
   }
 
+  listAssets(owner?: string): AssetRecord[] {
+    const ownerClause = owner === undefined ? "" : "WHERE lower(a.owner) = lower(?)";
+    const statement = this.database.prepare(
+      `SELECT a.asset_id, a.owner, a.metadata_json, a.created_at,
+              f.fingerprint_hash,
+              COUNT(rc.capture_id) AS registration_view_count
+       FROM assets a
+       LEFT JOIN fingerprints f ON f.asset_id = a.asset_id
+       LEFT JOIN registration_captures rc ON rc.asset_id = a.asset_id
+       ${ownerClause}
+       GROUP BY a.asset_id, f.fingerprint_hash
+       ORDER BY a.created_at DESC
+       LIMIT 200`,
+    );
+    const rows = (owner === undefined ? statement.all() : statement.all(owner)) as AssetRow[];
+    return rows.map((row) => ({
+      assetId: row.asset_id,
+      owner: row.owner,
+      metadata: AssetMetadataSchema.parse(JSON.parse(row.metadata_json) as unknown),
+      createdAt: row.created_at,
+      fingerprintHash: row.fingerprint_hash,
+      registrationViewCount: row.registration_view_count,
+    }) as AssetRecord);
+  }
+
   saveRegistrationCapture(assetId: string, evidencePath: string, fingerprint: ViewFingerprint, createdAt: string): string {
     if (this.getAsset(assetId) === undefined) throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
     const parsed = ViewFingerprintSchema.parse(fingerprint);

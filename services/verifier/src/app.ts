@@ -1,4 +1,5 @@
 import {
+  AddressSchema,
   AssetCreateRequestSchema,
   RegistrationCaptureRequestSchema,
   REQUIRED_REGISTRATION_VIEWS,
@@ -33,6 +34,10 @@ export interface AppDependencies {
 
 function params(request: FastifyRequest): Record<string, string> {
   return request.params as Record<string, string>;
+}
+
+function query(request: FastifyRequest): Record<string, unknown> {
+  return request.query as Record<string, unknown>;
 }
 
 function requireAsset(repository: AliveRepository, assetId: string) {
@@ -114,7 +119,16 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
     bodyLimit: Math.ceil(config.maximumImageBytes * 1.5) + 32_768,
     requestIdHeader: "x-request-id",
   });
-  await app.register(cors, { origin: true, methods: ["GET", "POST"] });
+  await app.register(cors, {
+    origin: (origin, callback) => {
+      if (origin === undefined || config.allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    methods: ["GET", "POST"],
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ZodError) {
@@ -161,6 +175,12 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
       createdAt: now().toISOString(),
     });
     return reply.status(201).send(asset);
+  });
+
+  app.get("/api/assets", async (request) => {
+    const owner = query(request).owner;
+    const parsedOwner = owner === undefined ? undefined : AddressSchema.parse(owner);
+    return { assets: repository.listAssets(parsedOwner) };
   });
 
   app.get("/api/assets/:assetId", async (request) => requireAsset(repository, params(request).assetId ?? ""));

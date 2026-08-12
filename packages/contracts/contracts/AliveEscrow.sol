@@ -208,6 +208,7 @@ contract AliveEscrow is ReentrancyGuard {
         if (block.timestamp >= escrow.expiresAt) {
             revert EscrowExpired(escrowId, escrow.expiresAt);
         }
+        _requireSellerStillOwnsAsset(escrow);
 
         // Set state before interacting with the token. A failed or short
         // transfer reverts this effect atomically.
@@ -240,6 +241,7 @@ contract AliveEscrow is ReentrancyGuard {
         if (block.timestamp >= escrow.expiresAt) {
             revert EscrowExpired(escrowId, escrow.expiresAt);
         }
+        _requireSellerStillOwnsAsset(escrow);
         if (attestation.assetId != escrow.assetId) {
             revert WrongAttestationAsset(
                 escrow.assetId,
@@ -399,6 +401,13 @@ contract AliveEscrow is ReentrancyGuard {
                 EscrowStatus.AwaitingVerification,
                 escrow.status
             );
+        }
+    }
+
+    function _requireSellerStillOwnsAsset(Escrow storage escrow) private view {
+        address currentAssetOwner = assetRegistry.assetOwner(escrow.assetId);
+        if (currentAssetOwner != escrow.seller) {
+            revert SellerNotAssetOwner(escrow.seller, currentAssetOwner);
         }
     }
 

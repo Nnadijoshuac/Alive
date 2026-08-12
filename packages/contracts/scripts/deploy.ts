@@ -33,9 +33,10 @@ async function main(): Promise<void> {
 
   const chain = await ethers.provider.getNetwork();
   const isLocal = chain.chainId === 31_337n;
+  const configuredVerifier = process.env.VERIFIER_ADDRESS?.trim() || undefined;
   const verifierAddress = isLocal
-    ? (process.env.VERIFIER_ADDRESS ?? localVerifier?.address)
-    : process.env.VERIFIER_ADDRESS;
+    ? (configuredVerifier ?? localVerifier?.address)
+    : configuredVerifier;
   if (!verifierAddress || !ethers.isAddress(verifierAddress)) {
     throw new Error(
       "Set VERIFIER_ADDRESS to the public address of the offchain EIP-712 signer.",

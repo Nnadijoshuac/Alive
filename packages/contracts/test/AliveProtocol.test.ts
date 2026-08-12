@@ -675,6 +675,49 @@ describe("AliveEscrow", function () {
     );
   });
 
+  it("refuses funding or settlement after asset ownership changes", async function () {
+    const fixture = await loadFixture(deployProtocolFixture);
+    const escrowId = await createEscrow(fixture);
+    await fixture.assetRegistry
+      .connect(fixture.seller)
+      .transferAsset(ASSET_ID, fixture.attacker.address);
+
+    await fixture.token
+      .connect(fixture.buyer)
+      .approve(await fixture.escrow.getAddress(), PAYMENT);
+    await expect(
+      fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId),
+    )
+      .to.be.revertedWithCustomError(fixture.escrow, "SellerNotAssetOwner")
+      .withArgs(fixture.seller.address, fixture.attacker.address);
+
+    await fixture.assetRegistry
+      .connect(fixture.attacker)
+      .transferAsset(ASSET_ID, fixture.seller.address);
+    await fundEscrow(fixture, escrowId);
+    await fixture.assetRegistry
+      .connect(fixture.seller)
+      .transferAsset(ASSET_ID, fixture.attacker.address);
+
+    const attestation = await makeAttestation(fixture, {
+      context: await fixture.escrow.escrowContext(escrowId),
+    });
+    await expect(
+      fixture.escrow.settleWithAttestation(
+        escrowId,
+        attestation,
+        await signAttestation(fixture, attestation),
+      ),
+    )
+      .to.be.revertedWithCustomError(fixture.escrow, "SellerNotAssetOwner")
+      .withArgs(fixture.seller.address, fixture.attacker.address);
+    expect(
+      await fixture.attestationRegistry.isSessionConsumed(
+        attestation.sessionId,
+      ),
+    ).to.equal(false);
+  });
+
   it("rejects expired attestations and settlement after escrow expiry", async function () {
     const fixture = await loadFixture(deployProtocolFixture);
     const escrowId = await createEscrow(fixture);

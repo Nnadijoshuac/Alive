@@ -37,6 +37,31 @@ describe("verifier API", () => {
     expect(health.statusCode).toBe(200);
     expect(health.json()).toMatchObject({ status: "ok", service: "@alive/verifier", signingConfigured: false });
 
+    const listed = await app.inject({ method: "GET", url: `/api/assets?owner=${owner}` });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toMatchObject({ assets: [{ assetId, owner, registrationViewCount: 0 }] });
+
+    const filtered = await app.inject({
+      method: "GET",
+      url: "/api/assets?owner=0x0000000000000000000000000000000000000001",
+    });
+    expect(filtered.statusCode).toBe(200);
+    expect(filtered.json()).toEqual({ assets: [] });
+
+    const disallowedOrigin = await app.inject({
+      method: "OPTIONS",
+      url: "/api/assets",
+      headers: { origin: "https://untrusted.example", "access-control-request-method": "GET" },
+    });
+    expect(disallowedOrigin.headers["access-control-allow-origin"]).toBeUndefined();
+
+    const allowedOrigin = await app.inject({
+      method: "OPTIONS",
+      url: "/api/assets",
+      headers: { origin: "http://localhost:3000", "access-control-request-method": "GET" },
+    });
+    expect(allowedOrigin.headers["access-control-allow-origin"]).toBe("http://localhost:3000");
+
     const response = await app.inject({
       method: "POST",
       url: "/api/verifications/session",

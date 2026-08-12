@@ -21,6 +21,7 @@ export interface VerifierConfig {
   enableNeuralEmbedding: boolean;
   neuralModel: string;
   maximumImageBytes: number;
+  allowedOrigins: string[];
   scorePolicy: ScorePolicy;
 }
 
@@ -52,6 +53,13 @@ function databasePath(value: string | undefined): string {
   return path.resolve(normalized);
 }
 
+function allowedOrigins(value: string | undefined): string[] {
+  return (value ?? "http://127.0.0.1:3000,http://localhost:3000")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter((origin) => origin.length > 0);
+}
+
 export function loadVerifierConfig(environment: NodeJS.ProcessEnv = process.env): VerifierConfig {
   const rawPolicy = environment.ALIVE_SCORE_POLICY_JSON;
   const scorePolicy = rawPolicy === undefined
@@ -78,6 +86,7 @@ export function loadVerifierConfig(environment: NodeJS.ProcessEnv = process.env)
     enableNeuralEmbedding: enabled(environment.ALIVE_ENABLE_NEURAL_EMBEDDING),
     neuralModel: environment.ALIVE_NEURAL_MODEL ?? "Xenova/clip-vit-base-patch32",
     maximumImageBytes: integer(environment.ALIVE_MAX_IMAGE_BYTES, 8 * 1024 * 1024, "ALIVE_MAX_IMAGE_BYTES"),
+    allowedOrigins: allowedOrigins(environment.VERIFIER_ALLOWED_ORIGINS),
     scorePolicy,
   };
 }
