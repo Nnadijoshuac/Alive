@@ -60,7 +60,7 @@ REGISTRATION_CAPABILITY_TTL_SECONDS=1800
 
 Wallet authorization nonces are stored in SQLite and consumed atomically with resource creation. Follow-up capabilities are random 32-byte bearer values; only their Keccak hashes are stored. Registration capability is revoked when fingerprint finalization succeeds. Session capability expires exactly with its session. Do not put either capability in URLs, logs, durable browser storage, or analytics.
 
-Sessions use cryptographic randomness, expire, require ordered challenges, and atomically transition through analysis to one immutable attestation. Repeating the attestation request returns the same stored signature for safe HTTP retry; it does not sign a second payload.
+Sessions use cryptographic randomness, expire, require ordered challenges, and atomically transition through analysis to one immutable attestation. Only the wallet that authenticated the offchain asset owner can create its verification session. Repeating the attestation request returns the same stored signature for safe HTTP retry; it does not sign a second payload.
 
 ## Capture body and fixture creation
 
@@ -75,7 +75,32 @@ Capture requests use a base64 payload rather than multipart so browser and mobil
 }
 ```
 
-Verification capture replaces `view` with the server-issued `challengeId`.
+Registration remains one frame per view. Verification capture instead uses the server-issued `challengeId` and an exact three-frame burst:
+
+```json
+{
+  "challengeId": "0x...",
+  "frames": [
+    {
+      "imageBase64": "...",
+      "mimeType": "image/jpeg",
+      "capturedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "imageBase64": "...",
+      "mimeType": "image/jpeg",
+      "capturedAt": "2026-01-01T00:00:00.120Z"
+    },
+    {
+      "imageBase64": "...",
+      "mimeType": "image/jpeg",
+      "capturedAt": "2026-01-01T00:00:00.240Z"
+    }
+  ]
+}
+```
+
+The timestamps must strictly increase across no more than five seconds. The server independently decodes, size-checks, freshness-checks, quality-checks, fingerprints, and stores all three frames. It derives intra-burst motion itself; callers cannot submit the liveness value.
 
 Do not commit real inspection media. To create local manual fixtures, make a directory outside tracked source (for example `storage/evidence/manual-fixtures`), photograph the same well-lit object from the five required views plus a visibly different object, and base64-encode on demand in the client/test harness. Automated tests synthesize small patterned images in memory with Sharp, so the repository contains no raw asset photos or large binaries.
 
@@ -91,4 +116,6 @@ pnpm --filter @alive/verifier build
 
 This MVP surfaces probabilistic scores and machine-readable failure reasons. It does not claim perfect authenticity, financial appraisal, or resistance to sophisticated synchronized displays, deepfake video, compromised cameras, evidence-host compromise, or verifier-key theft. Visual integrity is only observable appearance consistency.
 
-`POST /api/demo/reset` exists only when `DEMO_MODE=true` and additionally requires `DEMO_RESET_TOKEN` in the service environment plus the matching `x-alive-demo-token` request header. There is no demo seed route because it would bypass wallet-authenticated asset creation.
+Every signed attestation includes the finalized registration `fingerprintHash`. `AliveAttestationRegistry` enforces exact equality with the onchain asset commitment when consuming the proof. The service can still sign an offchain-only record, but that signature cannot pass onchain consumption until the same asset ID and fingerprint commitment are registered.
+
+`POST /api/demo/reset` exists only when `DEMO_MODE=true` and additionally requires `DEMO_RESET_TOKEN` in the service environment plus the matching `x-alive-demo-token` request header. The evidence adapter refuses to reset paths outside its dedicated workspace storage boundary. There is no demo seed route because it would bypass wallet-authenticated asset creation.
