@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 interface IAliveAttestationRegistry {
     struct Attestation {
         bytes32 assetId;
+        bytes32 fingerprintHash;
         bytes32 sessionId;
         address subject;
         bytes32 context;

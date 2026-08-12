@@ -21,7 +21,7 @@ contract AliveAttestationRegistry is
     string public constant EIP712_VERSION = "1";
 
     bytes32 public constant ATTESTATION_TYPEHASH = keccak256(
-        "Attestation(bytes32 assetId,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)"
+        "Attestation(bytes32 assetId,bytes32 fingerprintHash,bytes32 sessionId,address subject,bytes32 context,uint16 identityScore,uint16 livenessScore,uint16 integrityScore,bool verified,bytes32 evidenceHash,uint64 issuedAt,uint64 expiresAt)"
     );
 
     error AssetNotRegistered(bytes32 assetId);
@@ -29,6 +29,7 @@ contract AliveAttestationRegistry is
     error AttestationIssuedInFuture(uint64 issuedAt, uint64 currentTime);
     error AttestationLifetimeTooLong(uint64 lifetime);
     error ContextConsumerRequired(bytes32 context);
+    error FingerprintHashMismatch(bytes32 expected, bytes32 actual);
     error InvalidAssetId();
     error InvalidAttestationTimeRange(uint64 issuedAt, uint64 expiresAt);
     error InvalidContext();
@@ -45,6 +46,7 @@ contract AliveAttestationRegistry is
 
     event AssetVerified(
         bytes32 indexed assetId,
+        bytes32 fingerprintHash,
         bytes32 indexed sessionId,
         address indexed subject,
         bytes32 context,
@@ -67,6 +69,7 @@ contract AliveAttestationRegistry is
     );
 
     struct VerificationRecord {
+        bytes32 fingerprintHash;
         bytes32 sessionId;
         address subject;
         bytes32 context;
@@ -191,6 +194,7 @@ contract AliveAttestationRegistry is
         // the latest record so the single-use capability cannot be reentered.
         _consumedSessions[attestation.sessionId] = true;
         latestVerification[attestation.assetId] = VerificationRecord({
+            fingerprintHash: attestation.fingerprintHash,
             sessionId: attestation.sessionId,
             subject: attestation.subject,
             context: attestation.context,
@@ -210,6 +214,7 @@ contract AliveAttestationRegistry is
 
         emit AssetVerified(
             attestation.assetId,
+            attestation.fingerprintHash,
             attestation.sessionId,
             attestation.subject,
             attestation.context,
@@ -233,6 +238,15 @@ contract AliveAttestationRegistry is
         }
         if (!assetRegistry.assetExists(attestation.assetId)) {
             revert AssetNotRegistered(attestation.assetId);
+        }
+        bytes32 registeredFingerprintHash = assetRegistry
+            .getAsset(attestation.assetId)
+            .fingerprintHash;
+        if (attestation.fingerprintHash != registeredFingerprintHash) {
+            revert FingerprintHashMismatch(
+                registeredFingerprintHash,
+                attestation.fingerprintHash
+            );
         }
         _validateScore("identityScore", attestation.identityScore);
         _validateScore("livenessScore", attestation.livenessScore);
@@ -272,6 +286,7 @@ contract AliveAttestationRegistry is
                 abi.encode(
                     ATTESTATION_TYPEHASH,
                     attestation.assetId,
+                    attestation.fingerprintHash,
                     attestation.sessionId,
                     attestation.subject,
                     attestation.context,

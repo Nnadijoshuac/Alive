@@ -5,6 +5,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 type Attestation = {
   assetId: string;
+  fingerprintHash: string;
   sessionId: string;
   subject: string;
   context: string;
@@ -20,6 +21,7 @@ type Attestation = {
 const ATTESTATION_TYPES = {
   Attestation: [
     { name: "assetId", type: "bytes32" },
+    { name: "fingerprintHash", type: "bytes32" },
     { name: "sessionId", type: "bytes32" },
     { name: "subject", type: "address" },
     { name: "context", type: "bytes32" },
@@ -138,6 +140,7 @@ async function makeAttestation(
   nextSession += 1;
   return {
     assetId: ASSET_ID,
+    fingerprintHash: FINGERPRINT_HASH,
     sessionId: hashLabel(`session-${nextSession}`),
     subject: fixture.seller.address,
     context: ethers.ZeroHash,
@@ -278,6 +281,7 @@ describe("AliveAttestationRegistry", function () {
       .to.emit(fixture.attestationRegistry, "AssetVerified")
       .withArgs(
         ASSET_ID,
+        FINGERPRINT_HASH,
         attestation.sessionId,
         fixture.seller.address,
         ethers.ZeroHash,
@@ -294,6 +298,7 @@ describe("AliveAttestationRegistry", function () {
     const record =
       await fixture.attestationRegistry.latestVerification(ASSET_ID);
     expect(record.digest).to.equal(expectedDigest);
+    expect(record.fingerprintHash).to.equal(FINGERPRINT_HASH);
     expect(record.identityScore).to.equal(9_200n);
     expect(
       await fixture.attestationRegistry.isSessionConsumed(
@@ -447,6 +452,36 @@ describe("AliveAttestationRegistry", function () {
       fixture.attestationRegistry,
       "ContextConsumerRequired",
     );
+  });
+
+  it("rejects a mismatched fingerprint commitment without consuming the session", async function () {
+    const fixture = await loadFixture(deployProtocolFixture);
+    const mismatchedFingerprintHash = hashLabel("mismatched-fingerprint");
+    const attestation = await makeAttestation(fixture, {
+      fingerprintHash: mismatchedFingerprintHash,
+    });
+
+    await expect(
+      fixture.attestationRegistry
+        .connect(fixture.seller)
+        .submitAttestation(
+          attestation,
+          await signAttestation(fixture, attestation),
+        ),
+    )
+      .to.be.revertedWithCustomError(
+        fixture.attestationRegistry,
+        "FingerprintHashMismatch",
+      )
+      .withArgs(FINGERPRINT_HASH, mismatchedFingerprintHash);
+    expect(
+      await fixture.attestationRegistry.isSessionConsumed(
+        attestation.sessionId,
+      ),
+    ).to.equal(false);
+    expect(
+      await fixture.attestationRegistry.verificationCount(ASSET_ID),
+    ).to.equal(0n);
   });
 
   it("prevents third-party pre-consumption and restricts consumer access", async function () {
