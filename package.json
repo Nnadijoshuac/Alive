@@ -21,6 +21,7 @@
     "test": "pnpm -r --if-present test",
     "test:contracts": "pnpm --filter @alive/contracts test",
     "test:verifier": "pnpm --filter @alive/verifier test",
+    "smoke:local": "pnpm --filter @alive/verifier smoke:local",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"

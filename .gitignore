@@ -8,6 +8,7 @@ node_modules/
 !.env.example
 *.pem
 *.key
+.verifier-signer.tmp
 
 # Web output
 .next/
