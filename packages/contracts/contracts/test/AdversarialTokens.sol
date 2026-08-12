@@ -90,3 +90,29 @@ contract FeeOnTransferToken is ERC20 {
         super._update(from, to, value);
     }
 }
+
+/// @dev Test-only token that deposits normally but taxes transfers originating
+/// from the configured escrow. This exercises exact payout accounting.
+contract OutputFeeToken is ERC20 {
+    address public feeSender;
+
+    constructor(address holder, uint256 supply)
+        ERC20("Output-fee Test Token", "OUTFEE")
+    {
+        _mint(holder, supply);
+    }
+
+    function setFeeSender(address sender) external {
+        feeSender = sender;
+    }
+
+    function _update(address from, address to, uint256 value) internal override {
+        if (feeSender != address(0) && from == feeSender && to != address(0)) {
+            uint256 fee = value / 100;
+            super._update(from, address(0), fee);
+            super._update(from, to, value - fee);
+            return;
+        }
+        super._update(from, to, value);
+    }
+}

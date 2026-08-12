@@ -718,6 +718,36 @@ describe("AliveEscrow", function () {
     ).to.equal(false);
   });
 
+  it("requires verification evidence issued after escrow funding", async function () {
+    const fixture = await loadFixture(deployProtocolFixture);
+    const escrowId = await createEscrow(fixture);
+    const context = await fixture.escrow.escrowContext(escrowId);
+    const attestation = await makeAttestation(fixture, { context });
+    const signature = await signAttestation(fixture, attestation);
+    await time.increase(2);
+    await fundEscrow(fixture, escrowId);
+
+    const fundingTimestamp = await fixture.escrow.fundedAt(escrowId);
+    expect(fundingTimestamp).to.be.greaterThan(attestation.issuedAt);
+    await expect(
+      fixture.escrow.settleWithAttestation(
+        escrowId,
+        attestation,
+        signature,
+      ),
+    )
+      .to.be.revertedWithCustomError(
+        fixture.escrow,
+        "AttestationPredatesFunding",
+      )
+      .withArgs(attestation.issuedAt, fundingTimestamp);
+    expect(
+      await fixture.attestationRegistry.isSessionConsumed(
+        attestation.sessionId,
+      ),
+    ).to.equal(false);
+  });
+
   it("rejects expired attestations and settlement after escrow expiry", async function () {
     const fixture = await loadFixture(deployProtocolFixture);
     const escrowId = await createEscrow(fixture);
@@ -725,7 +755,7 @@ describe("AliveEscrow", function () {
     const now = await time.latest();
     const attestation = await makeAttestation(fixture, {
       context: await fixture.escrow.escrowContext(escrowId),
-      issuedAt: now - 100,
+      issuedAt: now,
       expiresAt: now + 10,
     });
     const signature = await signAttestation(fixture, attestation);
@@ -964,6 +994,39 @@ describe("AliveEscrow", function () {
         signature,
       ),
     ).not.to.be.reverted;
+  });
+
+  it("rejects a taxed payout without consuming the attestation", async function () {
+    const fixture = await loadFixture(deployProtocolFixture);
+    const OutputFeeToken = await ethers.getContractFactory("OutputFeeToken");
+    const token: any = await OutputFeeToken.deploy(
+      fixture.buyer.address,
+      PAYMENT,
+    );
+    const escrowId = await createEscrow(fixture, { token });
+    await fundEscrow(fixture, escrowId, token);
+    await token.setFeeSender(await fixture.escrow.getAddress());
+    const attestation = await makeAttestation(fixture, {
+      context: await fixture.escrow.escrowContext(escrowId),
+    });
+    const signature = await signAttestation(fixture, attestation);
+
+    await expect(
+      fixture.escrow.settleWithAttestation(
+        escrowId,
+        attestation,
+        signature,
+      ),
+    ).to.be.revertedWithCustomError(
+      fixture.escrow,
+      "UnsupportedTokenTransfer",
+    );
+    expect((await fixture.escrow.getEscrow(escrowId)).status).to.equal(2n);
+    expect(
+      await fixture.attestationRegistry.isSessionConsumed(
+        attestation.sessionId,
+      ),
+    ).to.equal(false);
   });
 
   it("blocks a token callback from reentering funding", async function () {

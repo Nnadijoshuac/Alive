@@ -44,6 +44,7 @@ contract AliveEscrow is ReentrancyGuard {
     error EscrowExpired(bytes32 escrowId, uint64 expiresAt);
     error EscrowNotExpired(bytes32 escrowId, uint64 expiresAt);
     error EscrowNotFound(bytes32 escrowId);
+    error AttestationPredatesFunding(uint64 issuedAt, uint64 fundedAt);
     error InvalidAmount();
     error InvalidAssetId();
     error InvalidEscrowExpiry(uint64 expiresAt);
@@ -118,6 +119,7 @@ contract AliveEscrow is ReentrancyGuard {
 
     uint256 private _nextEscrowNonce;
     mapping(bytes32 escrowId => Escrow escrow) private _escrows;
+    mapping(bytes32 escrowId => uint64 timestamp) public fundedAt;
     mapping(bytes32 escrowId => bytes32 reasonHash) public disputeReasonHash;
 
     constructor(address assetRegistry_, address attestationRegistry_) {
@@ -213,6 +215,7 @@ contract AliveEscrow is ReentrancyGuard {
         // Set state before interacting with the token. A failed or short
         // transfer reverts this effect atomically.
         escrow.status = EscrowStatus.Funded;
+        fundedAt[escrowId] = uint64(block.timestamp);
         uint256 balanceBefore = escrow.token.balanceOf(address(this));
         escrow.token.safeTransferFrom(
             escrow.buyer,
@@ -261,6 +264,13 @@ contract AliveEscrow is ReentrancyGuard {
                 attestation.subject
             );
         }
+        uint64 fundingTimestamp = fundedAt[escrowId];
+        if (attestation.issuedAt < fundingTimestamp) {
+            revert AttestationPredatesFunding(
+                attestation.issuedAt,
+                fundingTimestamp
+            );
+        }
         if (!attestation.verified) revert VerificationRejected();
         if (
             attestation.identityScore < escrow.requiredIdentityScore ||
@@ -280,7 +290,7 @@ contract AliveEscrow is ReentrancyGuard {
             attestation,
             signature
         );
-        escrow.token.safeTransfer(escrow.seller, escrow.amount);
+        _safeTransferExact(escrow.token, escrow.seller, escrow.amount);
 
         emit EscrowReleased(escrowId, escrow.seller, escrow.amount, digest);
         if (wasDisputed) {
@@ -310,7 +320,7 @@ contract AliveEscrow is ReentrancyGuard {
 
         bool wasDisputed = escrow.status == EscrowStatus.Disputed;
         escrow.status = EscrowStatus.Refunded;
-        escrow.token.safeTransfer(escrow.buyer, escrow.amount);
+        _safeTransferExact(escrow.token, escrow.buyer, escrow.amount);
         emit EscrowRefunded(
             escrowId,
             escrow.buyer,
@@ -408,6 +418,19 @@ contract AliveEscrow is ReentrancyGuard {
         address currentAssetOwner = assetRegistry.assetOwner(escrow.assetId);
         if (currentAssetOwner != escrow.seller) {
             revert SellerNotAssetOwner(escrow.seller, currentAssetOwner);
+        }
+    }
+
+    function _safeTransferExact(
+        IERC20 token,
+        address recipient,
+        uint256 amount
+    ) private {
+        uint256 balanceBefore = token.balanceOf(recipient);
+        token.safeTransfer(recipient, amount);
+        uint256 received = token.balanceOf(recipient) - balanceBefore;
+        if (received != amount) {
+            revert UnsupportedTokenTransfer(amount, received);
         }
     }
 
