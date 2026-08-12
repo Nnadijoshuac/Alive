@@ -1,6 +1,3 @@
-"use client";
-
-import { useMemo } from "react";
 import { fingerprintLinks, fingerprintPoints } from "@/lib/fingerprint";
 
 export function FingerprintVisualization({
@@ -12,14 +9,8 @@ export function FingerprintVisualization({
   label?: string;
   compact?: boolean;
 }) {
-  const points = useMemo(
-    () => fingerprintPoints(hash, compact ? 34 : 58),
-    [compact, hash],
-  );
-  const links = useMemo(
-    () => fingerprintLinks(points, compact ? 18 : 14),
-    [compact, points],
-  );
+  const points = fingerprintPoints(hash, compact ? 34 : 58);
+  const links = fingerprintLinks(points, compact ? 18 : 14);
   return (
     <figure
       className={`fingerprint ${compact ? "fingerprint-compact" : ""}`}

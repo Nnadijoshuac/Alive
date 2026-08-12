@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EscrowWorkspace } from "@/components/escrow-workspace";
 import { PageIntro } from "@/components/ui";
+import { WalletButton } from "@/components/wallet-shell";
 
 export const metadata: Metadata = {
   title: "Escrow",
@@ -19,6 +20,7 @@ export default async function EscrowPage({
         eyebrow="X Layer escrow"
         title="Payment waits for physical proof."
         description="Read contract state, fund the escrow, verify the physical asset, and consume its signed attestation."
+        actions={<WalletButton compact />}
       />
       <EscrowWorkspace escrowId={escrowId} />
     </div>

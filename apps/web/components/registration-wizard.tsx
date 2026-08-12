@@ -621,7 +621,13 @@ export function RegistrationWizard() {
             </div>
             <div className="process-status">
               <div>
-                <span style={{ width: `${progress}%` }} />
+                <span
+                  style={
+                    {
+                      "--progress-scale": progress / 100,
+                    } as React.CSSProperties
+                  }
+                />
               </div>
               <strong>
                 {working

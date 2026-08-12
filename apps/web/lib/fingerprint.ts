@@ -26,6 +26,10 @@ function random(seed: number): [number, number] {
   ];
 }
 
+function stableDecimal(value: number): number {
+  return Number(value.toFixed(6));
+}
+
 export function fingerprintPoints(
   hash: string,
   count = 54,
@@ -44,10 +48,13 @@ export function fingerprintPoints(
     [value, seed] = random(seed);
     return {
       id,
-      x: 50 + Math.cos(angle) * distance + wobble,
-      y: 50 + Math.sin(angle) * distance + wobble * 0.6,
-      radius,
-      opacity: 0.35 + value * 0.65,
+      // Trigonometric results can differ by one final binary digit between
+      // Node and browsers. Quantizing prevents SSR hydration drift while
+      // retaining more precision than the 100x100 SVG can display.
+      x: stableDecimal(50 + Math.cos(angle) * distance + wobble),
+      y: stableDecimal(50 + Math.sin(angle) * distance + wobble * 0.6),
+      radius: stableDecimal(radius),
+      opacity: stableDecimal(0.35 + value * 0.65),
       group: id % 6,
     };
   });

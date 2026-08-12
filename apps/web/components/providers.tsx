@@ -1,9 +1,9 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { injected } from "@wagmi/core";
 import { useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
-import { injected } from "wagmi/connectors";
 import { activeChain } from "@/lib/chain";
 
 const wagmiConfig = createConfig({

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
 import { DashboardView } from "@/components/dashboard-view";
 import { buttonClass, PageIntro } from "@/components/ui";
+import { WalletButton } from "@/components/wallet-shell";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -17,13 +18,16 @@ export default function DashboardPage() {
         title="Physical state, made legible."
         description="Inspect registered baselines, verification outcomes, and settlement readiness."
         actions={
-          <Link
-            className={`${buttonClass} button-primary`}
-            href="/assets/register"
-          >
-            <PlusIcon size={17} />
-            Register asset
-          </Link>
+          <>
+            <WalletButton compact />
+            <Link
+              className={`${buttonClass} button-primary`}
+              href="/assets/register"
+            >
+              <PlusIcon size={17} />
+              Register asset
+            </Link>
+          </>
         }
       />
       <DashboardView />

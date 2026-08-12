@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, ListIcon, XIcon } from "@phosphor-icons/react";
 import { useState, type ReactNode } from "react";
 import { AliveLogo } from "./logo";
-import { WalletButton } from "./wallet-shell";
+
+const headerButtonClass =
+  "button inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-semibold";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
@@ -31,6 +33,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 aria-current={
                   pathname.startsWith(item.href) ? "page" : undefined
                 }
@@ -40,7 +43,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="nav-wallet">
-            <WalletButton compact />
+            <Link
+              href="/dashboard"
+              prefetch={false}
+              className={`${headerButtonClass} button-secondary`}
+            >
+              Launch app
+              <ArrowRightIcon size={18} weight="bold" />
+            </Link>
           </div>
           <button
             className="mobile-menu-button"
@@ -63,12 +73,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onClick={() => setOpen(false)}
               >
                 {item.label}
               </Link>
             ))}
-            <WalletButton />
+            <Link
+              href="/dashboard"
+              prefetch={false}
+              className={`${headerButtonClass} button-secondary`}
+              onClick={() => setOpen(false)}
+            >
+              Launch app
+              <ArrowRightIcon size={18} weight="bold" />
+            </Link>
           </nav>
         ) : null}
       </header>

@@ -13,6 +13,21 @@ describe("deterministic fingerprint", () => {
     );
   });
 
+  it("quantizes SVG values so Node and browser hydration serialize identically", () => {
+    const points = fingerprintPoints(
+      "0x714cc16ae18881c9ae606e988b4b87380572d8daee7c5d9a198cd16d06101211",
+      58,
+    );
+    expect(points[18]?.y).toBe(84.39022);
+    expect(
+      points.every((point) =>
+        [point.x, point.y, point.radius, point.opacity].every(
+          (value) => value === Number(value.toFixed(6)),
+        ),
+      ),
+    ).toBe(true);
+  });
+
   it("only links valid point indexes", () => {
     const points = fingerprintPoints("asset-proof", 24);
     expect(
