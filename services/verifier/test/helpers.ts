@@ -4,6 +4,7 @@ import type {
   VerificationChallenge,
   VerificationResult,
   VerificationSession,
+  VerificationBurstFingerprint,
   ViewFingerprint,
 } from "@alive/shared";
 import {
@@ -39,6 +40,20 @@ export function assetFingerprint(): AssetFingerprint {
     views: [viewFingerprint("FRONT")],
     identifiers: { normalizedText: [], source: "NONE" },
     createdAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+export function verificationBurst(
+  view: RegistrationView,
+  suffixes: [string, string, string] = ["09", "0a", "0b"],
+  intraChallengeMotion = 0.5,
+): VerificationBurstFingerprint {
+  return {
+    frameFingerprints: suffixes.map((suffix, index) => ({
+      ...viewFingerprint(view, suffix),
+      capturedAt: `2026-01-01T00:00:04.${String(index * 100).padStart(3, "0")}Z`,
+    })) as VerificationBurstFingerprint["frameFingerprints"],
+    intraChallengeMotion,
   };
 }
 

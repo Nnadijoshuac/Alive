@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   AliveAttestationSchema,
   BasisPointsSchema,
+  RegistrationCaptureRequestSchema,
+  VerificationCaptureRequestSchema,
   VerificationResultSchema,
   WalletAuthorizationSchema,
 } from "../src/index.js";
@@ -66,5 +68,18 @@ describe("protocol schema bounds", () => {
       expiresAt: 100,
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("requires verification captures to contain exactly three ordered burst-frame fields", () => {
+    const frame = {
+      imageBase64: "aGVsbG8gd29ybGQhISE=",
+      mimeType: "image/jpeg" as const,
+      capturedAt: "2026-01-01T00:00:01.000Z",
+    };
+    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame, frame] }).success).toBe(true);
+    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame] }).success).toBe(false);
+    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame, frame, frame] }).success).toBe(false);
+    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, ...frame }).success).toBe(false);
+    expect(RegistrationCaptureRequestSchema.safeParse({ ...frame, view: "FRONT" }).success).toBe(true);
   });
 });

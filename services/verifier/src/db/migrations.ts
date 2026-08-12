@@ -107,6 +107,13 @@ const migrationV2 = `
     WHERE capability_hash IS NOT NULL;
 `;
 
+const migrationV3 = `
+  ALTER TABLE verification_captures ADD COLUMN evidence_paths_json TEXT;
+  ALTER TABLE verification_captures ADD COLUMN evidence_hashes_json TEXT;
+  ALTER TABLE verification_captures ADD COLUMN burst_fingerprint_json TEXT;
+  ALTER TABLE verification_captures ADD COLUMN intra_challenge_motion REAL;
+`;
+
 export function runMigrations(database: Database.Database): void {
   database.pragma("foreign_keys = ON");
   const current = database.pragma("user_version", { simple: true }) as number;
@@ -120,6 +127,12 @@ export function runMigrations(database: Database.Database): void {
     database.transaction(() => {
       database.exec(migrationV2);
       database.pragma("user_version = 2");
+    })();
+  }
+  if (current < 3) {
+    database.transaction(() => {
+      database.exec(migrationV3);
+      database.pragma("user_version = 3");
     })();
   }
 }

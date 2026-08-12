@@ -6,6 +6,7 @@ import {
   AssetMetadataSchema,
   SignedAttestationSchema,
   VerificationResultSchema,
+  VerificationBurstFingerprintSchema,
   VerificationSessionSchema,
   ViewFingerprintSchema,
   WalletAuthorizationSchema,
@@ -14,6 +15,7 @@ import {
   type AssetRecord,
   type SignedAttestation,
   type VerificationResult,
+  type VerificationBurstFingerprint,
   type VerificationSession,
   type ViewFingerprint,
   type WalletAuthorization,
@@ -64,6 +66,10 @@ interface VerificationCaptureRow {
   fingerprint_json: string;
   captured_at: string;
   received_at: string;
+  evidence_paths_json: string | null;
+  evidence_hashes_json: string | null;
+  burst_fingerprint_json: string | null;
+  intra_challenge_motion: number | null;
 }
 
 interface AuthorizationRow {
@@ -92,6 +98,10 @@ export interface StoredRegistrationCapture {
 
 export interface StoredVerificationCapture extends StoredRegistrationCapture {
   challengeId: string;
+  evidencePaths: [string, string, string];
+  evidenceHashes: [`0x${string}`, `0x${string}`, `0x${string}`];
+  frameFingerprints: VerificationBurstFingerprint["frameFingerprints"];
+  intraChallengeMotion: number;
   capturedAt: string;
   receivedAt: string;
 }
@@ -605,30 +615,40 @@ export class AliveRepository {
   addVerificationCapture(input: {
     sessionId: string;
     challengeId: string;
-    evidencePath: string;
-    fingerprint: ViewFingerprint;
-    capturedAt: string;
+    evidencePaths: [string, string, string];
+    burstFingerprint: VerificationBurstFingerprint;
     receivedAt: string;
   }): string {
-    const parsed = ViewFingerprintSchema.parse(input.fingerprint);
+    const parsed = VerificationBurstFingerprintSchema.parse(input.burstFingerprint);
+    const representative = parsed.frameFingerprints[1];
+    const evidenceHashes = parsed.frameFingerprints.map((frame) => frame.evidenceHash) as [
+      `0x${string}`,
+      `0x${string}`,
+      `0x${string}`,
+    ];
     const captureId = randomBytes32();
     this.database.transaction(() => {
       this.assertCaptureAllowed(input.sessionId, input.challengeId, new Date(input.receivedAt));
       this.database
         .prepare(
           `INSERT INTO verification_captures
-           (capture_id, session_id, challenge_id, evidence_path, evidence_hash, fingerprint_json, captured_at, received_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (capture_id, session_id, challenge_id, evidence_path, evidence_hash, fingerprint_json, captured_at, received_at,
+            evidence_paths_json, evidence_hashes_json, burst_fingerprint_json, intra_challenge_motion)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           captureId,
           input.sessionId,
           input.challengeId,
-          input.evidencePath,
-          parsed.evidenceHash,
-          JSON.stringify(parsed),
-          input.capturedAt,
+          input.evidencePaths[1],
+          representative.evidenceHash,
+          JSON.stringify(representative),
+          parsed.frameFingerprints[2].capturedAt,
           input.receivedAt,
+          JSON.stringify(input.evidencePaths),
+          JSON.stringify(evidenceHashes),
+          JSON.stringify(parsed),
+          parsed.intraChallengeMotion,
         );
       this.database
         .prepare("UPDATE verification_challenges SET completed_at = ? WHERE challenge_id = ? AND completed_at IS NULL")
@@ -641,9 +661,8 @@ export class AliveRepository {
     sessionId: string;
     challengeId: string;
     capabilityHash: string;
-    evidencePath: string;
-    fingerprint: ViewFingerprint;
-    capturedAt: string;
+    evidencePaths: [string, string, string];
+    burstFingerprint: VerificationBurstFingerprint;
     receivedAt: string;
   }): string {
     return this.database.transaction(() => {
@@ -660,20 +679,64 @@ export class AliveRepository {
     const rows = this.database
       .prepare(
         `SELECT vc.capture_id, vc.challenge_id, vc.evidence_path, vc.fingerprint_json,
-                vc.captured_at, vc.received_at
+                vc.captured_at, vc.received_at, vc.evidence_paths_json, vc.evidence_hashes_json,
+                vc.burst_fingerprint_json, vc.intra_challenge_motion
          FROM verification_captures vc
          JOIN verification_challenges ch ON ch.challenge_id = vc.challenge_id
          WHERE vc.session_id = ? ORDER BY ch.sequence`,
       )
       .all(sessionId) as VerificationCaptureRow[];
-    return rows.map((row) => ({
-      captureId: row.capture_id,
-      challengeId: row.challenge_id,
-      evidencePath: row.evidence_path,
-      fingerprint: ViewFingerprintSchema.parse(JSON.parse(row.fingerprint_json) as unknown),
-      capturedAt: row.captured_at,
-      receivedAt: row.received_at,
-    }));
+    return rows.map((row) => {
+      const representative = ViewFingerprintSchema.parse(JSON.parse(row.fingerprint_json) as unknown);
+      if (row.burst_fingerprint_json === null) {
+        return {
+          captureId: row.capture_id,
+          challengeId: row.challenge_id,
+          evidencePath: row.evidence_path,
+          evidencePaths: [row.evidence_path, row.evidence_path, row.evidence_path],
+          evidenceHashes: [representative.evidenceHash, representative.evidenceHash, representative.evidenceHash],
+          fingerprint: representative,
+          frameFingerprints: [representative, representative, representative],
+          intraChallengeMotion: 0,
+          capturedAt: row.captured_at,
+          receivedAt: row.received_at,
+        };
+      }
+      if (
+        row.evidence_paths_json === null ||
+        row.evidence_hashes_json === null ||
+        row.intra_challenge_motion === null
+      ) {
+        throw new Error(`Verification capture ${row.capture_id} has incomplete burst data`);
+      }
+      const burst = VerificationBurstFingerprintSchema.parse(JSON.parse(row.burst_fingerprint_json) as unknown);
+      const paths = JSON.parse(row.evidence_paths_json) as unknown;
+      const hashes = JSON.parse(row.evidence_hashes_json) as unknown;
+      if (!Array.isArray(paths) || paths.length !== 3 || !paths.every((value) => typeof value === "string")) {
+        throw new Error(`Verification capture ${row.capture_id} has invalid evidence paths`);
+      }
+      const derivedHashes = burst.frameFingerprints.map((frame) => frame.evidenceHash);
+      if (
+        !Array.isArray(hashes) ||
+        hashes.length !== 3 ||
+        !hashes.every((value, index) => typeof value === "string" && value.toLowerCase() === derivedHashes[index]?.toLowerCase()) ||
+        row.intra_challenge_motion !== burst.intraChallengeMotion
+      ) {
+        throw new Error(`Verification capture ${row.capture_id} has inconsistent burst evidence`);
+      }
+      return {
+        captureId: row.capture_id,
+        challengeId: row.challenge_id,
+        evidencePath: paths[1] as string,
+        evidencePaths: paths as [string, string, string],
+        evidenceHashes: derivedHashes as [`0x${string}`, `0x${string}`, `0x${string}`],
+        fingerprint: burst.frameFingerprints[1],
+        frameFingerprints: burst.frameFingerprints,
+        intraChallengeMotion: burst.intraChallengeMotion,
+        capturedAt: burst.frameFingerprints[2].capturedAt,
+        receivedAt: row.received_at,
+      };
+    });
   }
 
   beginAnalysis(sessionId: string, now: Date): AnalysisSnapshot {

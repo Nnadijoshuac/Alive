@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AliveRepository } from "../src/db/repository.js";
 import { createChallenges } from "../src/random.js";
-import { assetFingerprint, assetId, challenge, owner, session, viewFingerprint } from "./helpers.js";
+import { assetFingerprint, assetId, challenge, owner, session, verificationBurst } from "./helpers.js";
 
 function seededRepository(): AliveRepository {
   const repository = new AliveRepository(":memory:");
@@ -107,21 +107,26 @@ describe("verification session capabilities", () => {
     repository.addVerificationCapture({
       sessionId: created.sessionId,
       challengeId: created.challenges[0]?.id ?? "",
-      evidencePath: "memory://one",
-      fingerprint: viewFingerprint("FRONT", "09"),
-      capturedAt: receivedAt,
+      evidencePaths: ["memory://one/0", "memory://one/1", "memory://one/2"],
+      burstFingerprint: verificationBurst("FRONT"),
       receivedAt,
     });
     expect(() =>
       repository.addVerificationCapture({
         sessionId: created.sessionId,
         challengeId: created.challenges[0]?.id ?? "",
-        evidencePath: "memory://two",
-        fingerprint: viewFingerprint("FRONT", "08"),
-        capturedAt: receivedAt,
+        evidencePaths: ["memory://two/0", "memory://two/1", "memory://two/2"],
+        burstFingerprint: verificationBurst("FRONT", ["08", "07", "06"]),
         receivedAt,
       }),
     ).toThrow();
+    const snapshot = repository.beginAnalysis(created.sessionId, new Date("2026-01-01T00:00:06.000Z"));
+    expect(snapshot.captures[0]).toMatchObject({
+      evidencePaths: ["memory://one/0", "memory://one/1", "memory://one/2"],
+      evidenceHashes: [`0x${"09".repeat(32)}`, `0x${"0a".repeat(32)}`, `0x${"0b".repeat(32)}`],
+      intraChallengeMotion: 0.5,
+    });
+    expect(snapshot.captures[0]?.frameFingerprints).toHaveLength(3);
     repository.close();
   });
 });

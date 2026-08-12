@@ -12,6 +12,8 @@ import {
   type AssetFingerprint,
   type IdentifierData,
   type RegistrationView,
+  type VerificationBurstFingerprint,
+  type VerificationCaptureRequest,
   type VerificationSession,
   type WalletAuthorization,
 } from "@alive/shared";
@@ -32,7 +34,7 @@ import { createChallenges, randomBytes32 } from "./random.js";
 import { AttestationSigner } from "./signer.js";
 import { decodeCaptureBase64, FileEvidenceStore, type EvidenceStore } from "./storage.js";
 import { extractViewFingerprint } from "./vision/features.js";
-import { analyzeVerification } from "./vision/matching.js";
+import { analyzeVerification, computeIntraChallengeMotion } from "./vision/matching.js";
 import { normalizeOcrText } from "./vision/ocr.js";
 
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as const;
@@ -147,6 +149,21 @@ function ensureFreshCapture(session: VerificationSession, capturedAt: string, re
   }
 }
 
+function ensureFreshBurst(
+  session: VerificationSession,
+  frames: VerificationCaptureRequest["frames"],
+  receivedAt: Date,
+): void {
+  for (const frame of frames) ensureFreshCapture(session, frame.capturedAt, receivedAt);
+  const timestamps = frames.map((frame) => Date.parse(frame.capturedAt)) as [number, number, number];
+  if (timestamps[0] >= timestamps[1] || timestamps[1] >= timestamps[2]) {
+    throw new ProtocolError(422, "CAPTURE_SEQUENCE_INVALID", "Burst frame timestamps must be strictly increasing");
+  }
+  if (timestamps[2] - timestamps[0] > 5_000) {
+    throw new ProtocolError(422, "CAPTURE_SEQUENCE_INVALID", "Burst frames must be captured within five seconds");
+  }
+}
+
 export async function buildApp(config: VerifierConfig, dependencies: AppDependencies = {}): Promise<FastifyInstance> {
   const repository = dependencies.repository ?? new AliveRepository(config.databasePath);
   const evidenceStore = dependencies.evidenceStore ?? new FileEvidenceStore(config.evidencePath, config.evidenceResetBoundary);
@@ -159,7 +176,7 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
   });
   const app = Fastify({
     logger: false,
-    bodyLimit: Math.ceil(config.maximumImageBytes * 1.5) + 32_768,
+    bodyLimit: Math.ceil(config.maximumImageBytes * 3 * 1.5) + 32_768,
     requestIdHeader: "x-request-id",
   });
   await app.register(cors, {
@@ -469,36 +486,58 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
     const input = VerificationCaptureRequestSchema.parse(request.body);
     const session = requireSession(repository, sessionId, receivedAt);
     repository.assertCaptureAllowed(sessionId, input.challengeId, receivedAt);
-    ensureFreshCapture(session, input.capturedAt, receivedAt);
+    ensureFreshBurst(session, input.frames, receivedAt);
     const challenge = session.challenges.find((candidate) => candidate.id.toLowerCase() === input.challengeId.toLowerCase());
     if (challenge === undefined) throw new ProtocolError(404, "CHALLENGE_NOT_FOUND", "Challenge not found");
-    const bytes = decodeCaptureBase64(input.imageBase64, config.maximumImageBytes);
-    const fingerprint = await extractViewFingerprint(bytes, {
-      view: viewForChallenge(challenge.type),
-      capturedAt: input.capturedAt,
-      enableOcr: config.enableOcr && challenge.type === "SHOW_IDENTIFIER",
-      enableNeuralEmbedding: config.enableNeuralEmbedding,
-      neuralModel: config.neuralModel,
-    });
-    if (!fingerprint.quality.usable) {
-      throw new ProtocolError(422, "CAPTURE_QUALITY_LOW", "Image is too blurred or poorly exposed", fingerprint.quality);
+    const frameBytes = input.frames.map((frame) => decodeCaptureBase64(frame.imageBase64, config.maximumImageBytes)) as [
+      Buffer,
+      Buffer,
+      Buffer,
+    ];
+    const frameFingerprints = (await Promise.all(
+      input.frames.map((frame, index) =>
+        extractViewFingerprint(frameBytes[index]!, {
+          view: viewForChallenge(challenge.type),
+          capturedAt: frame.capturedAt,
+          enableOcr: config.enableOcr && challenge.type === "SHOW_IDENTIFIER",
+          enableNeuralEmbedding: config.enableNeuralEmbedding,
+          neuralModel: config.neuralModel,
+        }),
+      ),
+    )) as VerificationBurstFingerprint["frameFingerprints"];
+    const unusableFrame = frameFingerprints.findIndex((fingerprint) => !fingerprint.quality.usable);
+    if (unusableFrame !== -1) {
+      throw new ProtocolError(422, "CAPTURE_QUALITY_LOW", "Every burst frame must be sharp and properly exposed", {
+        frameIndex: unusableFrame,
+        quality: frameFingerprints[unusableFrame]?.quality,
+      });
     }
-    const stored = await evidenceStore.put("verification", sessionId, bytes, input.mimeType);
+    const storedFrames = (await Promise.all(
+      input.frames.map((frame, index) => evidenceStore.put("verification", sessionId, frameBytes[index]!, frame.mimeType)),
+    )) as [Awaited<ReturnType<EvidenceStore["put"]>>, Awaited<ReturnType<EvidenceStore["put"]>>, Awaited<ReturnType<EvidenceStore["put"]>>];
+    if (
+      storedFrames.some(
+        (stored, index) => stored.evidenceHash.toLowerCase() !== frameFingerprints[index]?.evidenceHash.toLowerCase(),
+      )
+    ) {
+      throw new ProtocolError(500, "EVIDENCE_HASH_MISMATCH", "Stored evidence does not match its extracted fingerprint");
+    }
+    const intraChallengeMotion = computeIntraChallengeMotion(frameFingerprints);
     const captureId = repository.addAuthorizedVerificationCapture({
       sessionId,
       challengeId: input.challengeId,
       capabilityHash: suppliedCapabilityHash,
-      evidencePath: stored.path,
-      fingerprint,
-      capturedAt: input.capturedAt,
+      evidencePaths: storedFrames.map((stored) => stored.path) as [string, string, string],
+      burstFingerprint: { frameFingerprints, intraChallengeMotion },
       receivedAt: receivedAt.toISOString(),
     });
     const updated = requireSession(repository, sessionId, receivedAt);
     return reply.status(201).send({
       captureId,
       challengeId: input.challengeId,
-      evidenceHash: stored.evidenceHash,
-      quality: fingerprint.quality,
+      evidenceHashes: storedFrames.map((stored) => stored.evidenceHash),
+      qualities: frameFingerprints.map((fingerprint) => fingerprint.quality),
+      intraChallengeMotion,
       completedChallenges: updated.challenges.filter((item) => item.completedAt !== null).length,
       totalChallenges: updated.challenges.length,
     });

@@ -183,6 +183,13 @@ export const ViewFingerprintSchema = z
   })
   .strict();
 
+export const VerificationBurstFingerprintSchema = z
+  .object({
+    frameFingerprints: z.tuple([ViewFingerprintSchema, ViewFingerprintSchema, ViewFingerprintSchema]),
+    intraChallengeMotion: RatioSchema,
+  })
+  .strict();
+
 export const AssetFingerprintSchema = z
   .object({
     fingerprintVersion: z.literal(1),
@@ -282,9 +289,12 @@ export const AuthorizedVerificationSessionCreateResponseSchema = z
   })
   .strict();
 
-export const VerificationCaptureRequestSchema = ImageCaptureSchema.extend({
-  challengeId: Bytes32Schema,
-}).strict();
+export const VerificationCaptureRequestSchema = z
+  .object({
+    challengeId: Bytes32Schema,
+    frames: z.tuple([ImageCaptureSchema, ImageCaptureSchema, ImageCaptureSchema]),
+  })
+  .strict();
 
 export const VerificationSignalsSchema = z
   .object({
@@ -394,9 +404,11 @@ export type AuthorizedAssetCreateRequest = z.infer<typeof AuthorizedAssetCreateR
 export type AssetRecord = z.infer<typeof AssetRecordSchema>;
 export type AuthorizedAssetCreateResponse = z.infer<typeof AuthorizedAssetCreateResponseSchema>;
 export type CaptureQuality = z.infer<typeof CaptureQualitySchema>;
+export type ImageCapture = z.infer<typeof ImageCaptureSchema>;
 export type RegistrationCaptureRequest = z.infer<typeof RegistrationCaptureRequestSchema>;
 export type IdentifierData = z.infer<typeof IdentifierDataSchema>;
 export type ViewFingerprint = z.infer<typeof ViewFingerprintSchema>;
+export type VerificationBurstFingerprint = z.infer<typeof VerificationBurstFingerprintSchema>;
 export type AssetFingerprint = z.infer<typeof AssetFingerprintSchema>;
 export type ChallengeType = z.infer<typeof ChallengeTypeSchema>;
 export type VerificationChallenge = z.infer<typeof VerificationChallengeSchema>;

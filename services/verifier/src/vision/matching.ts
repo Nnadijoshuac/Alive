@@ -7,6 +7,7 @@ import {
   type VerificationResult,
   type VerificationSession,
   type VerificationSignals,
+  type VerificationBurstFingerprint,
   type ViewFingerprint,
 } from "@alive/shared";
 import { clamp01, cosineSimilarity, hammingSimilarity, mean, median } from "./math.js";
@@ -17,6 +18,8 @@ export interface AnalyzableCapture {
   capturedAt: string;
   receivedAt: string;
   fingerprint: ViewFingerprint;
+  frameFingerprints: VerificationBurstFingerprint["frameFingerprints"];
+  intraChallengeMotion: number;
 }
 
 interface PairScore {
@@ -64,9 +67,9 @@ function expectedView(challengeType: VerificationSession["challenges"][number]["
   }
 }
 
-function freshness(session: VerificationSession, capture: AnalyzableCapture): number {
-  const captured = Date.parse(capture.capturedAt);
-  const received = Date.parse(capture.receivedAt);
+function frameFreshness(session: VerificationSession, capturedAt: string, receivedAt: string): number {
+  const captured = Date.parse(capturedAt);
+  const received = Date.parse(receivedAt);
   const created = Date.parse(session.createdAt);
   const expires = Date.parse(session.expiresAt);
   if (![captured, received, created, expires].every(Number.isFinite)) return 0;
@@ -74,25 +77,45 @@ function freshness(session: VerificationSession, capture: AnalyzableCapture): nu
   return clamp01(1 - (received - captured) / 120_000);
 }
 
-function motionConsistency(captures: readonly AnalyzableCapture[]): number {
+function visualChange(previous: ViewFingerprint, current: ViewFingerprint): number {
+  const spatialChange = clamp01(1 - cosineSimilarity(previous.spatialColorEmbedding, current.spatialColorEmbedding));
+  const localChange = clamp01(1 - cosineSimilarity(previous.gradientDescriptor, current.gradientDescriptor));
+  const hashChange = clamp01(1 - hammingSimilarity(previous.perceptualHash, current.perceptualHash));
+  const rawChange = spatialChange * 0.35 + localChange * 0.35 + hashChange * 0.3;
+  // Small-to-moderate feature movement is expected within a short burst. A
+  // total scene substitution is intentionally treated as less credible.
+  return clamp01(rawChange / 0.08) * clamp01((0.85 - rawChange) / 0.35);
+}
+
+export function computeIntraChallengeMotion(
+  frames: VerificationBurstFingerprint["frameFingerprints"],
+): number {
+  return clamp01(mean([visualChange(frames[0], frames[1]), visualChange(frames[1], frames[2])]));
+}
+
+function crossChallengeMotion(captures: readonly AnalyzableCapture[]): number {
   if (captures.length < 2) return 0;
   const changes: number[] = [];
   for (let index = 1; index < captures.length; index += 1) {
     const previous = captures[index - 1]?.fingerprint;
     const current = captures[index]?.fingerprint;
     if (previous === undefined || current === undefined) continue;
-    const spatialChange = 1 - cosineSimilarity(previous.spatialColorEmbedding, current.spatialColorEmbedding);
-    const localChange = 1 - cosineSimilarity(previous.gradientDescriptor, current.gradientDescriptor);
-    const hashChange = 1 - hammingSimilarity(previous.perceptualHash, current.perceptualHash);
-    const rawChange = spatialChange * 0.35 + localChange * 0.35 + hashChange * 0.3;
-    // A challenge sequence should change, but total visual discontinuity is also suspicious.
-    changes.push(clamp01(rawChange / 0.12) * clamp01((0.75 - rawChange) / 0.25));
+    changes.push(visualChange(previous, current));
   }
   return mean(changes);
 }
 
+function motionConsistency(captures: readonly AnalyzableCapture[]): number {
+  const intraChallenge = clamp01(mean(captures.map((capture) => clamp01(capture.intraChallengeMotion))));
+  if (intraChallenge === 0) return 0;
+  const crossChallenge = captures.length < 2 ? intraChallenge : crossChallengeMotion(captures);
+  // Cross-challenge changes may corroborate a burst but can never rescue a
+  // static burst sequence. The server-derived intra-burst score dominates.
+  return clamp01(intraChallenge * 0.85 + Math.min(intraChallenge, crossChallenge) * 0.15);
+}
+
 function collectObservedText(captures: readonly AnalyzableCapture[]): string[] {
-  return [...new Set(captures.flatMap((capture) => capture.fingerprint.ocrText))];
+  return [...new Set(captures.flatMap((capture) => capture.frameFingerprints.flatMap((frame) => frame.ocrText)))];
 }
 
 function expectedIdentifiers(fingerprint: AssetFingerprint): string[] {
@@ -138,10 +161,9 @@ export function analyzeVerification(input: {
     registration.identifiers.serial !== undefined &&
     observedText.length > 0 &&
     normalizedIdentifierSimilarity(registration.identifiers.serial, observedText) < 0.45;
+  const burstFrames = captures.flatMap((capture) => capture.frameFingerprints);
   const captureQuality = mean(
-    captures.map((capture) =>
-      Math.sqrt(capture.fingerprint.quality.blurScore * capture.fingerprint.quality.exposureScore),
-    ),
+    burstFrames.map((frame) => Math.sqrt(frame.quality.blurScore * frame.quality.exposureScore)),
   );
   const embeddingSimilarity = mean(pairScores.map((pair) => pair.spatial));
   const localFeatureSimilarity = mean(pairScores.map((pair) => pair.local));
@@ -150,17 +172,23 @@ export function analyzeVerification(input: {
   const multiViewConsistency = clamp01(
     matchedViews.size / Math.max(1, Math.min(registration.views.length, session.challenges.length)),
   );
-  const replaySimilarities = pairScores.map((pair) => pair.phash);
-  const exactReplay = captures.some((capture) =>
-    registration.views.some((view) => view.evidenceHash.toLowerCase() === capture.fingerprint.evidenceHash.toLowerCase()),
+  const replaySimilarities = burstFrames.map((frame) =>
+    Math.max(...registration.views.map((view) => hammingSimilarity(view.perceptualHash, frame.perceptualHash))),
+  );
+  const exactReplay = burstFrames.some((frame) =>
+    registration.views.some((view) => view.evidenceHash.toLowerCase() === frame.evidenceHash.toLowerCase()),
   );
   const highHashMatches = replaySimilarities.filter((similarity) => similarity >= 0.96875).length;
   const replayRisk = exactReplay
     ? 1
-    : clamp01((highHashMatches / Math.max(1, captures.length)) * 0.8 + Math.max(0, median(replaySimilarities) - 0.9));
+    : clamp01((highHashMatches / Math.max(1, burstFrames.length)) * 0.8 + Math.max(0, median(replaySimilarities) - 0.9));
   const challengeCompletion = clamp01(captures.length / session.challenges.length);
   const motion = motionConsistency(captures);
-  const captureFreshness = mean(captures.map((capture) => freshness(session, capture)));
+  const captureFreshness = mean(
+    captures.flatMap((capture) =>
+      capture.frameFingerprints.map((frame) => frameFreshness(session, frame.capturedAt, capture.receivedAt)),
+    ),
+  );
   const visualIntegrity = clamp01(localFeatureSimilarity * 0.45 + embeddingSimilarity * 0.35 + multiViewConsistency * 0.2);
 
   const signals: VerificationSignals = {
@@ -187,7 +215,14 @@ export function analyzeVerification(input: {
     nonce: session.nonce,
     context: session.context,
     challenges: session.challenges.map(({ id, sequence, type }) => ({ id, sequence, type })),
-    captureEvidenceHashes: captures.map((capture) => capture.fingerprint.evidenceHash),
+    captureBursts: captures.map((capture) => ({
+      challengeId: capture.challengeId,
+      frames: capture.frameFingerprints.map((frame) => ({
+        evidenceHash: frame.evidenceHash,
+        capturedAt: frame.capturedAt,
+      })),
+      intraChallengeMotion: capture.intraChallengeMotion,
+    })),
     registrationFingerprintHash: createEvidenceCommitment(registration),
     signals,
     scores: {

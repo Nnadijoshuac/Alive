@@ -6,9 +6,10 @@ import {
   type RegistrationView,
   type VerificationChallenge,
   type VerificationSession,
+  type ViewFingerprint,
 } from "@alive/shared";
 import { extractViewFingerprint } from "../src/vision/features.js";
-import { analyzeVerification } from "../src/vision/matching.js";
+import { analyzeVerification, computeIntraChallengeMotion } from "../src/vision/matching.js";
 import { cosineSimilarity } from "../src/vision/math.js";
 import { assetId, owner, zeroBytes32 } from "./helpers.js";
 
@@ -30,6 +31,13 @@ async function synthetic(seed: number, perturbation = 0): Promise<Buffer> {
 
 const views: RegistrationView[] = ["FRONT", "BACK", "LEFT", "RIGHT"];
 const challengeTypes = ["SHOW_FRONT", "SHOW_BACK", "TURN_LEFT", "TURN_RIGHT"] as const;
+
+function burst(fingerprint: ViewFingerprint, intraChallengeMotion = 0.75) {
+  return {
+    frameFingerprints: [fingerprint, fingerprint, fingerprint] as [ViewFingerprint, ViewFingerprint, ViewFingerprint],
+    intraChallengeMotion,
+  };
+}
 
 describe("image-dependent instance matching", () => {
   it("derives stronger visual similarity for the same patterned object than a different one", async () => {
@@ -62,6 +70,34 @@ describe("image-dependent instance matching", () => {
       cosineSimilarity(original.gradientDescriptor, differentObject.gradientDescriptor) * 0.45;
     expect(sameScore).toBeGreaterThan(differentScore + 0.08);
     expect(original.evidenceHash).not.toBe(sameObject.evidenceHash);
+  });
+
+  it("derives zero motion for an identical burst and nonzero bounded motion for real visual changes", async () => {
+    const first = await extractViewFingerprint(await synthetic(12), {
+      view: "FRONT",
+      capturedAt: "2026-01-01T00:00:01.000Z",
+      enableOcr: false,
+      enableNeuralEmbedding: false,
+      neuralModel: "unused",
+    });
+    const second = await extractViewFingerprint(await synthetic(12, 2), {
+      view: "FRONT",
+      capturedAt: "2026-01-01T00:00:01.100Z",
+      enableOcr: false,
+      enableNeuralEmbedding: false,
+      neuralModel: "unused",
+    });
+    const third = await extractViewFingerprint(await synthetic(12, 4), {
+      view: "FRONT",
+      capturedAt: "2026-01-01T00:00:01.200Z",
+      enableOcr: false,
+      enableNeuralEmbedding: false,
+      neuralModel: "unused",
+    });
+    expect(computeIntraChallengeMotion([first, first, first])).toBe(0);
+    const changed = computeIntraChallengeMotion([first, second, third]);
+    expect(changed).toBeGreaterThan(0);
+    expect(changed).toBeLessThanOrEqual(1);
   });
 
   it("raises the aggregate identity score only from derived capture features", async () => {
@@ -103,18 +139,22 @@ describe("image-dependent instance matching", () => {
     };
     async function captures(seedOffset: number) {
       return Promise.all(
-        views.map(async (view, index) => ({
-          challengeId: challenges[index]!.id,
-          capturedAt: `2026-01-01T00:00:0${index + 2}.000Z`,
-          receivedAt: `2026-01-01T00:00:0${index + 2}.500Z`,
-          fingerprint: await extractViewFingerprint(await synthetic(index + 2 + seedOffset, 2), {
+        views.map(async (view, index) => {
+          const fingerprint = await extractViewFingerprint(await synthetic(index + 2 + seedOffset, 2), {
             view,
             capturedAt: `2026-01-01T00:00:0${index + 2}.000Z`,
             enableOcr: false,
             enableNeuralEmbedding: false,
             neuralModel: "unused",
-          }),
-        })),
+          });
+          return {
+            challengeId: challenges[index]!.id,
+            capturedAt: `2026-01-01T00:00:0${index + 2}.000Z`,
+            receivedAt: `2026-01-01T00:00:0${index + 2}.500Z`,
+            fingerprint,
+            ...burst(fingerprint),
+          };
+        }),
       );
     }
     const genuine = analyzeVerification({
@@ -172,6 +212,7 @@ describe("image-dependent instance matching", () => {
       capturedAt: "2026-01-01T00:00:02.000Z",
       receivedAt: "2026-01-01T00:00:02.500Z",
       fingerprint: observation,
+      ...burst(observation),
     }];
     const base = {
       fingerprintVersion: 1 as const,
