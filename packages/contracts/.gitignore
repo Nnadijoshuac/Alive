@@ -1,0 +1,13 @@
+.env
+artifacts/
+cache/
+cache_forge/
+coverage/
+coverage.json
+node_modules/
+out/
+typechain-types/
+
+# Deployment files contain public addresses, never private material. Keep local
+# and ephemeral chain exports out of version control.
+deployments/31337.json
