@@ -1,4 +1,10 @@
-import { CameraIcon, CpuIcon, FingerprintIcon, SealCheckIcon, CurrencyCircleDollarIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  CameraIcon,
+  CpuIcon,
+  FingerprintIcon,
+  SealCheckIcon,
+  CurrencyCircleDollarIcon,
+} from "@phosphor-icons/react/dist/ssr";
 
 const points = [
   { icon: CameraIcon, label: "Physical capture" },
@@ -12,7 +18,12 @@ export function ProtocolMini() {
   return (
     <ol className="protocol-mini" aria-label="ALIVE causal protocol chain">
       {points.map(({ icon: Icon, label }) => (
-        <li key={label}><span><Icon size={20} weight="duotone" /></span><strong>{label}</strong></li>
+        <li key={label}>
+          <span>
+            <Icon size={20} weight="duotone" />
+          </span>
+          <strong>{label}</strong>
+        </li>
       ))}
     </ol>
   );

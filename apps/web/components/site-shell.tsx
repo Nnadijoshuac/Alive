@@ -23,20 +23,51 @@ export function SiteShell({ children }: { children: ReactNode }) {
     <div className="site-shell">
       <header className="site-header">
         <div className="shell-width nav-row">
-          <Link href="/" className="logo-link" aria-label="ALIVE home"><AliveLogo /></Link>
+          <Link href="/" className="logo-link" aria-label="ALIVE home">
+            <AliveLogo />
+          </Link>
           <nav className="desktop-nav" aria-label="Primary navigation">
             {navigation.map((item) => (
-              <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? "page" : undefined}>{item.label}</Link>
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={
+                  pathname.startsWith(item.href) ? "page" : undefined
+                }
+              >
+                {item.label}
+              </Link>
             ))}
           </nav>
-          <div className="nav-wallet"><WalletButton compact /></div>
-          <button className="mobile-menu-button" type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-controls="mobile-navigation" aria-label="Toggle navigation">
+          <div className="nav-wallet">
+            <WalletButton compact />
+          </div>
+          <button
+            className="mobile-menu-button"
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls="mobile-navigation"
+            aria-label="Toggle navigation"
+          >
             {open ? <XIcon size={22} /> : <ListIcon size={22} />}
           </button>
         </div>
         {open ? (
-          <nav id="mobile-navigation" className="mobile-nav" aria-label="Mobile navigation">
-            {navigation.map((item) => <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>{item.label}</Link>)}
+          <nav
+            id="mobile-navigation"
+            className="mobile-nav"
+            aria-label="Mobile navigation"
+          >
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
             <WalletButton />
           </nav>
         ) : null}
@@ -46,7 +77,10 @@ export function SiteShell({ children }: { children: ReactNode }) {
         <div className="shell-width footer-grid">
           <AliveLogo />
           <p>Observable physical state, signed for programmable settlement.</p>
-          <div><Link href="/protocol">Security model</Link><Link href="/dev/design-system">Design system</Link></div>
+          <div>
+            <Link href="/protocol">Security model</Link>
+            <Link href="/dev/design-system">Design system</Link>
+          </div>
         </div>
       </footer>
     </div>

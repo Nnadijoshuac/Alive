@@ -22,14 +22,23 @@ export const registrationNonce = `0x${"11".repeat(32)}` as const;
 export const assetId = createAssetId(owner, registrationNonce);
 export const zeroBytes32 = `0x${"00".repeat(32)}` as const;
 
-export function viewFingerprint(view: RegistrationView, suffix = "01"): ViewFingerprint {
+export function viewFingerprint(
+  view: RegistrationView,
+  suffix = "01",
+): ViewFingerprint {
   return {
     view,
     evidenceHash: `0x${suffix.repeat(32)}`,
     spatialColorEmbedding: [0.8, 0.4, 0.2],
     gradientDescriptor: [0.7, 0.3, 0.1],
     perceptualHash: suffix.repeat(8),
-    quality: { blurScore: 0.9, exposureScore: 0.9, usable: true, width: 192, height: 192 },
+    quality: {
+      blurScore: 0.9,
+      exposureScore: 0.9,
+      usable: true,
+      width: 192,
+      height: 192,
+    },
     ocrText: [],
     capturedAt: "2026-01-01T00:00:01.000Z",
   };
@@ -69,7 +78,9 @@ export function challenge(sequence = 0, suffix = "33"): VerificationChallenge {
   };
 }
 
-export function session(overrides: Partial<VerificationSession> = {}): VerificationSession {
+export function session(
+  overrides: Partial<VerificationSession> = {},
+): VerificationSession {
   return {
     sessionId: `0x${"44".repeat(32)}`,
     assetId,
@@ -84,7 +95,9 @@ export function session(overrides: Partial<VerificationSession> = {}): Verificat
   };
 }
 
-export function result(sessionId: VerificationResult["sessionId"]): VerificationResult {
+export function result(
+  sessionId: VerificationResult["sessionId"],
+): VerificationResult {
   return {
     assetId,
     sessionId,
@@ -120,8 +133,15 @@ export const authorizationDomain: WalletAuthorizationDomain = {
   chainId: 31_337,
 };
 
-export async function signAuthorization(authorization: WalletAuthorization): Promise<`0x${string}`> {
-  return ownerAccount.signTypedData(getAliveAuthorizationTypedData(authorization, authorizationDomain));
+export async function signAuthorization(
+  authorization: WalletAuthorization,
+): Promise<`0x${string}`> {
+  return ownerAccount.signTypedData(
+    getAliveAuthorizationTypedData(authorization, authorizationDomain),
+  );
 }
 
-export const testAssetMetadata: AssetMetadata = { name: "API test asset", category: "COMPUTER" };
+export const testAssetMetadata: AssetMetadata = {
+  name: "API test asset",
+  category: "COMPUTER",
+};

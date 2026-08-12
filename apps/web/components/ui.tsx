@@ -1,11 +1,22 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
-import { WarningIcon, CheckCircleIcon, CircleNotchIcon, InfoIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  WarningIcon,
+  CheckCircleIcon,
+  CircleNotchIcon,
+  InfoIcon,
+} from "@phosphor-icons/react/dist/ssr";
 
 export const buttonClass =
   "button inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-semibold";
 
-export function Button({ className = "", type = "button", ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button type={type} className={`${buttonClass} ${className}`} {...props} />;
+export function Button({
+  className = "",
+  type = "button",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button type={type} className={`${buttonClass} ${className}`} {...props} />
+  );
 }
 
 export function StatusBadge({
@@ -33,7 +44,11 @@ export function Field({
     <label className="field">
       <span className="field-label">{label}</span>
       {children}
-      {error ? <span className="field-error">{error}</span> : hint ? <span className="field-hint">{hint}</span> : null}
+      {error ? (
+        <span className="field-error">{error}</span>
+      ) : hint ? (
+        <span className="field-hint">{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -49,10 +64,25 @@ export function InlineNotice({
   children?: ReactNode;
   className?: string;
 }) {
-  const Icon = tone === "success" ? CheckCircleIcon : tone === "warning" ? WarningIcon : tone === "loading" ? CircleNotchIcon : InfoIcon;
+  const Icon =
+    tone === "success"
+      ? CheckCircleIcon
+      : tone === "warning"
+        ? WarningIcon
+        : tone === "loading"
+          ? CircleNotchIcon
+          : InfoIcon;
   return (
-    <div className={`inline-notice notice-${tone} ${className}`} role={tone === "warning" ? "alert" : "status"}>
-      <Icon className={tone === "loading" ? "spin" : ""} size={20} weight="bold" aria-hidden="true" />
+    <div
+      className={`inline-notice notice-${tone} ${className}`}
+      role={tone === "warning" ? "alert" : "status"}
+    >
+      <Icon
+        className={tone === "loading" ? "spin" : ""}
+        size={20}
+        weight="bold"
+        aria-hidden="true"
+      />
       <div>
         <strong>{title}</strong>
         {children ? <div>{children}</div> : null}
@@ -84,7 +114,13 @@ export function PageIntro({
   );
 }
 
-export function SectionHeading({ title, description }: { title: string; description?: string }) {
+export function SectionHeading({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
   return (
     <div className="section-heading">
       <h2>{title}</h2>
@@ -97,7 +133,13 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <span className={`skeleton ${className}`} aria-hidden="true" />;
 }
 
-export function KeyValue({ label, children }: { label: string; children: ReactNode }) {
+export function KeyValue({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="key-value">
       <span>{label}</span>
@@ -106,6 +148,9 @@ export function KeyValue({ label, children }: { label: string; children: ReactNo
   );
 }
 
-export function Panel({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
+export function Panel({
+  className = "",
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return <div className={`panel ${className}`} {...props} />;
 }

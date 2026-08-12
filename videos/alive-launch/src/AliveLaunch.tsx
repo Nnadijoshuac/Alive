@@ -12,7 +12,8 @@ import {
 } from "remotion";
 
 const geist = '"Geist", "Arial", "Helvetica Neue", sans-serif';
-const mono = '"Geist Mono", "Cascadia Mono", "SFMono-Regular", Consolas, monospace';
+const mono =
+  '"Geist Mono", "Cascadia Mono", "SFMono-Regular", Consolas, monospace';
 
 const palette = {
   canvas: "#080a09",
@@ -83,7 +84,9 @@ const AliveMark = ({ compact = false }: { compact?: boolean }) => {
   const frame = useCurrentFrame();
   const pulse = 0.86 + Math.sin(frame / 9) * 0.08;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: compact ? 18 : 24 }}>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: compact ? 18 : 24 }}
+    >
       <div
         style={{
           width: compact ? 46 : 62,
@@ -269,7 +272,8 @@ const ScannerScene = () => {
               maxWidth: 490,
             }}
           >
-            Active capture compares physical identity, live motion, and observable change.
+            Active capture compares physical identity, live motion, and
+            observable change.
           </div>
         </Reveal>
       </div>
@@ -336,7 +340,13 @@ const ScannerScene = () => {
   );
 };
 
-const Fingerprint = ({ progress, mismatch = false }: { progress: number; mismatch?: boolean }) => {
+const Fingerprint = ({
+  progress,
+  mismatch = false,
+}: {
+  progress: number;
+  mismatch?: boolean;
+}) => {
   const nodes = Array.from({ length: 64 }, (_, index) => {
     const angle = index * 2.399963;
     const radius = 32 + ((index * 47) % 245);
@@ -359,7 +369,10 @@ const Fingerprint = ({ progress, mismatch = false }: { progress: number; mismatc
         }}
       />
       {nodes.map((node, index) => {
-        const pointProgress = Math.max(0, Math.min(1, progress * 1.65 - index / 150));
+        const pointProgress = Math.max(
+          0,
+          Math.min(1, progress * 1.65 - index / 150),
+        );
         return (
           <div
             key={index}
@@ -381,7 +394,15 @@ const Fingerprint = ({ progress, mismatch = false }: { progress: number; mismatc
   );
 };
 
-const Metric = ({ label, value, delay }: { label: string; value: string; delay: number }) => {
+const Metric = ({
+  label,
+  value,
+  delay,
+}: {
+  label: string;
+  value: string;
+  delay: number;
+}) => {
   const frame = useCurrentFrame();
   const p = enter(frame, delay, 20);
   return (
@@ -398,7 +419,9 @@ const Metric = ({ label, value, delay }: { label: string; value: string; delay: 
       }}
     >
       <span style={{ fontSize: 21, color: palette.muted }}>{label}</span>
-      <span style={{ fontFamily: mono, fontSize: 31, color: palette.accent }}>{value}</span>
+      <span style={{ fontFamily: mono, fontSize: 31, color: palette.accent }}>
+        {value}
+      </span>
     </div>
   );
 };
@@ -442,7 +465,11 @@ const VerificationScene = () => {
             <Metric label="PHYSICAL IDENTITY" value="POLICY PASS" delay={32} />
             <Metric label="ACTIVE LIVENESS" value="CHALLENGE PASS" delay={55} />
             <Metric label="IDENTIFIER" value="CONSISTENT" delay={78} />
-            <Metric label="VISUAL INTEGRITY" value="NO MATERIAL DRIFT" delay={101} />
+            <Metric
+              label="VISUAL INTEGRITY"
+              value="NO MATERIAL DRIFT"
+              delay={101}
+            />
           </div>
         </div>
       </div>
@@ -454,7 +481,11 @@ const VerificationScene = () => {
 const AttestationScene = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const card = spring({ frame, fps, config: { damping: 18, stiffness: 82, mass: 0.8 } });
+  const card = spring({
+    frame,
+    fps,
+    config: { damping: 18, stiffness: 82, mass: 0.8 },
+  });
   const cardScale = 0.9 + card * 0.1;
   const collapse = interpolate(frame, [94, 150], [1, 0.68], {
     extrapolateLeft: "clamp",
@@ -483,12 +514,22 @@ const AttestationScene = () => {
           opacity: 0.45 + card * 0.55,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "start",
+          }}
+        >
           <div>
-            <div style={{ fontFamily: mono, color: palette.muted, fontSize: 17 }}>
+            <div
+              style={{ fontFamily: mono, color: palette.muted, fontSize: 17 }}
+            >
               PROOF OF PHYSICAL STATE
             </div>
-            <div style={{ fontSize: 47, fontWeight: 590, marginTop: 18 }}>VERIFIED</div>
+            <div style={{ fontSize: 47, fontWeight: 590, marginTop: 18 }}>
+              VERIFIED
+            </div>
           </div>
           <div
             style={{
@@ -514,10 +555,26 @@ const AttestationScene = () => {
             fontSize: 18,
           }}
         >
-          <div><span style={{ color: palette.muted }}>ASSET</span><br />BOUND TO SESSION</div>
-          <div><span style={{ color: palette.muted }}>IDENTITY</span><br />POLICY SATISFIED</div>
-          <div><span style={{ color: palette.muted }}>SESSION</span><br />SINGLE USE</div>
-          <div><span style={{ color: palette.muted }}>LIVENESS</span><br />CHALLENGE PASSED</div>
+          <div>
+            <span style={{ color: palette.muted }}>ASSET</span>
+            <br />
+            BOUND TO SESSION
+          </div>
+          <div>
+            <span style={{ color: palette.muted }}>IDENTITY</span>
+            <br />
+            POLICY SATISFIED
+          </div>
+          <div>
+            <span style={{ color: palette.muted }}>SESSION</span>
+            <br />
+            SINGLE USE
+          </div>
+          <div>
+            <span style={{ color: palette.muted }}>LIVENESS</span>
+            <br />
+            CHALLENGE PASSED
+          </div>
         </div>
         <div
           style={{
@@ -536,7 +593,14 @@ const AttestationScene = () => {
         progress={enter(frame, 116, 28)}
         style={{ position: "absolute", left: 1110, top: 425, width: 560 }}
       >
-        <div style={{ fontSize: 71, fontWeight: 560, letterSpacing: "-0.048em", lineHeight: 1 }}>
+        <div
+          style={{
+            fontSize: 71,
+            fontWeight: 560,
+            letterSpacing: "-0.048em",
+            lineHeight: 1,
+          }}
+        >
           Evidence becomes
           <br />
           <span style={{ color: palette.accent }}>verifiable.</span>
@@ -576,7 +640,9 @@ const Node = ({
     }}
   >
     <div style={{ fontSize: 31, fontWeight: 590 }}>{label}</div>
-    <div style={{ color: palette.muted, fontFamily: mono, fontSize: 17 }}>{sublabel}</div>
+    <div style={{ color: palette.muted, fontFamily: mono, fontSize: 17 }}>
+      {sublabel}
+    </div>
   </div>
 );
 
@@ -610,8 +676,18 @@ const SettlementScene = () => {
         Reality triggers code.
       </div>
       <Node label="ASSET" sublabel="ALIVE-0001" x={120} active={stageOne} />
-      <Node label="X LAYER" sublabel="ATTESTATION VALID" x={810} active={stageTwo} />
-      <Node label="ESCROW" sublabel="1,000 TEST USDT" x={1500} active={stageThree} />
+      <Node
+        label="X LAYER"
+        sublabel="ATTESTATION VALID"
+        x={810}
+        active={stageTwo}
+      />
+      <Node
+        label="ESCROW"
+        sublabel="1,000 TEST USDT"
+        x={1500}
+        active={stageThree}
+      />
       <div
         style={{
           position: "absolute",
@@ -666,12 +742,16 @@ const Closing = () => {
     extrapolateRight: "clamp",
   });
   return (
-    <AbsoluteFill style={{ ...full, justifyContent: "center", alignItems: "center" }}>
+    <AbsoluteFill
+      style={{ ...full, justifyContent: "center", alignItems: "center" }}
+    >
       <div style={{ transform: `scale(${0.88 + logo * 0.12})`, opacity: logo }}>
         <AliveMark />
       </div>
       <Reveal progress={title} style={{ marginTop: 58, textAlign: "center" }}>
-        <div style={{ fontSize: 94, fontWeight: 560, letterSpacing: "-0.055em" }}>
+        <div
+          style={{ fontSize: 94, fontWeight: 560, letterSpacing: "-0.055em" }}
+        >
           Give smart contracts eyes.
         </div>
         <div style={{ marginTop: 28, fontSize: 27, color: palette.muted }}>

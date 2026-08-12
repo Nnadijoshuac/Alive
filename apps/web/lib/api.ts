@@ -25,8 +25,12 @@ import type {
   VerificationSession,
 } from "./types";
 
-export const verifierUrl = (process.env.NEXT_PUBLIC_VERIFIER_URL ?? "http://127.0.0.1:4100").replace(/\/$/, "");
-export const authorizationAudience = (process.env.NEXT_PUBLIC_ALIVE_AUTH_AUDIENCE ?? verifierUrl).replace(/\/$/, "");
+export const verifierUrl = (
+  process.env.NEXT_PUBLIC_VERIFIER_URL ?? "http://127.0.0.1:4100"
+).replace(/\/$/, "");
+export const authorizationAudience = (
+  process.env.NEXT_PUBLIC_ALIVE_AUTH_AUDIENCE ?? verifierUrl
+).replace(/\/$/, "");
 export const ZERO_CONTEXT = `0x${"00".repeat(32)}` as Hex;
 
 export interface AuthorizationChallenge {
@@ -55,7 +59,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path: string, init: RequestInit = {}, capability?: Hex): Promise<unknown> {
+async function request(
+  path: string,
+  init: RequestInit = {},
+  capability?: Hex,
+): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(`${verifierUrl}${path}`, {
@@ -67,14 +75,23 @@ async function request(path: string, init: RequestInit = {}, capability?: Hex): 
       },
     });
   } catch {
-    throw new ApiError(`Verifier is unreachable at ${verifierUrl}.`, 0, "VERIFIER_UNAVAILABLE");
+    throw new ApiError(
+      `Verifier is unreachable at ${verifierUrl}.`,
+      0,
+      "VERIFIER_UNAVAILABLE",
+    );
   }
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    const error = isRecord(payload) && isRecord(payload.error) ? payload.error : payload;
+    const error =
+      isRecord(payload) && isRecord(payload.error) ? payload.error : payload;
     const detail = isRecord(error) ? stringValue(error.message) : undefined;
     const reason = isRecord(error) ? stringValue(error.code) : undefined;
-    throw new ApiError(detail ?? `Verifier request failed with status ${response.status}.`, response.status, reason);
+    throw new ApiError(
+      detail ?? `Verifier request failed with status ${response.status}.`,
+      response.status,
+      reason,
+    );
   }
   return payload;
 }
@@ -88,15 +105,27 @@ function stringValue(value: unknown): string | undefined {
 }
 
 function unwrap(payload: unknown): Record<string, unknown> {
-  if (!isRecord(payload)) throw new ApiError("Verifier returned an invalid JSON object.", 502, "INVALID_RESPONSE");
+  if (!isRecord(payload))
+    throw new ApiError(
+      "Verifier returned an invalid JSON object.",
+      502,
+      "INVALID_RESPONSE",
+    );
   if (isRecord(payload.data)) return payload.data;
   return payload;
 }
 
 function normalizeAsset(payload: unknown): AssetRecord {
   const root = unwrap(payload);
-  const parsed = AssetRecordSchema.safeParse(isRecord(root.asset) ? root.asset : root);
-  if (!parsed.success) throw new ApiError("Verifier asset response is incomplete.", 502, "INVALID_ASSET_RESPONSE");
+  const parsed = AssetRecordSchema.safeParse(
+    isRecord(root.asset) ? root.asset : root,
+  );
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier asset response is incomplete.",
+      502,
+      "INVALID_ASSET_RESPONSE",
+    );
   return parsed.data as AssetRecord;
 }
 
@@ -106,35 +135,60 @@ function sameHex(left: string, right: string): boolean {
 
 function assertAuthorizationChallenge(
   challenge: AuthorizationChallenge,
-  expected: { action: WalletAuthorization["action"]; wallet: Address; context: Hex; payloadHash: Hex },
+  expected: {
+    action: WalletAuthorization["action"];
+    wallet: Address;
+    context: Hex;
+    payloadHash: Hex;
+  },
 ): void {
   const authorization = challenge.authorization;
   if (
-    authorization.action !== expected.action
-    || !sameHex(authorization.wallet, expected.wallet)
-    || !sameHex(authorization.context, expected.context)
-    || !sameHex(authorization.payloadHash, expected.payloadHash)
-    || authorization.audience.replace(/\/$/, "") !== authorizationAudience
-    || /^0x0{64}$/i.test(authorization.resource)
+    authorization.action !== expected.action ||
+    !sameHex(authorization.wallet, expected.wallet) ||
+    !sameHex(authorization.context, expected.context) ||
+    !sameHex(authorization.payloadHash, expected.payloadHash) ||
+    authorization.audience.replace(/\/$/, "") !== authorizationAudience ||
+    /^0x0{64}$/i.test(authorization.resource)
   ) {
-    throw new ApiError("Verifier authorization challenge does not match the requested operation.", 502, "AUTHORIZATION_CHALLENGE_MISMATCH");
+    throw new ApiError(
+      "Verifier authorization challenge does not match the requested operation.",
+      502,
+      "AUTHORIZATION_CHALLENGE_MISMATCH",
+    );
   }
 }
 
-export function normalizeSessionResponse(payload: unknown): VerificationSession {
+export function normalizeSessionResponse(
+  payload: unknown,
+): VerificationSession {
   const root = unwrap(payload);
   const session = isRecord(root.session) ? root.session : root;
   const parsed = VerificationSessionSchema.safeParse(session);
-  if (!parsed.success) throw new ApiError("Verifier session response is incomplete.", 502, "INVALID_SESSION_RESPONSE");
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier session response is incomplete.",
+      502,
+      "INVALID_SESSION_RESPONSE",
+    );
   return parsed.data as VerificationSession;
 }
 
-export function normalizeAnalysisResponse(payload: unknown): VerificationAnalysis {
+export function normalizeAnalysisResponse(
+  payload: unknown,
+): VerificationAnalysis {
   const root = unwrap(payload);
   const resultValue = isRecord(root.result) ? root.result : root;
   const parsed = VerificationResultSchema.safeParse(resultValue);
-  if (!parsed.success) throw new ApiError("Verifier analysis response is incomplete.", 502, "INVALID_ANALYSIS_RESPONSE");
-  const analysis: VerificationAnalysis = { result: parsed.data as VerificationResult };
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier analysis response is incomplete.",
+      502,
+      "INVALID_ANALYSIS_RESPONSE",
+    );
+  const analysis: VerificationAnalysis = {
+    result: parsed.data as VerificationResult,
+  };
   const signed = isRecord(root.signedAttestation)
     ? root.signedAttestation
     : isRecord(root.attestation) && stringValue(root.signature)
@@ -142,36 +196,65 @@ export function normalizeAnalysisResponse(payload: unknown): VerificationAnalysi
       : root.attestation;
   if (isRecord(signed) && stringValue(signed.signature)) {
     const parsedSigned = SignedAttestationSchema.safeParse(signed);
-    if (parsedSigned.success) analysis.signedAttestation = parsedSigned.data as SignedAttestation;
+    if (parsedSigned.success)
+      analysis.signedAttestation = parsedSigned.data as SignedAttestation;
   }
   return analysis;
 }
 
-export function normalizeSignedAttestationResponse(payload: unknown): SignedAttestation {
+export function normalizeSignedAttestationResponse(
+  payload: unknown,
+): SignedAttestation {
   const root = unwrap(payload);
-  const signed = isRecord(root.signedAttestation) ? root.signedAttestation : root;
+  const signed = isRecord(root.signedAttestation)
+    ? root.signedAttestation
+    : root;
   const parsed = SignedAttestationSchema.safeParse(signed);
-  if (!parsed.success) throw new ApiError("Verifier attestation response is incomplete.", 502, "INVALID_ATTESTATION_RESPONSE");
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier attestation response is incomplete.",
+      502,
+      "INVALID_ATTESTATION_RESPONSE",
+    );
   return parsed.data as SignedAttestation;
 }
 
-export async function requestAssetAuthorization(owner: Address, metadata: AssetMetadata): Promise<AuthorizationChallenge> {
+export async function requestAssetAuthorization(
+  owner: Address,
+  metadata: AssetMetadata,
+): Promise<AuthorizationChallenge> {
   const payload = await request("/api/auth/challenge", {
     method: "POST",
-    body: JSON.stringify({ action: "CREATE_ASSET", request: { owner, metadata } }),
+    body: JSON.stringify({
+      action: "CREATE_ASSET",
+      request: { owner, metadata },
+    }),
   });
   const parsed = WalletAuthorizationChallengeResponseSchema.safeParse(payload);
   if (!parsed.success || parsed.data.authorization.action !== "CREATE_ASSET") {
-    throw new ApiError("Verifier authorization challenge is incomplete.", 502, "INVALID_AUTHORIZATION_RESPONSE");
+    throw new ApiError(
+      "Verifier authorization challenge is incomplete.",
+      502,
+      "INVALID_AUTHORIZATION_RESPONSE",
+    );
   }
   const challenge = parsed.data;
   assertAuthorizationChallenge(challenge, {
     action: "CREATE_ASSET",
     wallet: owner,
     context: ZERO_CONTEXT,
-    payloadHash: hashCreateAssetAuthorizationPayload({ assetId: challenge.authorization.resource, owner, metadata }),
+    payloadHash: hashCreateAssetAuthorizationPayload({
+      assetId: challenge.authorization.resource,
+      owner,
+      metadata,
+    }),
   });
-  if (!sameHex(challenge.authorization.resource, createAssetId(owner, challenge.authorization.nonce))) {
+  if (
+    !sameHex(
+      challenge.authorization.resource,
+      createAssetId(owner, challenge.authorization.nonce),
+    )
+  ) {
     throw new ApiError(
       "Verifier asset authorization is not bound to the requested owner and registration nonce.",
       502,
@@ -197,20 +280,45 @@ export async function createAsset(
     }),
   });
   const parsed = AuthorizedAssetCreateResponseSchema.safeParse(payload);
-  if (!parsed.success) throw new ApiError("Verifier asset authorization response is incomplete.", 502, "INVALID_ASSET_RESPONSE");
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier asset authorization response is incomplete.",
+      502,
+      "INVALID_ASSET_RESPONSE",
+    );
   return parsed.data as AuthorizedAssetResource;
 }
 
-export async function uploadRegistrationCapture(assetId: Hex, frame: CaptureFrame, capability: Hex): Promise<void> {
-  await request(`/api/assets/${assetId}/captures`, {
-    method: "POST",
-    body: JSON.stringify({ view: frame.view, imageBase64: frame.imageBase64, mimeType: frame.mimeType, capturedAt: frame.capturedAt }),
-  }, capability);
+export async function uploadRegistrationCapture(
+  assetId: Hex,
+  frame: CaptureFrame,
+  capability: Hex,
+): Promise<void> {
+  await request(
+    `/api/assets/${assetId}/captures`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        view: frame.view,
+        imageBase64: frame.imageBase64,
+        mimeType: frame.mimeType,
+        capturedAt: frame.capturedAt,
+      }),
+    },
+    capability,
+  );
 }
 
-export async function finalizeAsset(assetId: Hex, capability: Hex): Promise<AssetRecord> {
+export async function finalizeAsset(
+  assetId: Hex,
+  capability: Hex,
+): Promise<AssetRecord> {
   try {
-    await request(`/api/assets/${assetId}/fingerprint`, { method: "POST" }, capability);
+    await request(
+      `/api/assets/${assetId}/fingerprint`,
+      { method: "POST" },
+      capability,
+    );
   } catch (originalError) {
     try {
       const recovered = await getAsset(assetId);
@@ -233,7 +341,12 @@ export async function listAssets(owner?: string): Promise<AssetRecord[]> {
   const items = root.assets ?? root.items;
   if (!Array.isArray(items)) return [];
   const parsed = AssetRecordSchema.array().safeParse(items);
-  if (!parsed.success) throw new ApiError("Verifier asset list is incomplete.", 502, "INVALID_ASSET_LIST_RESPONSE");
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier asset list is incomplete.",
+      502,
+      "INVALID_ASSET_LIST_RESPONSE",
+    );
   return parsed.data as AssetRecord[];
 }
 
@@ -244,18 +357,33 @@ export async function requestVerificationAuthorization(
 ): Promise<AuthorizationChallenge> {
   const payload = await request("/api/auth/challenge", {
     method: "POST",
-    body: JSON.stringify({ action: "CREATE_VERIFICATION_SESSION", request: { assetId, wallet, context } }),
+    body: JSON.stringify({
+      action: "CREATE_VERIFICATION_SESSION",
+      request: { assetId, wallet, context },
+    }),
   });
   const parsed = WalletAuthorizationChallengeResponseSchema.safeParse(payload);
-  if (!parsed.success || parsed.data.authorization.action !== "CREATE_VERIFICATION_SESSION") {
-    throw new ApiError("Verifier authorization challenge is incomplete.", 502, "INVALID_AUTHORIZATION_RESPONSE");
+  if (
+    !parsed.success ||
+    parsed.data.authorization.action !== "CREATE_VERIFICATION_SESSION"
+  ) {
+    throw new ApiError(
+      "Verifier authorization challenge is incomplete.",
+      502,
+      "INVALID_AUTHORIZATION_RESPONSE",
+    );
   }
   const challenge = parsed.data;
   assertAuthorizationChallenge(challenge, {
     action: "CREATE_VERIFICATION_SESSION",
     wallet,
     context,
-    payloadHash: hashCreateVerificationSessionAuthorizationPayload({ sessionId: challenge.authorization.resource, assetId, wallet, context }),
+    payloadHash: hashCreateVerificationSessionAuthorizationPayload({
+      sessionId: challenge.authorization.resource,
+      assetId,
+      wallet,
+      context,
+    }),
   });
   return challenge;
 }
@@ -277,33 +405,61 @@ export async function createVerificationSession(
       authorization: { nonce: challenge.authorization.nonce, signature },
     }),
   });
-  const parsed = AuthorizedVerificationSessionCreateResponseSchema.safeParse(payload);
-  if (!parsed.success) throw new ApiError("Verifier session authorization response is incomplete.", 502, "INVALID_SESSION_RESPONSE");
+  const parsed =
+    AuthorizedVerificationSessionCreateResponseSchema.safeParse(payload);
+  if (!parsed.success)
+    throw new ApiError(
+      "Verifier session authorization response is incomplete.",
+      502,
+      "INVALID_SESSION_RESPONSE",
+    );
   return parsed.data as AuthorizedVerificationResource;
 }
 
 export async function uploadVerificationCapture(
   sessionId: Hex,
   challengeId: Hex,
-  frames: Array<{ imageBase64: string; mimeType: "image/jpeg"; capturedAt: string }>,
+  frames: Array<{
+    imageBase64: string;
+    mimeType: "image/jpeg";
+    capturedAt: string;
+  }>,
   capability: Hex,
 ): Promise<void> {
-  await request(`/api/verifications/${sessionId}/capture`, {
-    method: "POST",
-    body: JSON.stringify({ challengeId, frames }),
-  }, capability);
+  await request(
+    `/api/verifications/${sessionId}/capture`,
+    {
+      method: "POST",
+      body: JSON.stringify({ challengeId, frames }),
+    },
+    capability,
+  );
 }
 
-export async function analyzeVerification(sessionId: Hex, capability: Hex): Promise<VerificationAnalysis> {
+export async function analyzeVerification(
+  sessionId: Hex,
+  capability: Hex,
+): Promise<VerificationAnalysis> {
   const analysis = normalizeAnalysisResponse(
-    await request(`/api/verifications/${sessionId}/analyze`, { method: "POST" }, capability),
+    await request(
+      `/api/verifications/${sessionId}/analyze`,
+      { method: "POST" },
+      capability,
+    ),
   );
   try {
     analysis.signedAttestation = normalizeSignedAttestationResponse(
-      await request(`/api/verifications/${sessionId}/attestation`, { method: "POST" }, capability),
+      await request(
+        `/api/verifications/${sessionId}/attestation`,
+        { method: "POST" },
+        capability,
+      ),
     );
   } catch (error) {
-    analysis.attestationError = error instanceof Error ? error.message : "Signed attestation issuance failed.";
+    analysis.attestationError =
+      error instanceof Error
+        ? error.message
+        : "Signed attestation issuance failed.";
   }
   return analysis;
 }

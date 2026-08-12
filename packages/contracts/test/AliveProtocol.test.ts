@@ -64,9 +64,7 @@ async function deployProtocolFixture() {
   const attacker = signers[4]!;
   const replacementVerifier = signers[5]!;
 
-  const AssetRegistry = await ethers.getContractFactory(
-    "AliveAssetRegistry",
-  );
+  const AssetRegistry = await ethers.getContractFactory("AliveAssetRegistry");
   const assetRegistry: any = await AssetRegistry.deploy();
   await assetRegistry.waitForDeployment();
 
@@ -214,7 +212,9 @@ async function fundEscrow(
 
 describe("AliveAssetRegistry", function () {
   it("registers a compact offchain commitment and emits its owner", async function () {
-    const { assetRegistry, seller, assetId } = await loadFixture(deployProtocolFixture);
+    const { assetRegistry, seller, assetId } = await loadFixture(
+      deployProtocolFixture,
+    );
     const asset = await assetRegistry.getAsset(assetId);
 
     expect(asset.owner).to.equal(seller.address);
@@ -236,7 +236,9 @@ describe("AliveAssetRegistry", function () {
   });
 
   it("prevents another caller from front-running the same asset ID and nonce", async function () {
-    const { assetRegistry, seller, attacker } = await loadFixture(deployProtocolFixture);
+    const { assetRegistry, seller, attacker } = await loadFixture(
+      deployProtocolFixture,
+    );
     const registrationNonce = hashLabel("front-run-regression");
     const assetId = deriveAssetId(seller.address, registrationNonce);
     const attackerAssetId = deriveAssetId(attacker.address, registrationNonce);
@@ -244,7 +246,13 @@ describe("AliveAssetRegistry", function () {
     await expect(
       assetRegistry
         .connect(attacker)
-        .registerAsset(assetId, registrationNonce, hashLabel("front-run-fp"), METADATA_HASH, ""),
+        .registerAsset(
+          assetId,
+          registrationNonce,
+          hashLabel("front-run-fp"),
+          METADATA_HASH,
+          "",
+        ),
     )
       .to.be.revertedWithCustomError(assetRegistry, "AssetIdMismatch")
       .withArgs(attackerAssetId, assetId);
@@ -253,13 +261,20 @@ describe("AliveAssetRegistry", function () {
     await expect(
       assetRegistry
         .connect(seller)
-        .registerAsset(assetId, registrationNonce, hashLabel("front-run-fp"), METADATA_HASH, ""),
+        .registerAsset(
+          assetId,
+          registrationNonce,
+          hashLabel("front-run-fp"),
+          METADATA_HASH,
+          "",
+        ),
     ).to.emit(assetRegistry, "AssetRegistered");
     expect(await assetRegistry.assetOwner(assetId)).to.equal(seller.address);
   });
 
   it("rejects duplicate IDs and invalid commitments", async function () {
-    const { assetRegistry, seller, assetId, registrationNonce } = await loadFixture(deployProtocolFixture);
+    const { assetRegistry, seller, assetId, registrationNonce } =
+      await loadFixture(deployProtocolFixture);
 
     await expect(
       assetRegistry
@@ -272,10 +287,7 @@ describe("AliveAssetRegistry", function () {
           "ipfs://other",
         ),
     )
-      .to.be.revertedWithCustomError(
-        assetRegistry,
-        "AssetAlreadyRegistered",
-      )
+      .to.be.revertedWithCustomError(assetRegistry, "AssetAlreadyRegistered")
       .withArgs(assetId);
 
     const nextRegistrationNonce = hashLabel("new-registration");
@@ -346,8 +358,9 @@ describe("AliveAttestationRegistry", function () {
         expectedDigest,
       );
 
-    const record =
-      await fixture.attestationRegistry.latestVerification(fixture.assetId);
+    const record = await fixture.attestationRegistry.latestVerification(
+      fixture.assetId,
+    );
     expect(record.digest).to.equal(expectedDigest);
     expect(record.fingerprintHash).to.equal(FINGERPRINT_HASH);
     expect(record.identityScore).to.equal(9_200n);
@@ -374,10 +387,7 @@ describe("AliveAttestationRegistry", function () {
       fixture.attestationRegistry
         .connect(fixture.seller)
         .submitAttestation(attestation, wrongSignature),
-    ).to.be.revertedWithCustomError(
-      fixture.attestationRegistry,
-      "WrongSigner",
-    );
+    ).to.be.revertedWithCustomError(fixture.attestationRegistry, "WrongSigner");
     await expect(
       fixture.attestationRegistry
         .connect(fixture.seller)
@@ -601,9 +611,7 @@ describe("AliveEscrow", function () {
         .connect(fixture.buyer)
         .approve(await fixture.escrow.getAddress(), PAYMENT),
     ).not.to.be.reverted;
-    await expect(
-      fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId),
-    )
+    await expect(fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId))
       .to.emit(fixture.escrow, "EscrowFunded")
       .withArgs(escrowId, fixture.buyer.address, PAYMENT);
     expect(
@@ -613,9 +621,8 @@ describe("AliveEscrow", function () {
     const context = await fixture.escrow.escrowContext(escrowId);
     const attestation = await makeAttestation(fixture, { context });
     const signature = await signAttestation(fixture, attestation);
-    const digest = await fixture.attestationRegistry.hashAttestation(
-      attestation,
-    );
+    const digest =
+      await fixture.attestationRegistry.hashAttestation(attestation);
     const sellerBefore = await fixture.token.balanceOf(fixture.seller.address);
 
     await expect(
@@ -678,7 +685,10 @@ describe("AliveEscrow", function () {
   it("rejects a proof for another asset", async function () {
     const fixture = await loadFixture(deployProtocolFixture);
     const secondRegistrationNonce = hashLabel("alive-asset-registration-0002");
-    const secondAsset = deriveAssetId(fixture.seller.address, secondRegistrationNonce);
+    const secondAsset = deriveAssetId(
+      fixture.seller.address,
+      secondRegistrationNonce,
+    );
     await fixture.assetRegistry
       .connect(fixture.seller)
       .registerAsset(
@@ -701,10 +711,7 @@ describe("AliveEscrow", function () {
         attestation,
         await signAttestation(fixture, attestation),
       ),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "WrongAttestationAsset",
-    );
+    ).to.be.revertedWithCustomError(fixture.escrow, "WrongAttestationAsset");
   });
 
   it("binds proofs to one exact escrow context", async function () {
@@ -719,15 +726,8 @@ describe("AliveEscrow", function () {
     });
     const signature = await signAttestation(fixture, attestation);
     await expect(
-      fixture.escrow.settleWithAttestation(
-        firstEscrow,
-        attestation,
-        signature,
-      ),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "WrongAttestationContext",
-    );
+      fixture.escrow.settleWithAttestation(firstEscrow, attestation, signature),
+    ).to.be.revertedWithCustomError(fixture.escrow, "WrongAttestationContext");
     expect(
       await fixture.attestationRegistry.isSessionConsumed(
         attestation.sessionId,
@@ -757,10 +757,7 @@ describe("AliveEscrow", function () {
         attestation,
         await signAttestation(fixture, attestation),
       ),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "WrongAttestationSubject",
-    );
+    ).to.be.revertedWithCustomError(fixture.escrow, "WrongAttestationSubject");
   });
 
   it("refuses funding or settlement after asset ownership changes", async function () {
@@ -773,9 +770,7 @@ describe("AliveEscrow", function () {
     await fixture.token
       .connect(fixture.buyer)
       .approve(await fixture.escrow.getAddress(), PAYMENT);
-    await expect(
-      fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId),
-    )
+    await expect(fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId))
       .to.be.revertedWithCustomError(fixture.escrow, "SellerNotAssetOwner")
       .withArgs(fixture.seller.address, fixture.attacker.address);
 
@@ -818,11 +813,7 @@ describe("AliveEscrow", function () {
     const fundingTimestamp = await fixture.escrow.fundedAt(escrowId);
     expect(fundingTimestamp).to.be.greaterThan(attestation.issuedAt);
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
     )
       .to.be.revertedWithCustomError(
         fixture.escrow,
@@ -849,11 +840,7 @@ describe("AliveEscrow", function () {
     const signature = await signAttestation(fixture, attestation);
     await time.increaseTo(attestation.expiresAt);
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
     ).to.be.revertedWithCustomError(
       fixture.attestationRegistry,
       "AttestationExpired",
@@ -892,15 +879,8 @@ describe("AliveEscrow", function () {
     );
 
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "InvalidEscrowStatus",
-    );
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
+    ).to.be.revertedWithCustomError(fixture.escrow, "InvalidEscrowStatus");
   });
 
   it("records disputes without creating a payment veto or privileged withdrawal", async function () {
@@ -915,9 +895,7 @@ describe("AliveEscrow", function () {
         .raiseDispute(escrowId, reasonHash),
     ).to.be.revertedWithCustomError(fixture.escrow, "NotEscrowParty");
     await expect(
-      fixture.escrow
-        .connect(fixture.buyer)
-        .raiseDispute(escrowId, reasonHash),
+      fixture.escrow.connect(fixture.buyer).raiseDispute(escrowId, reasonHash),
     )
       .to.emit(fixture.escrow, "EscrowDisputed")
       .withArgs(escrowId, fixture.buyer.address, reasonHash);
@@ -960,17 +938,12 @@ describe("AliveEscrow", function () {
 
     await expect(
       fixture.escrow.connect(fixture.attacker).refundEscrow(escrowId),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "NotRefundAuthorized",
-    );
+    ).to.be.revertedWithCustomError(fixture.escrow, "NotRefundAuthorized");
     await expect(
       fixture.escrow.connect(fixture.buyer).refundEscrow(escrowId),
     ).to.be.revertedWithCustomError(fixture.escrow, "EscrowNotExpired");
     const buyerBefore = await fixture.token.balanceOf(fixture.buyer.address);
-    await expect(
-      fixture.escrow.connect(fixture.seller).refundEscrow(escrowId),
-    )
+    await expect(fixture.escrow.connect(fixture.seller).refundEscrow(escrowId))
       .to.emit(fixture.escrow, "EscrowRefunded")
       .withArgs(
         escrowId,
@@ -1000,10 +973,7 @@ describe("AliveEscrow", function () {
     await fixture.escrow.connect(fixture.buyer).cancelEscrow(escrowId);
     await expect(
       fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "InvalidEscrowStatus",
-    );
+    ).to.be.revertedWithCustomError(fixture.escrow, "InvalidEscrowStatus");
   });
 
   it("rejects false-return and fee-on-transfer deposits atomically", async function () {
@@ -1020,26 +990,19 @@ describe("AliveEscrow", function () {
       .connect(fixture.buyer)
       .approve(await fixture.escrow.getAddress(), PAYMENT);
     await failureToken.setFailures(false, true);
-    await expect(
-      fixture.escrow.connect(fixture.buyer).fundEscrow(falseEscrow),
-    ).to.be.reverted;
+    await expect(fixture.escrow.connect(fixture.buyer).fundEscrow(falseEscrow))
+      .to.be.reverted;
     expect((await fixture.escrow.getEscrow(falseEscrow)).status).to.equal(1n);
 
     const FeeToken = await ethers.getContractFactory("FeeOnTransferToken");
-    const feeToken: any = await FeeToken.deploy(
-      fixture.buyer.address,
-      PAYMENT,
-    );
+    const feeToken: any = await FeeToken.deploy(fixture.buyer.address, PAYMENT);
     const feeEscrow = await createEscrow(fixture, { token: feeToken });
     await feeToken
       .connect(fixture.buyer)
       .approve(await fixture.escrow.getAddress(), PAYMENT);
     await expect(
       fixture.escrow.connect(fixture.buyer).fundEscrow(feeEscrow),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "UnsupportedTokenTransfer",
-    );
+    ).to.be.revertedWithCustomError(fixture.escrow, "UnsupportedTokenTransfer");
     expect((await fixture.escrow.getEscrow(feeEscrow)).status).to.equal(1n);
   });
 
@@ -1061,11 +1024,7 @@ describe("AliveEscrow", function () {
 
     await token.setFailures(true, false);
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
     ).to.be.reverted;
     expect((await fixture.escrow.getEscrow(escrowId)).status).to.equal(2n);
     expect(
@@ -1076,11 +1035,7 @@ describe("AliveEscrow", function () {
 
     await token.setFailures(false, false);
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
     ).not.to.be.reverted;
   });
 
@@ -1100,15 +1055,8 @@ describe("AliveEscrow", function () {
     const signature = await signAttestation(fixture, attestation);
 
     await expect(
-      fixture.escrow.settleWithAttestation(
-        escrowId,
-        attestation,
-        signature,
-      ),
-    ).to.be.revertedWithCustomError(
-      fixture.escrow,
-      "UnsupportedTokenTransfer",
-    );
+      fixture.escrow.settleWithAttestation(escrowId, attestation, signature),
+    ).to.be.revertedWithCustomError(fixture.escrow, "UnsupportedTokenTransfer");
     expect((await fixture.escrow.getEscrow(escrowId)).status).to.equal(2n);
     expect(
       await fixture.attestationRegistry.isSessionConsumed(
@@ -1133,9 +1081,8 @@ describe("AliveEscrow", function () {
       fixture.escrow.interface.encodeFunctionData("fundEscrow", [escrowId]),
     );
 
-    await expect(
-      fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId),
-    ).not.to.be.reverted;
+    await expect(fixture.escrow.connect(fixture.buyer).fundEscrow(escrowId)).not
+      .to.be.reverted;
     expect(await token.lastHookSucceeded()).to.equal(false);
     expect((await fixture.escrow.getEscrow(escrowId)).status).to.equal(2n);
     expect(await token.balanceOf(await fixture.escrow.getAddress())).to.equal(
@@ -1154,9 +1101,8 @@ describe("MockUSDT (test token only)", function () {
     expect(await token.balanceOf(attacker.address)).to.equal(
       10_000n * 10n ** 6n,
     );
-    await expect(token.connect(attacker).faucet()).to.be.revertedWithCustomError(
-      token,
-      "FaucetAlreadyUsed",
-    );
+    await expect(
+      token.connect(attacker).faucet(),
+    ).to.be.revertedWithCustomError(token, "FaucetAlreadyUsed");
   });
 });

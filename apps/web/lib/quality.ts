@@ -20,7 +20,9 @@ export function assessFrameQuality(
   for (let pixel = 0; pixel < width * height; pixel += 1) {
     const offset = pixel * 4;
     const luminance =
-      (rgba[offset] ?? 0) * 0.2126 + (rgba[offset + 1] ?? 0) * 0.7152 + (rgba[offset + 2] ?? 0) * 0.0722;
+      (rgba[offset] ?? 0) * 0.2126 +
+      (rgba[offset + 1] ?? 0) * 0.7152 +
+      (rgba[offset + 2] ?? 0) * 0.0722;
     gray[pixel] = luminance;
     brightnessTotal += luminance;
     if (luminance < 10 || luminance > 245) clipped += 1;
@@ -48,7 +50,9 @@ export function assessFrameQuality(
   }
 
   const laplacianMean = laplacianTotal / Math.max(1, laplacianSamples);
-  const variance = laplacianSquaredTotal / Math.max(1, laplacianSamples) - laplacianMean * laplacianMean;
+  const variance =
+    laplacianSquaredTotal / Math.max(1, laplacianSamples) -
+    laplacianMean * laplacianMean;
   const blurScore = clamp(variance / 1_200);
   const midpointPenalty = Math.abs(brightness - 128) / 128;
   const exposureScore = clamp(1 - midpointPenalty * 0.72 - clippedRatio * 1.6);
@@ -65,7 +69,8 @@ export function assessFrameQuality(
 }
 
 export function qualityLabel(quality: CaptureQuality): string {
-  if (!quality.usable && quality.blurScore < 0.18) return "Hold steady and refocus";
+  if (!quality.usable && quality.blurScore < 0.18)
+    return "Hold steady and refocus";
   if (!quality.usable && quality.brightness < 54) return "Add more light";
   if (!quality.usable && quality.brightness > 210) return "Reduce direct light";
   if (!quality.usable) return "Reframe and capture again";

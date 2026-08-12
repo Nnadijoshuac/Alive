@@ -22,7 +22,9 @@ const domain: WalletAuthorizationDomain = {
   chainId: 1_952,
 };
 
-function authorization(overrides: Partial<WalletAuthorization> = {}): WalletAuthorization {
+function authorization(
+  overrides: Partial<WalletAuthorization> = {},
+): WalletAuthorization {
   return {
     audience: "https://verifier.alive.example",
     action: "CREATE_VERIFICATION_SESSION",
@@ -45,21 +47,48 @@ function authorization(overrides: Partial<WalletAuthorization> = {}): WalletAuth
 describe("wallet authorization", () => {
   it("recovers the wallet that signed the exact EIP-712 request", async () => {
     const value = authorization();
-    const signature = await account.signTypedData(getAliveAuthorizationTypedData(value, domain));
-    await expect(recoverAliveAuthorizationSigner(value, domain, signature)).resolves.toBe(account.address);
+    const signature = await account.signTypedData(
+      getAliveAuthorizationTypedData(value, domain),
+    );
+    await expect(
+      recoverAliveAuthorizationSigner(value, domain, signature),
+    ).resolves.toBe(account.address);
   });
 
   it("binds the signature to audience, context, payload, and chain", async () => {
     const value = authorization();
-    const signature = await account.signTypedData(getAliveAuthorizationTypedData(value, domain));
+    const signature = await account.signTypedData(
+      getAliveAuthorizationTypedData(value, domain),
+    );
     const digest = hashAliveAuthorization(value, domain);
 
-    expect(hashAliveAuthorization({ ...value, context: `0x${"42".repeat(32)}` }, domain)).not.toBe(digest);
-    expect(hashAliveAuthorization({ ...value, audience: "https://evil.example" }, domain)).not.toBe(digest);
-    expect(hashAliveAuthorization({ ...value, payloadHash: `0x${"52".repeat(32)}` }, domain)).not.toBe(digest);
-    expect(hashAliveAuthorization(value, { ...domain, chainId: 196 })).not.toBe(digest);
+    expect(
+      hashAliveAuthorization(
+        { ...value, context: `0x${"42".repeat(32)}` },
+        domain,
+      ),
+    ).not.toBe(digest);
+    expect(
+      hashAliveAuthorization(
+        { ...value, audience: "https://evil.example" },
+        domain,
+      ),
+    ).not.toBe(digest);
+    expect(
+      hashAliveAuthorization(
+        { ...value, payloadHash: `0x${"52".repeat(32)}` },
+        domain,
+      ),
+    ).not.toBe(digest);
+    expect(hashAliveAuthorization(value, { ...domain, chainId: 196 })).not.toBe(
+      digest,
+    );
     await expect(
-      recoverAliveAuthorizationSigner({ ...value, context: `0x${"42".repeat(32)}` }, domain, signature),
+      recoverAliveAuthorizationSigner(
+        { ...value, context: `0x${"42".repeat(32)}` },
+        domain,
+        signature,
+      ),
     ).resolves.not.toBe(account.address);
   });
 
@@ -71,7 +100,9 @@ describe("wallet authorization", () => {
       context,
     });
     const mixed = hashCreateVerificationSessionAuthorizationPayload({
-      sessionId: sessionId.toUpperCase().replace("0X", "0x") as typeof sessionId,
+      sessionId: sessionId
+        .toUpperCase()
+        .replace("0X", "0x") as typeof sessionId,
       assetId: assetId.toUpperCase().replace("0X", "0x") as typeof assetId,
       wallet: account.address,
       context: context.toUpperCase().replace("0X", "0x") as typeof context,
@@ -83,12 +114,20 @@ describe("wallet authorization", () => {
     const first = hashCreateAssetAuthorizationPayload({
       assetId,
       owner: account.address,
-      metadata: { name: "Inspection laptop", category: "COMPUTER", model: "A1" },
+      metadata: {
+        name: "Inspection laptop",
+        category: "COMPUTER",
+        model: "A1",
+      },
     });
     const second = hashCreateAssetAuthorizationPayload({
       assetId,
       owner: account.address,
-      metadata: { name: "Inspection laptop", category: "COMPUTER", model: "A2" },
+      metadata: {
+        name: "Inspection laptop",
+        category: "COMPUTER",
+        model: "A2",
+      },
     });
     expect(second).not.toBe(first);
   });

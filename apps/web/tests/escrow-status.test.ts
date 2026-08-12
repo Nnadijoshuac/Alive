@@ -1,18 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { EscrowStatus, escrowCanSettle, escrowStatusName, escrowWasFunded } from "@/lib/escrow-status";
+import {
+  EscrowStatus,
+  escrowCanSettle,
+  escrowStatusName,
+  escrowWasFunded,
+} from "@/lib/escrow-status";
 
 describe("AliveEscrow status semantics", () => {
   it("maps every Solidity enum ordinal", () => {
-    expect([
-      EscrowStatus.None,
-      EscrowStatus.Created,
-      EscrowStatus.AwaitingVerification,
-      EscrowStatus.Released,
-      EscrowStatus.Refunded,
-      EscrowStatus.Cancelled,
-      EscrowStatus.Funded,
-      EscrowStatus.Disputed,
-    ].map(escrowStatusName)).toEqual([
+    expect(
+      [
+        EscrowStatus.None,
+        EscrowStatus.Created,
+        EscrowStatus.AwaitingVerification,
+        EscrowStatus.Released,
+        EscrowStatus.Refunded,
+        EscrowStatus.Cancelled,
+        EscrowStatus.Funded,
+        EscrowStatus.Disputed,
+      ].map(escrowStatusName),
+    ).toEqual([
       "NOT FOUND",
       "CREATED",
       "AWAITING VERIFICATION",

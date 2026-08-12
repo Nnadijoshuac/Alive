@@ -23,7 +23,11 @@ describe("server-only EIP-712 signing", () => {
     expect(signed.attestation.context).toBe(verificationSession.context);
     expect(signed.attestation.fingerprintHash).toBe(`0x${"77".repeat(32)}`);
     await expect(
-      recoverAliveAttestationSigner(signed.attestation, signed.domain, signed.signature),
+      recoverAliveAttestationSigner(
+        signed.attestation,
+        signed.domain,
+        signed.signature,
+      ),
     ).resolves.toBe(privateKeyToAccount(privateKey).address);
   });
 });

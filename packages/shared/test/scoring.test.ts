@@ -26,9 +26,16 @@ describe("verification scoring", () => {
   it("produces transparent bounded ratio and basis-point scores", () => {
     const result = scoreVerification(goodSignals);
     expect(result.verified).toBe(true);
-    expect(result.identityScoreBps).toBe(ratioToBasisPoints(result.identityScore));
-    expect(basisPointsToRatio(result.identityScoreBps)).toBeCloseTo(result.identityScore, 4);
-    expect(result.identityScoreBps).toBeGreaterThanOrEqual(DEFAULT_SCORE_POLICY.thresholds.identity);
+    expect(result.identityScoreBps).toBe(
+      ratioToBasisPoints(result.identityScore),
+    );
+    expect(basisPointsToRatio(result.identityScoreBps)).toBeCloseTo(
+      result.identityScore,
+      4,
+    );
+    expect(result.identityScoreBps).toBeGreaterThanOrEqual(
+      DEFAULT_SCORE_POLICY.thresholds.identity,
+    );
   });
 
   it("redistributes unavailable identifier weight instead of assuming a match", () => {
@@ -51,7 +58,11 @@ describe("verification scoring", () => {
     });
     expect(result.verified).toBe(false);
     expect(result.reasonCodes).toEqual(
-      expect.arrayContaining(["IDENTIFIER_MISMATCH", "MOTION_INSUFFICIENT", "REPLAY_RISK_HIGH"]),
+      expect.arrayContaining([
+        "IDENTIFIER_MISMATCH",
+        "MOTION_INSUFFICIENT",
+        "REPLAY_RISK_HIGH",
+      ]),
     );
   });
 });

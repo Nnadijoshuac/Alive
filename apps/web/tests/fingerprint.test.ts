@@ -15,6 +15,10 @@ describe("deterministic fingerprint", () => {
 
   it("only links valid point indexes", () => {
     const points = fingerprintPoints("asset-proof", 24);
-    expect(fingerprintLinks(points).every(([left, right]) => left < points.length && right < points.length)).toBe(true);
+    expect(
+      fingerprintLinks(points).every(
+        ([left, right]) => left < points.length && right < points.length,
+      ),
+    ).toBe(true);
   });
 });

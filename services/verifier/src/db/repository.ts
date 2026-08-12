@@ -118,7 +118,8 @@ export class AliveRepository {
   readonly database: Database.Database;
 
   constructor(databasePath: string) {
-    if (databasePath !== ":memory:") mkdirSync(path.dirname(databasePath), { recursive: true });
+    if (databasePath !== ":memory:")
+      mkdirSync(path.dirname(databasePath), { recursive: true });
     this.database = new Database(databasePath);
     if (databasePath !== ":memory:") this.database.pragma("journal_mode = WAL");
     runMigrations(this.database);
@@ -149,7 +150,12 @@ export class AliveRepository {
           parsed.expiresAt,
         );
     } catch (error) {
-      throw new ProtocolError(409, "AUTHORIZATION_ALREADY_EXISTS", "Wallet authorization nonce already exists", error);
+      throw new ProtocolError(
+        409,
+        "AUTHORIZATION_ALREADY_EXISTS",
+        "Wallet authorization nonce already exists",
+        error,
+      );
     }
     return parsed;
   }
@@ -185,7 +191,10 @@ export class AliveRepository {
       .run(nowSeconds - 300);
   }
 
-  private consumeAuthorization(authorization: WalletAuthorization, consumedAtSeconds: number): void {
+  private consumeAuthorization(
+    authorization: WalletAuthorization,
+    consumedAtSeconds: number,
+  ): void {
     const parsed = WalletAuthorizationSchema.parse(authorization);
     const update = this.database
       .prepare(
@@ -211,18 +220,37 @@ export class AliveRepository {
     if (update.changes === 1) return;
 
     const row = this.database
-      .prepare("SELECT consumed_at, expires_at FROM wallet_authorizations WHERE nonce = ?")
-      .get(parsed.nonce) as { consumed_at: number | null; expires_at: number } | undefined;
+      .prepare(
+        "SELECT consumed_at, expires_at FROM wallet_authorizations WHERE nonce = ?",
+      )
+      .get(parsed.nonce) as
+      { consumed_at: number | null; expires_at: number } | undefined;
     if (row === undefined) {
-      throw new ProtocolError(401, "AUTHORIZATION_REQUIRED", "Wallet authorization was not issued by this verifier");
+      throw new ProtocolError(
+        401,
+        "AUTHORIZATION_REQUIRED",
+        "Wallet authorization was not issued by this verifier",
+      );
     }
     if (row.consumed_at !== null) {
-      throw new ProtocolError(409, "AUTHORIZATION_ALREADY_USED", "Wallet authorization has already been consumed");
+      throw new ProtocolError(
+        409,
+        "AUTHORIZATION_ALREADY_USED",
+        "Wallet authorization has already been consumed",
+      );
     }
     if (row.expires_at <= consumedAtSeconds) {
-      throw new ProtocolError(410, "AUTHORIZATION_EXPIRED", "Wallet authorization has expired");
+      throw new ProtocolError(
+        410,
+        "AUTHORIZATION_EXPIRED",
+        "Wallet authorization has expired",
+      );
     }
-    throw new ProtocolError(403, "AUTHORIZATION_MISMATCH", "Wallet authorization does not match this exact request");
+    throw new ProtocolError(
+      403,
+      "AUTHORIZATION_MISMATCH",
+      "Wallet authorization does not match this exact request",
+    );
   }
 
   createAuthorizedAsset(input: {
@@ -236,7 +264,10 @@ export class AliveRepository {
     capabilityExpiresAt: number;
   }): AssetRecord {
     const metadata = AssetMetadataSchema.parse(input.metadata);
-    const expectedAssetId = createAssetId(AddressSchema.parse(input.owner), input.authorization.nonce);
+    const expectedAssetId = createAssetId(
+      AddressSchema.parse(input.owner),
+      input.authorization.nonce,
+    );
     if (expectedAssetId.toLowerCase() !== input.assetId.toLowerCase()) {
       throw new ProtocolError(
         403,
@@ -265,7 +296,12 @@ export class AliveRepository {
       })();
     } catch (error) {
       if (error instanceof ProtocolError) throw error;
-      throw new ProtocolError(409, "ASSET_ALREADY_EXISTS", "Asset already exists", error);
+      throw new ProtocolError(
+        409,
+        "ASSET_ALREADY_EXISTS",
+        "Asset already exists",
+        error,
+      );
     }
     return this.getAsset(input.assetId) as AssetRecord;
   }
@@ -284,9 +320,20 @@ export class AliveRepository {
           `INSERT INTO assets (asset_id, owner, metadata_json, created_at, owner_authorized)
            VALUES (?, ?, ?, ?, ?)`,
         )
-        .run(input.assetId, input.owner, JSON.stringify(metadata), input.createdAt, input.ownerAuthorized ? 1 : 0);
+        .run(
+          input.assetId,
+          input.owner,
+          JSON.stringify(metadata),
+          input.createdAt,
+          input.ownerAuthorized ? 1 : 0,
+        );
     } catch (error) {
-      throw new ProtocolError(409, "ASSET_ALREADY_EXISTS", "Asset already exists", error);
+      throw new ProtocolError(
+        409,
+        "ASSET_ALREADY_EXISTS",
+        "Asset already exists",
+        error,
+      );
     }
     return this.getAsset(input.assetId) as AssetRecord;
   }
@@ -308,7 +355,9 @@ export class AliveRepository {
     return {
       assetId: row.asset_id,
       owner: row.owner,
-      metadata: AssetMetadataSchema.parse(JSON.parse(row.metadata_json) as unknown),
+      metadata: AssetMetadataSchema.parse(
+        JSON.parse(row.metadata_json) as unknown,
+      ),
       createdAt: row.created_at,
       fingerprintHash: row.fingerprint_hash,
       registrationViewCount: row.registration_view_count,
@@ -323,7 +372,8 @@ export class AliveRepository {
   }
 
   listAssets(owner?: string): AssetRecord[] {
-    const ownerClause = owner === undefined ? "" : "WHERE lower(a.owner) = lower(?)";
+    const ownerClause =
+      owner === undefined ? "" : "WHERE lower(a.owner) = lower(?)";
     const statement = this.database.prepare(
       `SELECT a.asset_id, a.owner, a.metadata_json, a.created_at,
               f.fingerprint_hash,
@@ -336,18 +386,29 @@ export class AliveRepository {
        ORDER BY a.created_at DESC
        LIMIT 200`,
     );
-    const rows = (owner === undefined ? statement.all() : statement.all(owner)) as AssetRow[];
-    return rows.map((row) => ({
-      assetId: row.asset_id,
-      owner: row.owner,
-      metadata: AssetMetadataSchema.parse(JSON.parse(row.metadata_json) as unknown),
-      createdAt: row.created_at,
-      fingerprintHash: row.fingerprint_hash,
-      registrationViewCount: row.registration_view_count,
-    }) as AssetRecord);
+    const rows = (
+      owner === undefined ? statement.all() : statement.all(owner)
+    ) as AssetRow[];
+    return rows.map(
+      (row) =>
+        ({
+          assetId: row.asset_id,
+          owner: row.owner,
+          metadata: AssetMetadataSchema.parse(
+            JSON.parse(row.metadata_json) as unknown,
+          ),
+          createdAt: row.created_at,
+          fingerprintHash: row.fingerprint_hash,
+          registrationViewCount: row.registration_view_count,
+        }) as AssetRecord,
+    );
   }
 
-  assertAssetCapability(assetId: string, capabilityHash: string, nowSeconds: number): void {
+  assertAssetCapability(
+    assetId: string,
+    capabilityHash: string,
+    nowSeconds: number,
+  ): void {
     const row = this.database
       .prepare(
         `SELECT registration_capability_hash AS capability_hash,
@@ -355,17 +416,38 @@ export class AliveRepository {
          FROM assets WHERE asset_id = ?`,
       )
       .get(assetId) as CapabilityRow | undefined;
-    if (row === undefined) throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
-    if (row.capability_hash === null || row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()) {
-      throw new ProtocolError(403, "CAPABILITY_INVALID", "Asset registration capability is invalid");
+    if (row === undefined)
+      throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
+    if (
+      row.capability_hash === null ||
+      row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()
+    ) {
+      throw new ProtocolError(
+        403,
+        "CAPABILITY_INVALID",
+        "Asset registration capability is invalid",
+      );
     }
-    if (row.capability_expires_at === null || row.capability_expires_at <= nowSeconds) {
-      throw new ProtocolError(410, "CAPABILITY_EXPIRED", "Asset registration capability has expired");
+    if (
+      row.capability_expires_at === null ||
+      row.capability_expires_at <= nowSeconds
+    ) {
+      throw new ProtocolError(
+        410,
+        "CAPABILITY_EXPIRED",
+        "Asset registration capability has expired",
+      );
     }
   }
 
-  saveRegistrationCapture(assetId: string, evidencePath: string, fingerprint: ViewFingerprint, createdAt: string): string {
-    if (this.getAsset(assetId) === undefined) throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
+  saveRegistrationCapture(
+    assetId: string,
+    evidencePath: string,
+    fingerprint: ViewFingerprint,
+    createdAt: string,
+  ): string {
+    if (this.getAsset(assetId) === undefined)
+      throw new ProtocolError(404, "ASSET_NOT_FOUND", "Asset not found");
     const parsed = ViewFingerprintSchema.parse(fingerprint);
     const captureId = randomBytes32();
     try {
@@ -386,7 +468,12 @@ export class AliveRepository {
           createdAt,
         );
     } catch (error) {
-      throw new ProtocolError(409, "REGISTRATION_VIEW_EXISTS", `${parsed.view} was already captured`, error);
+      throw new ProtocolError(
+        409,
+        "REGISTRATION_VIEW_EXISTS",
+        `${parsed.view} was already captured`,
+        error,
+      );
     }
     return captureId;
   }
@@ -400,8 +487,17 @@ export class AliveRepository {
     nowSeconds: number;
   }): string {
     return this.database.transaction(() => {
-      this.assertAssetCapability(input.assetId, input.capabilityHash, input.nowSeconds);
-      return this.saveRegistrationCapture(input.assetId, input.evidencePath, input.fingerprint, input.createdAt);
+      this.assertAssetCapability(
+        input.assetId,
+        input.capabilityHash,
+        input.nowSeconds,
+      );
+      return this.saveRegistrationCapture(
+        input.assetId,
+        input.evidencePath,
+        input.fingerprint,
+        input.createdAt,
+      );
     })();
   }
 
@@ -415,11 +511,16 @@ export class AliveRepository {
     return rows.map((row) => ({
       captureId: row.capture_id,
       evidencePath: row.evidence_path,
-      fingerprint: ViewFingerprintSchema.parse(JSON.parse(row.fingerprint_json) as unknown),
+      fingerprint: ViewFingerprintSchema.parse(
+        JSON.parse(row.fingerprint_json) as unknown,
+      ),
     }));
   }
 
-  saveFingerprint(fingerprint: AssetFingerprint, fingerprintHash: string): void {
+  saveFingerprint(
+    fingerprint: AssetFingerprint,
+    fingerprintHash: string,
+  ): void {
     const parsed = AssetFingerprintSchema.parse(fingerprint);
     try {
       this.database
@@ -427,9 +528,19 @@ export class AliveRepository {
           `INSERT INTO fingerprints (asset_id, fingerprint_json, fingerprint_hash, created_at)
            VALUES (?, ?, ?, ?)`,
         )
-        .run(parsed.assetId, JSON.stringify(parsed), fingerprintHash, parsed.createdAt);
+        .run(
+          parsed.assetId,
+          JSON.stringify(parsed),
+          fingerprintHash,
+          parsed.createdAt,
+        );
     } catch (error) {
-      throw new ProtocolError(409, "FINGERPRINT_EXISTS", "Fingerprint has already been finalized", error);
+      throw new ProtocolError(
+        409,
+        "FINGERPRINT_EXISTS",
+        "Fingerprint has already been finalized",
+        error,
+      );
     }
   }
 
@@ -441,7 +552,11 @@ export class AliveRepository {
   }): void {
     const parsed = AssetFingerprintSchema.parse(input.fingerprint);
     this.database.transaction(() => {
-      this.assertAssetCapability(parsed.assetId, input.capabilityHash, input.nowSeconds);
+      this.assertAssetCapability(
+        parsed.assetId,
+        input.capabilityHash,
+        input.nowSeconds,
+      );
       this.saveFingerprint(parsed, input.fingerprintHash);
       const revoked = this.database
         .prepare(
@@ -451,7 +566,11 @@ export class AliveRepository {
         )
         .run(parsed.assetId, input.capabilityHash);
       if (revoked.changes !== 1) {
-        throw new ProtocolError(409, "CAPABILITY_INVALID", "Asset registration capability changed concurrently");
+        throw new ProtocolError(
+          409,
+          "CAPABILITY_INVALID",
+          "Asset registration capability changed concurrently",
+        );
       }
     })();
   }
@@ -462,7 +581,9 @@ export class AliveRepository {
       .get(assetId) as { fingerprint_json: string } | undefined;
     return row === undefined
       ? undefined
-      : AssetFingerprintSchema.parse(JSON.parse(row.fingerprint_json) as unknown);
+      : AssetFingerprintSchema.parse(
+          JSON.parse(row.fingerprint_json) as unknown,
+        );
   }
 
   createSession(session: VerificationSession): VerificationSession {
@@ -548,36 +669,72 @@ export class AliveRepository {
       })();
     } catch (error) {
       if (error instanceof ProtocolError) throw error;
-      throw new ProtocolError(409, "SESSION_ALREADY_EXISTS", "Verification session already exists", error);
+      throw new ProtocolError(
+        409,
+        "SESSION_ALREADY_EXISTS",
+        "Verification session already exists",
+        error,
+      );
     }
     return parsed;
   }
 
-  assertSessionCapability(sessionId: string, capabilityHash: string, nowSeconds: number): void {
+  assertSessionCapability(
+    sessionId: string,
+    capabilityHash: string,
+    nowSeconds: number,
+  ): void {
     const row = this.database
       .prepare(
         `SELECT capability_hash, CAST(strftime('%s', expires_at) AS INTEGER) AS capability_expires_at
          FROM verification_sessions WHERE session_id = ?`,
       )
       .get(sessionId) as CapabilityRow | undefined;
-    if (row === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
-    if (row.capability_hash === null || row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()) {
-      throw new ProtocolError(403, "CAPABILITY_INVALID", "Verification session capability is invalid");
+    if (row === undefined)
+      throw new ProtocolError(
+        404,
+        "SESSION_INVALID",
+        "Verification session not found",
+      );
+    if (
+      row.capability_hash === null ||
+      row.capability_hash.toLowerCase() !== capabilityHash.toLowerCase()
+    ) {
+      throw new ProtocolError(
+        403,
+        "CAPABILITY_INVALID",
+        "Verification session capability is invalid",
+      );
     }
-    if (row.capability_expires_at === null || row.capability_expires_at <= nowSeconds) {
-      throw new ProtocolError(410, "CAPABILITY_EXPIRED", "Verification session capability has expired");
+    if (
+      row.capability_expires_at === null ||
+      row.capability_expires_at <= nowSeconds
+    ) {
+      throw new ProtocolError(
+        410,
+        "CAPABILITY_EXPIRED",
+        "Verification session capability has expired",
+      );
     }
   }
 
-  getSession(sessionId: string, now = new Date()): VerificationSession | undefined {
+  getSession(
+    sessionId: string,
+    now = new Date(),
+  ): VerificationSession | undefined {
     const row = this.database
       .prepare("SELECT * FROM verification_sessions WHERE session_id = ?")
       .get(sessionId) as SessionRow | undefined;
     if (row === undefined) return undefined;
     let status = row.status;
-    if ((status === "PENDING" || status === "ANALYZING") && Date.parse(row.expires_at) <= now.getTime()) {
+    if (
+      (status === "PENDING" || status === "ANALYZING") &&
+      Date.parse(row.expires_at) <= now.getTime()
+    ) {
       this.database
-        .prepare("UPDATE verification_sessions SET status = 'EXPIRED' WHERE session_id = ? AND status IN ('PENDING', 'ANALYZING')")
+        .prepare(
+          "UPDATE verification_sessions SET status = 'EXPIRED' WHERE session_id = ? AND status IN ('PENDING', 'ANALYZING')",
+        )
         .run(sessionId);
       status = "EXPIRED";
     }
@@ -606,19 +763,49 @@ export class AliveRepository {
     });
   }
 
-  assertCaptureAllowed(sessionId: string, challengeId: string, now: Date): void {
+  assertCaptureAllowed(
+    sessionId: string,
+    challengeId: string,
+    now: Date,
+  ): void {
     const session = this.getSession(sessionId, now);
-    if (session === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
-    if (session.status === "EXPIRED") throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired");
+    if (session === undefined)
+      throw new ProtocolError(
+        404,
+        "SESSION_INVALID",
+        "Verification session not found",
+      );
+    if (session.status === "EXPIRED")
+      throw new ProtocolError(
+        410,
+        "SESSION_EXPIRED",
+        "Verification session expired",
+      );
     if (session.status !== "PENDING") {
-      throw new ProtocolError(409, "SESSION_ALREADY_USED", "Verification session is no longer accepting captures");
+      throw new ProtocolError(
+        409,
+        "SESSION_ALREADY_USED",
+        "Verification session is no longer accepting captures",
+      );
     }
-    const expected = session.challenges.find((challenge) => challenge.completedAt === null);
-    if (expected === undefined) throw new ProtocolError(409, "CHALLENGE_INCOMPLETE", "All challenge captures are complete");
+    const expected = session.challenges.find(
+      (challenge) => challenge.completedAt === null,
+    );
+    if (expected === undefined)
+      throw new ProtocolError(
+        409,
+        "CHALLENGE_INCOMPLETE",
+        "All challenge captures are complete",
+      );
     if (expected.id.toLowerCase() !== challengeId.toLowerCase()) {
-      throw new ProtocolError(409, "CHALLENGE_OUT_OF_ORDER", "Capture does not match the next challenge", {
-        expectedChallengeId: expected.id,
-      });
+      throw new ProtocolError(
+        409,
+        "CHALLENGE_OUT_OF_ORDER",
+        "Capture does not match the next challenge",
+        {
+          expectedChallengeId: expected.id,
+        },
+      );
     }
   }
 
@@ -629,16 +816,20 @@ export class AliveRepository {
     burstFingerprint: VerificationBurstFingerprint;
     receivedAt: string;
   }): string {
-    const parsed = VerificationBurstFingerprintSchema.parse(input.burstFingerprint);
+    const parsed = VerificationBurstFingerprintSchema.parse(
+      input.burstFingerprint,
+    );
     const representative = parsed.frameFingerprints[1];
-    const evidenceHashes = parsed.frameFingerprints.map((frame) => frame.evidenceHash) as [
-      `0x${string}`,
-      `0x${string}`,
-      `0x${string}`,
-    ];
+    const evidenceHashes = parsed.frameFingerprints.map(
+      (frame) => frame.evidenceHash,
+    ) as [`0x${string}`, `0x${string}`, `0x${string}`];
     const captureId = randomBytes32();
     this.database.transaction(() => {
-      this.assertCaptureAllowed(input.sessionId, input.challengeId, new Date(input.receivedAt));
+      this.assertCaptureAllowed(
+        input.sessionId,
+        input.challengeId,
+        new Date(input.receivedAt),
+      );
       this.database
         .prepare(
           `INSERT INTO verification_captures
@@ -661,7 +852,9 @@ export class AliveRepository {
           parsed.intraChallengeMotion,
         );
       this.database
-        .prepare("UPDATE verification_challenges SET completed_at = ? WHERE challenge_id = ? AND completed_at IS NULL")
+        .prepare(
+          "UPDATE verification_challenges SET completed_at = ? WHERE challenge_id = ? AND completed_at IS NULL",
+        )
         .run(input.receivedAt, input.challengeId);
     })();
     return captureId;
@@ -685,7 +878,9 @@ export class AliveRepository {
     })();
   }
 
-  private listVerificationCaptures(sessionId: string): StoredVerificationCapture[] {
+  private listVerificationCaptures(
+    sessionId: string,
+  ): StoredVerificationCapture[] {
     const rows = this.database
       .prepare(
         `SELECT vc.capture_id, vc.challenge_id, vc.evidence_path, vc.fingerprint_json,
@@ -697,14 +892,24 @@ export class AliveRepository {
       )
       .all(sessionId) as VerificationCaptureRow[];
     return rows.map((row) => {
-      const representative = ViewFingerprintSchema.parse(JSON.parse(row.fingerprint_json) as unknown);
+      const representative = ViewFingerprintSchema.parse(
+        JSON.parse(row.fingerprint_json) as unknown,
+      );
       if (row.burst_fingerprint_json === null) {
         return {
           captureId: row.capture_id,
           challengeId: row.challenge_id,
           evidencePath: row.evidence_path,
-          evidencePaths: [row.evidence_path, row.evidence_path, row.evidence_path],
-          evidenceHashes: [representative.evidenceHash, representative.evidenceHash, representative.evidenceHash],
+          evidencePaths: [
+            row.evidence_path,
+            row.evidence_path,
+            row.evidence_path,
+          ],
+          evidenceHashes: [
+            representative.evidenceHash,
+            representative.evidenceHash,
+            representative.evidenceHash,
+          ],
           fingerprint: representative,
           frameFingerprints: [representative, representative, representative],
           intraChallengeMotion: 0,
@@ -717,29 +922,51 @@ export class AliveRepository {
         row.evidence_hashes_json === null ||
         row.intra_challenge_motion === null
       ) {
-        throw new Error(`Verification capture ${row.capture_id} has incomplete burst data`);
+        throw new Error(
+          `Verification capture ${row.capture_id} has incomplete burst data`,
+        );
       }
-      const burst = VerificationBurstFingerprintSchema.parse(JSON.parse(row.burst_fingerprint_json) as unknown);
+      const burst = VerificationBurstFingerprintSchema.parse(
+        JSON.parse(row.burst_fingerprint_json) as unknown,
+      );
       const paths = JSON.parse(row.evidence_paths_json) as unknown;
       const hashes = JSON.parse(row.evidence_hashes_json) as unknown;
-      if (!Array.isArray(paths) || paths.length !== 3 || !paths.every((value) => typeof value === "string")) {
-        throw new Error(`Verification capture ${row.capture_id} has invalid evidence paths`);
+      if (
+        !Array.isArray(paths) ||
+        paths.length !== 3 ||
+        !paths.every((value) => typeof value === "string")
+      ) {
+        throw new Error(
+          `Verification capture ${row.capture_id} has invalid evidence paths`,
+        );
       }
-      const derivedHashes = burst.frameFingerprints.map((frame) => frame.evidenceHash);
+      const derivedHashes = burst.frameFingerprints.map(
+        (frame) => frame.evidenceHash,
+      );
       if (
         !Array.isArray(hashes) ||
         hashes.length !== 3 ||
-        !hashes.every((value, index) => typeof value === "string" && value.toLowerCase() === derivedHashes[index]?.toLowerCase()) ||
+        !hashes.every(
+          (value, index) =>
+            typeof value === "string" &&
+            value.toLowerCase() === derivedHashes[index]?.toLowerCase(),
+        ) ||
         row.intra_challenge_motion !== burst.intraChallengeMotion
       ) {
-        throw new Error(`Verification capture ${row.capture_id} has inconsistent burst evidence`);
+        throw new Error(
+          `Verification capture ${row.capture_id} has inconsistent burst evidence`,
+        );
       }
       return {
         captureId: row.capture_id,
         challengeId: row.challenge_id,
         evidencePath: paths[1] as string,
         evidencePaths: paths as [string, string, string],
-        evidenceHashes: derivedHashes as [`0x${string}`, `0x${string}`, `0x${string}`],
+        evidenceHashes: derivedHashes as [
+          `0x${string}`,
+          `0x${string}`,
+          `0x${string}`,
+        ],
         fingerprint: burst.frameFingerprints[1],
         frameFingerprints: burst.frameFingerprints,
         intraChallengeMotion: burst.intraChallengeMotion,
@@ -752,20 +979,52 @@ export class AliveRepository {
   beginAnalysis(sessionId: string, now: Date): AnalysisSnapshot {
     return this.database.transaction(() => {
       const session = this.getSession(sessionId, now);
-      if (session === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
-      if (session.status === "EXPIRED") throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired");
+      if (session === undefined)
+        throw new ProtocolError(
+          404,
+          "SESSION_INVALID",
+          "Verification session not found",
+        );
+      if (session.status === "EXPIRED")
+        throw new ProtocolError(
+          410,
+          "SESSION_EXPIRED",
+          "Verification session expired",
+        );
       if (session.status !== "PENDING") {
-        throw new ProtocolError(409, "SESSION_ALREADY_USED", "Verification session has already been analyzed");
+        throw new ProtocolError(
+          409,
+          "SESSION_ALREADY_USED",
+          "Verification session has already been analyzed",
+        );
       }
-      if (session.challenges.some((challenge) => challenge.completedAt === null)) {
-        throw new ProtocolError(409, "CHALLENGE_INCOMPLETE", "Complete every ordered challenge before analysis");
+      if (
+        session.challenges.some((challenge) => challenge.completedAt === null)
+      ) {
+        throw new ProtocolError(
+          409,
+          "CHALLENGE_INCOMPLETE",
+          "Complete every ordered challenge before analysis",
+        );
       }
       const fingerprint = this.getFingerprint(session.assetId);
-      if (fingerprint === undefined) throw new ProtocolError(409, "FINGERPRINT_REQUIRED", "Asset has no fingerprint");
+      if (fingerprint === undefined)
+        throw new ProtocolError(
+          409,
+          "FINGERPRINT_REQUIRED",
+          "Asset has no fingerprint",
+        );
       const update = this.database
-        .prepare("UPDATE verification_sessions SET status = 'ANALYZING' WHERE session_id = ? AND status = 'PENDING'")
+        .prepare(
+          "UPDATE verification_sessions SET status = 'ANALYZING' WHERE session_id = ? AND status = 'PENDING'",
+        )
         .run(sessionId);
-      if (update.changes !== 1) throw new ProtocolError(409, "SESSION_ALREADY_USED", "Session was claimed concurrently");
+      if (update.changes !== 1)
+        throw new ProtocolError(
+          409,
+          "SESSION_ALREADY_USED",
+          "Session was claimed concurrently",
+        );
       return {
         session: { ...session, status: "ANALYZING" as const },
         fingerprint,
@@ -780,28 +1039,51 @@ export class AliveRepository {
     now: Date,
   ): AnalysisSnapshot {
     return this.database.transaction(() => {
-      this.assertSessionCapability(sessionId, capabilityHash, Math.floor(now.getTime() / 1_000));
+      this.assertSessionCapability(
+        sessionId,
+        capabilityHash,
+        Math.floor(now.getTime() / 1_000),
+      );
       return this.beginAnalysis(sessionId, now);
     })();
   }
 
   abortAnalysis(sessionId: string): void {
     this.database
-      .prepare("UPDATE verification_sessions SET status = 'PENDING' WHERE session_id = ? AND status = 'ANALYZING'")
+      .prepare(
+        "UPDATE verification_sessions SET status = 'PENDING' WHERE session_id = ? AND status = 'ANALYZING'",
+      )
       .run(sessionId);
   }
 
-  completeAnalysis(sessionId: string, result: VerificationResult, analyzedAt: string): void {
+  completeAnalysis(
+    sessionId: string,
+    result: VerificationResult,
+    analyzedAt: string,
+  ): void {
     const parsed = VerificationResultSchema.parse(result);
     const row = this.database
-      .prepare("SELECT expires_at FROM verification_sessions WHERE session_id = ? AND status = 'ANALYZING'")
+      .prepare(
+        "SELECT expires_at FROM verification_sessions WHERE session_id = ? AND status = 'ANALYZING'",
+      )
       .get(sessionId) as { expires_at: string } | undefined;
-    if (row === undefined) throw new ProtocolError(409, "SESSION_ALREADY_USED", "Analysis state changed concurrently");
+    if (row === undefined)
+      throw new ProtocolError(
+        409,
+        "SESSION_ALREADY_USED",
+        "Analysis state changed concurrently",
+      );
     if (Date.parse(analyzedAt) >= Date.parse(row.expires_at)) {
       this.database
-        .prepare("UPDATE verification_sessions SET status = 'EXPIRED' WHERE session_id = ? AND status = 'ANALYZING'")
+        .prepare(
+          "UPDATE verification_sessions SET status = 'EXPIRED' WHERE session_id = ? AND status = 'ANALYZING'",
+        )
         .run(sessionId);
-      throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired during analysis");
+      throw new ProtocolError(
+        410,
+        "SESSION_EXPIRED",
+        "Verification session expired during analysis",
+      );
     }
     const update = this.database
       .prepare(
@@ -809,38 +1091,75 @@ export class AliveRepository {
          WHERE session_id = ? AND status = 'ANALYZING'`,
       )
       .run(JSON.stringify(parsed), analyzedAt, sessionId);
-    if (update.changes !== 1) throw new ProtocolError(409, "SESSION_ALREADY_USED", "Analysis state changed concurrently");
+    if (update.changes !== 1)
+      throw new ProtocolError(
+        409,
+        "SESSION_ALREADY_USED",
+        "Analysis state changed concurrently",
+      );
   }
 
   getResult(sessionId: string): VerificationResult | undefined {
     const row = this.database
-      .prepare("SELECT result_json FROM verification_sessions WHERE session_id = ?")
+      .prepare(
+        "SELECT result_json FROM verification_sessions WHERE session_id = ?",
+      )
       .get(sessionId) as { result_json: string | null } | undefined;
     if (row?.result_json == null) return undefined;
-    return VerificationResultSchema.parse(JSON.parse(row.result_json) as unknown);
+    return VerificationResultSchema.parse(
+      JSON.parse(row.result_json) as unknown,
+    );
   }
 
-  saveAttestation(sessionId: string, signed: SignedAttestation, createdAt: string): SignedAttestation {
+  saveAttestation(
+    sessionId: string,
+    signed: SignedAttestation,
+    createdAt: string,
+  ): SignedAttestation {
     const parsed = SignedAttestationSchema.parse(signed);
     this.database.transaction(() => {
       const row = this.database
-        .prepare("SELECT status, expires_at FROM verification_sessions WHERE session_id = ?")
+        .prepare(
+          "SELECT status, expires_at FROM verification_sessions WHERE session_id = ?",
+        )
         .get(sessionId) as { status: string; expires_at: string } | undefined;
-      if (row === undefined) throw new ProtocolError(404, "SESSION_INVALID", "Verification session not found");
+      if (row === undefined)
+        throw new ProtocolError(
+          404,
+          "SESSION_INVALID",
+          "Verification session not found",
+        );
       if (Date.parse(createdAt) >= Date.parse(row.expires_at)) {
-        throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired before attestation issuance");
+        throw new ProtocolError(
+          410,
+          "SESSION_EXPIRED",
+          "Verification session expired before attestation issuance",
+        );
       }
       if (row.status !== "ANALYZED") {
-        throw new ProtocolError(409, "SESSION_ALREADY_USED", "Attestation was already issued or analysis is incomplete");
+        throw new ProtocolError(
+          409,
+          "SESSION_ALREADY_USED",
+          "Attestation was already issued or analysis is incomplete",
+        );
       }
       this.database
         .prepare(
           `INSERT INTO attestations (session_id, digest, payload_json, signature, signer, created_at)
            VALUES (?, ?, ?, ?, ?, ?)`,
         )
-        .run(sessionId, parsed.digest, JSON.stringify(parsed), parsed.signature, parsed.signer, createdAt);
+        .run(
+          sessionId,
+          parsed.digest,
+          JSON.stringify(parsed),
+          parsed.signature,
+          parsed.signer,
+          createdAt,
+        );
       this.database
-        .prepare("UPDATE verification_sessions SET status = 'ATTESTED' WHERE session_id = ? AND status = 'ANALYZED'")
+        .prepare(
+          "UPDATE verification_sessions SET status = 'ATTESTED' WHERE session_id = ? AND status = 'ANALYZED'",
+        )
         .run(sessionId);
     })();
     return parsed;

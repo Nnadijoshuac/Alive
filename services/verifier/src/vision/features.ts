@@ -1,5 +1,10 @@
 import sharp from "sharp";
-import { hashEvidenceBytes, type CaptureQuality, type RegistrationView, type ViewFingerprint } from "@alive/shared";
+import {
+  hashEvidenceBytes,
+  type CaptureQuality,
+  type RegistrationView,
+  type ViewFingerprint,
+} from "@alive/shared";
 import { extractNeuralEmbedding } from "./neural.js";
 import { extractOcrText } from "./ocr.js";
 import { clamp01, normalizeVector } from "./math.js";
@@ -26,8 +31,14 @@ async function decode(image: Buffer): Promise<RawImage> {
     .resize(192, 192, { fit: "fill", kernel: sharp.kernel.lanczos3 })
     .raw()
     .toBuffer({ resolveWithObject: true });
-  if (info.channels < 3) throw new Error("Decoded capture does not have RGB channels");
-  return { data, width: info.width, height: info.height, channels: info.channels };
+  if (info.channels < 3)
+    throw new Error("Decoded capture does not have RGB channels");
+  return {
+    data,
+    width: info.width,
+    height: info.height,
+    channels: info.channels,
+  };
 }
 
 function luminance(raw: RawImage): Float32Array {
@@ -67,11 +78,18 @@ function qualityMetrics(raw: RawImage, gray: Float32Array): CaptureQuality {
     }
   }
   const laplacianMean = samples === 0 ? 0 : laplacianSum / samples;
-  const variance = samples === 0 ? 0 : laplacianSquares / samples - laplacianMean * laplacianMean;
-  const blurScore = clamp01(Math.log1p(Math.max(0, variance)) / Math.log(1 + 2_500));
+  const variance =
+    samples === 0
+      ? 0
+      : laplacianSquares / samples - laplacianMean * laplacianMean;
+  const blurScore = clamp01(
+    Math.log1p(Math.max(0, variance)) / Math.log(1 + 2_500),
+  );
   const meanBrightness = gray.length === 0 ? 0 : brightness / gray.length;
   const centerExposure = 1 - Math.abs(meanBrightness - 127.5) / 127.5;
-  const exposureScore = clamp01(centerExposure * (1 - clipped / Math.max(1, gray.length)));
+  const exposureScore = clamp01(
+    centerExposure * (1 - clipped / Math.max(1, gray.length)),
+  );
   return {
     blurScore,
     exposureScore,
@@ -110,14 +128,20 @@ function gradientDescriptor(raw: RawImage, gray: Float32Array): number[] {
     for (let x = 1; x < raw.width - 1; x += 1) {
       const index = y * raw.width + x;
       const dx = (gray[index + 1] ?? 0) - (gray[index - 1] ?? 0);
-      const dy = (gray[index + raw.width] ?? 0) - (gray[index - raw.width] ?? 0);
+      const dy =
+        (gray[index + raw.width] ?? 0) - (gray[index - raw.width] ?? 0);
       const magnitude = Math.sqrt(dx * dx + dy * dy);
       const angle = (Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI);
-      const orientation = Math.min(orientationBins - 1, Math.floor(angle * orientationBins));
+      const orientation = Math.min(
+        orientationBins - 1,
+        Math.floor(angle * orientationBins),
+      );
       const cellX = Math.min(grid - 1, Math.floor((x * grid) / raw.width));
       const cellY = Math.min(grid - 1, Math.floor((y * grid) / raw.height));
-      const descriptorIndex = (cellY * grid + cellX) * orientationBins + orientation;
-      histogram[descriptorIndex] = (histogram[descriptorIndex] ?? 0) + magnitude;
+      const descriptorIndex =
+        (cellY * grid + cellX) * orientationBins + orientation;
+      histogram[descriptorIndex] =
+        (histogram[descriptorIndex] ?? 0) + magnitude;
     }
   }
   return normalizeVector(histogram);
@@ -141,7 +165,10 @@ async function perceptualHash(image: Buffer): Promise<string> {
   return value.toString(16).padStart(16, "0");
 }
 
-export async function extractViewFingerprint(image: Buffer, options: FeatureOptions): Promise<ViewFingerprint> {
+export async function extractViewFingerprint(
+  image: Buffer,
+  options: FeatureOptions,
+): Promise<ViewFingerprint> {
   const [raw, hash, ocrText, neuralEmbedding] = await Promise.all([
     decode(image),
     perceptualHash(image),

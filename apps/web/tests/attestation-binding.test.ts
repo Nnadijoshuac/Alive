@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { getAliveAttestationTypedData, hashAliveAttestation } from "@alive/shared";
+import {
+  getAliveAttestationTypedData,
+  hashAliveAttestation,
+} from "@alive/shared";
 import { privateKeyToAccount } from "viem/accounts";
 import { validateAttestationBinding } from "@/lib/attestation-binding";
-import type { Address, Hex, SignedAttestation, VerificationResult, VerificationSession } from "@/lib/types";
+import type {
+  Address,
+  Hex,
+  SignedAttestation,
+  VerificationResult,
+  VerificationSession,
+} from "@/lib/types";
 
 const assetId = `0x${"01".repeat(32)}` as Hex;
 const sessionId = `0x${"02".repeat(32)}` as Hex;
@@ -20,7 +29,15 @@ const session: VerificationSession = {
   createdAt: "2026-01-01T00:00:00.000Z",
   expiresAt: "2026-01-01T00:03:00.000Z",
   status: "ANALYZED",
-  challenges: [{ id: `0x${"08".repeat(32)}`, sequence: 0, type: "SHOW_FRONT", prompt: "Show front", completedAt: "2026-01-01T00:00:30.000Z" }],
+  challenges: [
+    {
+      id: `0x${"08".repeat(32)}`,
+      sequence: 0,
+      type: "SHOW_FRONT",
+      prompt: "Show front",
+      completedAt: "2026-01-01T00:00:30.000Z",
+    },
+  ],
 };
 
 const result: VerificationResult = {
@@ -76,13 +93,20 @@ describe("attestation consumer binding", () => {
   it("rejects a context that differs from the session before settlement", async () => {
     const mismatched = {
       ...signed,
-      attestation: { ...signed.attestation, context: `0x${"12".repeat(32)}` as Hex },
+      attestation: {
+        ...signed.attestation,
+        context: `0x${"12".repeat(32)}` as Hex,
+      },
     };
-    await expect(validateAttestationBinding(session, result, mismatched, 1952, registry)).resolves.toMatch(/context/);
+    await expect(
+      validateAttestationBinding(session, result, mismatched, 1952, registry),
+    ).resolves.toMatch(/context/);
   });
 
   it("rejects an EIP-712 domain for another chain", async () => {
-    await expect(validateAttestationBinding(session, result, signed, 196, registry)).resolves.toMatch(/active chain/);
+    await expect(
+      validateAttestationBinding(session, result, signed, 196, registry),
+    ).resolves.toMatch(/active chain/);
   });
 
   it("rejects score fields that differ from the analysis result", async () => {
@@ -90,19 +114,31 @@ describe("attestation consumer binding", () => {
       ...signed,
       attestation: { ...signed.attestation, identityScore: 8999 },
     };
-    await expect(validateAttestationBinding(session, result, mismatched, 1952, registry)).resolves.toMatch(/scores/);
+    await expect(
+      validateAttestationBinding(session, result, mismatched, 1952, registry),
+    ).resolves.toMatch(/scores/);
   });
 
   it("rejects a fingerprint commitment that differs from the asset baseline", async () => {
     await expect(
-      validateAttestationBinding(session, result, signed, 1952, registry, undefined, `0x${"16".repeat(32)}`),
+      validateAttestationBinding(
+        session,
+        result,
+        signed,
+        1952,
+        registry,
+        undefined,
+        `0x${"16".repeat(32)}`,
+      ),
     ).resolves.toMatch(/fingerprint commitment/);
   });
 
   it("rejects a signer that is not authorized by the onchain registry", async () => {
     const account = privateKeyToAccount(`0x${"14".repeat(32)}`);
     const digest = hashAliveAttestation(signed.attestation, signed.domain);
-    const signature = await account.signTypedData(getAliveAttestationTypedData(signed.attestation, signed.domain));
+    const signature = await account.signTypedData(
+      getAliveAttestationTypedData(signed.attestation, signed.domain),
+    );
     await expect(
       validateAttestationBinding(
         session,

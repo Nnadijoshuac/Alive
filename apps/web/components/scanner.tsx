@@ -17,12 +17,20 @@ export function Scanner({
   className?: string;
 }) {
   return (
-    <section className={`scanner ${active ? "scanner-active" : ""} ${className}`} aria-label={label}>
+    <section
+      className={`scanner ${active ? "scanner-active" : ""} ${className}`}
+      aria-label={label}
+    >
       <div className="scanner-stage">
         {children}
-        <div className="scanner-reticle" aria-hidden="true"><CornersOutIcon size={36} /></div>
+        <div className="scanner-reticle" aria-hidden="true">
+          <CornersOutIcon size={36} />
+        </div>
         {active ? <div className="scanner-plane" aria-hidden="true" /> : null}
-        <div className="scanner-label"><ScanIcon size={15} weight="bold" />{label}</div>
+        <div className="scanner-label">
+          <ScanIcon size={15} weight="bold" />
+          {label}
+        </div>
       </div>
       {footer ? <div className="scanner-footer">{footer}</div> : null}
     </section>

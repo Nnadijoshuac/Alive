@@ -87,7 +87,13 @@ export const RegistrationViewSchema = z.enum([
   "IDENTIFIER",
 ]);
 
-export const REQUIRED_REGISTRATION_VIEWS = ["FRONT", "LEFT", "RIGHT", "BACK", "DETAIL"] as const;
+export const REQUIRED_REGISTRATION_VIEWS = [
+  "FRONT",
+  "LEFT",
+  "RIGHT",
+  "BACK",
+  "DETAIL",
+] as const;
 
 export const AssetMetadataSchema = z
   .object({
@@ -114,10 +120,11 @@ export const AssetAuthorizationChallengeRequestSchema = z
   })
   .strict();
 
-export const AuthorizedAssetCreateRequestSchema = AssetCreateRequestSchema.extend({
-  assetId: Bytes32Schema,
-  authorization: WalletAuthorizationProofSchema,
-}).strict();
+export const AuthorizedAssetCreateRequestSchema =
+  AssetCreateRequestSchema.extend({
+    assetId: Bytes32Schema,
+    authorization: WalletAuthorizationProofSchema,
+  }).strict();
 
 export const AssetRecordSchema = z
   .object({
@@ -185,7 +192,11 @@ export const ViewFingerprintSchema = z
 
 export const VerificationBurstFingerprintSchema = z
   .object({
-    frameFingerprints: z.tuple([ViewFingerprintSchema, ViewFingerprintSchema, ViewFingerprintSchema]),
+    frameFingerprints: z.tuple([
+      ViewFingerprintSchema,
+      ViewFingerprintSchema,
+      ViewFingerprintSchema,
+    ]),
     intraChallengeMotion: RatioSchema,
   })
   .strict();
@@ -251,10 +262,13 @@ export const VerificationAuthorizationChallengeRequestSchema = z
   })
   .strict();
 
-export const WalletAuthorizationChallengeRequestSchema = z.discriminatedUnion("action", [
-  AssetAuthorizationChallengeRequestSchema,
-  VerificationAuthorizationChallengeRequestSchema,
-]);
+export const WalletAuthorizationChallengeRequestSchema = z.discriminatedUnion(
+  "action",
+  [
+    AssetAuthorizationChallengeRequestSchema,
+    VerificationAuthorizationChallengeRequestSchema,
+  ],
+);
 
 export const WalletAuthorizationChallengeResponseSchema = z
   .object({
@@ -263,10 +277,11 @@ export const WalletAuthorizationChallengeResponseSchema = z
   })
   .strict();
 
-export const AuthorizedVerificationSessionCreateRequestSchema = VerificationSessionAuthorizationIntentSchema.extend({
-  sessionId: Bytes32Schema,
-  authorization: WalletAuthorizationProofSchema,
-}).strict();
+export const AuthorizedVerificationSessionCreateRequestSchema =
+  VerificationSessionAuthorizationIntentSchema.extend({
+    sessionId: Bytes32Schema,
+    authorization: WalletAuthorizationProofSchema,
+  }).strict();
 
 export const VerificationSessionSchema = z
   .object({
@@ -292,7 +307,11 @@ export const AuthorizedVerificationSessionCreateResponseSchema = z
 export const VerificationCaptureRequestSchema = z
   .object({
     challengeId: Bytes32Schema,
-    frames: z.tuple([ImageCaptureSchema, ImageCaptureSchema, ImageCaptureSchema]),
+    frames: z.tuple([
+      ImageCaptureSchema,
+      ImageCaptureSchema,
+      ImageCaptureSchema,
+    ]),
   })
   .strict();
 
@@ -391,37 +410,71 @@ export const SignedAttestationSchema = z
   .strict();
 
 export type AssetCategory = z.infer<typeof AssetCategorySchema>;
-export type WalletAuthorizationAction = z.infer<typeof WalletAuthorizationActionSchema>;
+export type WalletAuthorizationAction = z.infer<
+  typeof WalletAuthorizationActionSchema
+>;
 export type WalletAuthorization = z.infer<typeof WalletAuthorizationSchema>;
-export type WalletAuthorizationDomain = z.infer<typeof WalletAuthorizationDomainSchema>;
-export type WalletAuthorizationProof = z.infer<typeof WalletAuthorizationProofSchema>;
+export type WalletAuthorizationDomain = z.infer<
+  typeof WalletAuthorizationDomainSchema
+>;
+export type WalletAuthorizationProof = z.infer<
+  typeof WalletAuthorizationProofSchema
+>;
 export type ResourceCapability = z.infer<typeof ResourceCapabilitySchema>;
 export type RegistrationView = z.infer<typeof RegistrationViewSchema>;
 export type AssetMetadata = z.infer<typeof AssetMetadataSchema>;
 export type AssetCreateRequest = z.infer<typeof AssetCreateRequestSchema>;
-export type AssetAuthorizationChallengeRequest = z.infer<typeof AssetAuthorizationChallengeRequestSchema>;
-export type AuthorizedAssetCreateRequest = z.infer<typeof AuthorizedAssetCreateRequestSchema>;
+export type AssetAuthorizationChallengeRequest = z.infer<
+  typeof AssetAuthorizationChallengeRequestSchema
+>;
+export type AuthorizedAssetCreateRequest = z.infer<
+  typeof AuthorizedAssetCreateRequestSchema
+>;
 export type AssetRecord = z.infer<typeof AssetRecordSchema>;
-export type AuthorizedAssetCreateResponse = z.infer<typeof AuthorizedAssetCreateResponseSchema>;
+export type AuthorizedAssetCreateResponse = z.infer<
+  typeof AuthorizedAssetCreateResponseSchema
+>;
 export type CaptureQuality = z.infer<typeof CaptureQualitySchema>;
 export type ImageCapture = z.infer<typeof ImageCaptureSchema>;
-export type RegistrationCaptureRequest = z.infer<typeof RegistrationCaptureRequestSchema>;
+export type RegistrationCaptureRequest = z.infer<
+  typeof RegistrationCaptureRequestSchema
+>;
 export type IdentifierData = z.infer<typeof IdentifierDataSchema>;
 export type ViewFingerprint = z.infer<typeof ViewFingerprintSchema>;
-export type VerificationBurstFingerprint = z.infer<typeof VerificationBurstFingerprintSchema>;
+export type VerificationBurstFingerprint = z.infer<
+  typeof VerificationBurstFingerprintSchema
+>;
 export type AssetFingerprint = z.infer<typeof AssetFingerprintSchema>;
 export type ChallengeType = z.infer<typeof ChallengeTypeSchema>;
 export type VerificationChallenge = z.infer<typeof VerificationChallengeSchema>;
-export type VerificationSessionStatus = z.infer<typeof VerificationSessionStatusSchema>;
-export type VerificationSessionCreate = z.infer<typeof VerificationSessionCreateSchema>;
-export type VerificationSessionAuthorizationIntent = z.infer<typeof VerificationSessionAuthorizationIntentSchema>;
-export type VerificationAuthorizationChallengeRequest = z.infer<typeof VerificationAuthorizationChallengeRequestSchema>;
-export type WalletAuthorizationChallengeRequest = z.infer<typeof WalletAuthorizationChallengeRequestSchema>;
-export type WalletAuthorizationChallengeResponse = z.infer<typeof WalletAuthorizationChallengeResponseSchema>;
-export type AuthorizedVerificationSessionCreateRequest = z.infer<typeof AuthorizedVerificationSessionCreateRequestSchema>;
+export type VerificationSessionStatus = z.infer<
+  typeof VerificationSessionStatusSchema
+>;
+export type VerificationSessionCreate = z.infer<
+  typeof VerificationSessionCreateSchema
+>;
+export type VerificationSessionAuthorizationIntent = z.infer<
+  typeof VerificationSessionAuthorizationIntentSchema
+>;
+export type VerificationAuthorizationChallengeRequest = z.infer<
+  typeof VerificationAuthorizationChallengeRequestSchema
+>;
+export type WalletAuthorizationChallengeRequest = z.infer<
+  typeof WalletAuthorizationChallengeRequestSchema
+>;
+export type WalletAuthorizationChallengeResponse = z.infer<
+  typeof WalletAuthorizationChallengeResponseSchema
+>;
+export type AuthorizedVerificationSessionCreateRequest = z.infer<
+  typeof AuthorizedVerificationSessionCreateRequestSchema
+>;
 export type VerificationSession = z.infer<typeof VerificationSessionSchema>;
-export type AuthorizedVerificationSessionCreateResponse = z.infer<typeof AuthorizedVerificationSessionCreateResponseSchema>;
-export type VerificationCaptureRequest = z.infer<typeof VerificationCaptureRequestSchema>;
+export type AuthorizedVerificationSessionCreateResponse = z.infer<
+  typeof AuthorizedVerificationSessionCreateResponseSchema
+>;
+export type VerificationCaptureRequest = z.infer<
+  typeof VerificationCaptureRequestSchema
+>;
 export type VerificationSignals = z.infer<typeof VerificationSignalsSchema>;
 export type ReasonCode = z.infer<typeof ReasonCodeSchema>;
 export type VerificationResult = z.infer<typeof VerificationResultSchema>;

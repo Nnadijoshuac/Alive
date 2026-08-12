@@ -20,10 +20,16 @@ function random(seed: number): [number, number] {
   let next = seed + 0x6d2b79f5;
   next = Math.imul(next ^ (next >>> 15), next | 1);
   next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
-  return [((next ^ (next >>> 14)) >>> 0) / 4_294_967_296, (seed + 0x6d2b79f5) >>> 0];
+  return [
+    ((next ^ (next >>> 14)) >>> 0) / 4_294_967_296,
+    (seed + 0x6d2b79f5) >>> 0,
+  ];
 }
 
-export function fingerprintPoints(hash: string, count = 54): FingerprintPoint[] {
+export function fingerprintPoints(
+  hash: string,
+  count = 54,
+): FingerprintPoint[] {
   let seed = hashSeed(hash.toLowerCase());
   return Array.from({ length: count }, (_, id) => {
     let value: number;
@@ -47,7 +53,10 @@ export function fingerprintPoints(hash: string, count = 54): FingerprintPoint[] 
   });
 }
 
-export function fingerprintLinks(points: FingerprintPoint[], maxDistance = 15): Array<[number, number]> {
+export function fingerprintLinks(
+  points: FingerprintPoint[],
+  maxDistance = 15,
+): Array<[number, number]> {
   const links: Array<[number, number]> = [];
   points.forEach((point, index) => {
     let nearestIndex = -1;
@@ -61,7 +70,8 @@ export function fingerprintLinks(points: FingerprintPoint[], maxDistance = 15): 
         nearestIndex = candidate;
       }
     }
-    if (nearestIndex >= 0 && nearestDistance <= maxDistance) links.push([index, nearestIndex]);
+    if (nearestIndex >= 0 && nearestDistance <= maxDistance)
+      links.push([index, nearestIndex]);
   });
   return links;
 }

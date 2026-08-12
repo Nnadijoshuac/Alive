@@ -7,10 +7,13 @@ import {
   type VerificationSignals,
 } from "./schemas.js";
 
-const WeightSetSchema = z.record(z.string(), BasisPointsSchema).refine(
-  (weights) => Object.values(weights).reduce((sum, value) => sum + value, 0) === 10_000,
-  "Weights must total 10,000 basis points",
-);
+const WeightSetSchema = z
+  .record(z.string(), BasisPointsSchema)
+  .refine(
+    (weights) =>
+      Object.values(weights).reduce((sum, value) => sum + value, 0) === 10_000,
+    "Weights must total 10,000 basis points",
+  );
 
 export const ScorePolicySchema = z
   .object({
@@ -71,7 +74,10 @@ export function basisPointsToRatio(basisPoints: number): number {
   return BasisPointsSchema.parse(basisPoints) / 10_000;
 }
 
-function weightedScore(values: Record<string, number | undefined>, weights: Record<string, number>): number {
+function weightedScore(
+  values: Record<string, number | undefined>,
+  weights: Record<string, number>,
+): number {
   let weighted = 0;
   let availableWeight = 0;
   for (const [key, weight] of Object.entries(weights)) {
@@ -100,7 +106,9 @@ export function scoreVerification(
 ): ScoredVerification {
   const signals = VerificationSignalsSchema.parse(rawSignals);
   const policy = ScorePolicySchema.parse(rawPolicy);
-  const identifierSimilarity = signals.identifierExpected ? signals.identifierSimilarity : undefined;
+  const identifierSimilarity = signals.identifierExpected
+    ? signals.identifierSimilarity
+    : undefined;
 
   const identityScore = weightedScore(
     {
@@ -135,13 +143,22 @@ export function scoreVerification(
   const integrityScoreBps = ratioToBasisPoints(integrityScore);
   const reasonCodes: ReasonCode[] = [];
 
-  if (identityScoreBps < policy.thresholds.identity) reasonCodes.push("IDENTITY_BELOW_THRESHOLD");
-  if (livenessScoreBps < policy.thresholds.liveness) reasonCodes.push("LIVENESS_BELOW_THRESHOLD");
-  if (integrityScoreBps < policy.thresholds.integrity) reasonCodes.push("INTEGRITY_BELOW_THRESHOLD");
-  if (signals.replayRisk * 10_000 > policy.thresholds.maximumReplayRisk) reasonCodes.push("REPLAY_RISK_HIGH");
-  if (signals.motionConsistency * 10_000 < policy.thresholds.minimumMotion) reasonCodes.push("MOTION_INSUFFICIENT");
-  if (signals.imageQuality * 10_000 < policy.thresholds.minimumImageQuality) reasonCodes.push("CAPTURE_QUALITY_LOW");
-  if (policy.criticalIdentifierMismatchFails && signals.identifierCriticalMismatch) {
+  if (identityScoreBps < policy.thresholds.identity)
+    reasonCodes.push("IDENTITY_BELOW_THRESHOLD");
+  if (livenessScoreBps < policy.thresholds.liveness)
+    reasonCodes.push("LIVENESS_BELOW_THRESHOLD");
+  if (integrityScoreBps < policy.thresholds.integrity)
+    reasonCodes.push("INTEGRITY_BELOW_THRESHOLD");
+  if (signals.replayRisk * 10_000 > policy.thresholds.maximumReplayRisk)
+    reasonCodes.push("REPLAY_RISK_HIGH");
+  if (signals.motionConsistency * 10_000 < policy.thresholds.minimumMotion)
+    reasonCodes.push("MOTION_INSUFFICIENT");
+  if (signals.imageQuality * 10_000 < policy.thresholds.minimumImageQuality)
+    reasonCodes.push("CAPTURE_QUALITY_LOW");
+  if (
+    policy.criticalIdentifierMismatchFails &&
+    signals.identifierCriticalMismatch
+  ) {
     reasonCodes.push("IDENTIFIER_MISMATCH");
   }
 

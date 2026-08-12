@@ -35,5 +35,8 @@ export function escrowWasFunded(status: number): boolean {
 }
 
 export function escrowCanSettle(status: number): boolean {
-  return status === EscrowStatus.AwaitingVerification || status === EscrowStatus.Disputed;
+  return (
+    status === EscrowStatus.AwaitingVerification ||
+    status === EscrowStatus.Disputed
+  );
 }

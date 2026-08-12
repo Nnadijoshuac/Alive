@@ -39,8 +39,12 @@ export const aliveAttestationTypes = {
 } as const;
 
 /** Matches Solidity: keccak256(abi.encode(escrowContractAddress, escrowIdBytes32)). */
-export function createEscrowAttestationContext(escrowContract: Address, escrowId: Hex): Hex {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(escrowId)) throw new TypeError("Escrow ID must be bytes32");
+export function createEscrowAttestationContext(
+  escrowContract: Address,
+  escrowId: Hex,
+): Hex {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(escrowId))
+    throw new TypeError("Escrow ID must be bytes32");
   return keccak256(
     encodeAbiParameters(
       [{ type: "address" }, { type: "bytes32" }],
@@ -49,7 +53,9 @@ export function createEscrowAttestationContext(escrowContract: Address, escrowId
   );
 }
 
-export function getAliveAttestationDomain(input: AttestationDomain): TypedDataDomain {
+export function getAliveAttestationDomain(
+  input: AttestationDomain,
+): TypedDataDomain {
   const domain = AttestationDomainSchema.parse(input);
   return {
     name: ALIVE_ATTESTATION_DOMAIN_NAME,
@@ -59,7 +65,10 @@ export function getAliveAttestationDomain(input: AttestationDomain): TypedDataDo
   };
 }
 
-export function getAliveAttestationTypedData(attestationInput: AliveAttestation, domainInput: AttestationDomain) {
+export function getAliveAttestationTypedData(
+  attestationInput: AliveAttestation,
+  domainInput: AttestationDomain,
+) {
   const attestation = AliveAttestationSchema.parse(attestationInput);
   return {
     domain: getAliveAttestationDomain(domainInput),
@@ -82,7 +91,10 @@ export function getAliveAttestationTypedData(attestationInput: AliveAttestation,
   } as const;
 }
 
-export function hashAliveAttestation(attestation: AliveAttestation, domain: AttestationDomain): Hex {
+export function hashAliveAttestation(
+  attestation: AliveAttestation,
+  domain: AttestationDomain,
+): Hex {
   return hashTypedData(getAliveAttestationTypedData(attestation, domain));
 }
 
@@ -91,5 +103,8 @@ export async function recoverAliveAttestationSigner(
   domain: AttestationDomain,
   signature: Hex,
 ): Promise<Address> {
-  return recoverTypedDataAddress({ ...getAliveAttestationTypedData(attestation, domain), signature });
+  return recoverTypedDataAddress({
+    ...getAliveAttestationTypedData(attestation, domain),
+    signature,
+  });
 }

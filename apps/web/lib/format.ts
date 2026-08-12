@@ -16,5 +16,8 @@ export function formatDate(value: string | number | Date): string {
 }
 
 export function humanizeCode(value: string): string {
-  return value.toLowerCase().replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+  return value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
 }

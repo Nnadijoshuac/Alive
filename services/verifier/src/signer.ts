@@ -25,9 +25,16 @@ export class AttestationSigner {
 
   constructor(options: AttestationSignerOptions) {
     this.ttlSeconds = options.attestationTtlSeconds;
-    if (options.privateKey !== undefined && options.chainId !== undefined && options.verifyingContract !== undefined) {
+    if (
+      options.privateKey !== undefined &&
+      options.chainId !== undefined &&
+      options.verifyingContract !== undefined
+    ) {
       this.account = privateKeyToAccount(options.privateKey);
-      this.domain = { chainId: options.chainId, verifyingContract: options.verifyingContract };
+      this.domain = {
+        chainId: options.chainId,
+        verifyingContract: options.verifyingContract,
+      };
     }
   }
 
@@ -53,15 +60,27 @@ export class AttestationSigner {
       );
     }
     if (session.sessionId.toLowerCase() !== result.sessionId.toLowerCase()) {
-      throw new ProtocolError(409, "RESULT_SESSION_MISMATCH", "Result does not belong to this session");
+      throw new ProtocolError(
+        409,
+        "RESULT_SESSION_MISMATCH",
+        "Result does not belong to this session",
+      );
     }
     if (now.getTime() >= Date.parse(session.expiresAt)) {
-      throw new ProtocolError(410, "SESSION_EXPIRED", "Verification session expired before attestation issuance");
+      throw new ProtocolError(
+        410,
+        "SESSION_EXPIRED",
+        "Verification session expired before attestation issuance",
+      );
     }
     const issuedAt = Math.floor(Date.parse(result.timestamp) / 1_000);
     const expiresAt = issuedAt + this.ttlSeconds;
     if (Math.floor(now.getTime() / 1_000) >= expiresAt) {
-      throw new ProtocolError(410, "ATTESTATION_WINDOW_EXPIRED", "Analysis is too old to attest");
+      throw new ProtocolError(
+        410,
+        "ATTESTATION_WINDOW_EXPIRED",
+        "Analysis is too old to attest",
+      );
     }
     const attestation: AliveAttestation = {
       assetId: result.assetId,
@@ -77,7 +96,9 @@ export class AttestationSigner {
       issuedAt,
       expiresAt,
     };
-    const signature = await this.account.signTypedData(getAliveAttestationTypedData(attestation, this.domain));
+    const signature = await this.account.signTypedData(
+      getAliveAttestationTypedData(attestation, this.domain),
+    );
     return {
       attestation,
       domain: this.domain,

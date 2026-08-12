@@ -12,7 +12,8 @@ export type AssetCategory =
   | "MACHINERY"
   | "OTHER";
 
-export type RegistrationView = "FRONT" | "LEFT" | "RIGHT" | "BACK" | "DETAIL" | "IDENTIFIER";
+export type RegistrationView =
+  "FRONT" | "LEFT" | "RIGHT" | "BACK" | "DETAIL" | "IDENTIFIER";
 
 export interface AssetMetadata {
   name: string;

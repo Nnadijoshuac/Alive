@@ -2,9 +2,11 @@ import { keccak256, toBytes, type Hex } from "viem";
 
 function serialize(value: unknown, path: string): string {
   if (value === null) return "null";
-  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "string" || typeof value === "boolean")
+    return JSON.stringify(value);
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new TypeError(`Non-finite number at ${path}`);
+    if (!Number.isFinite(value))
+      throw new TypeError(`Non-finite number at ${path}`);
     return JSON.stringify(Object.is(value, -0) ? 0 : value);
   }
   if (Array.isArray(value)) {
@@ -18,7 +20,8 @@ function serialize(value: unknown, path: string): string {
     return `{${Object.entries(value as Record<string, unknown>)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => {
-        if (entry === undefined) throw new TypeError(`Undefined value at ${path}.${key}`);
+        if (entry === undefined)
+          throw new TypeError(`Undefined value at ${path}.${key}`);
         return `${JSON.stringify(key)}:${serialize(entry, `${path}.${key}`)}`;
       })
       .join(",")}}`;

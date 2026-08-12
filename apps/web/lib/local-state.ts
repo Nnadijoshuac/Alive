@@ -1,5 +1,11 @@
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import type { Address, AssetRecord, Hex, SignedAttestation, VerificationResult } from "./types";
+import type {
+  Address,
+  AssetRecord,
+  Hex,
+  SignedAttestation,
+  VerificationResult,
+} from "./types";
 
 const ASSET_KEY = "alive.local.assets";
 const VERIFICATION_KEY = "alive.local.verifications";
@@ -25,7 +31,9 @@ export interface LocalEscrowEntry {
 function readArray<T>(key: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const value = JSON.parse(window.localStorage.getItem(key) ?? "[]") as unknown;
+    const value = JSON.parse(
+      window.localStorage.getItem(key) ?? "[]",
+    ) as unknown;
     return Array.isArray(value) ? (value as T[]) : [];
   } catch {
     return [];
@@ -39,7 +47,9 @@ export function localAssets(): LocalAssetEntry[] {
 function storableAssetEntry(entry: LocalAssetEntry): LocalAssetEntry {
   return {
     asset: entry.asset,
-    ...(entry.transactionHash === undefined ? {} : { transactionHash: entry.transactionHash }),
+    ...(entry.transactionHash === undefined
+      ? {}
+      : { transactionHash: entry.transactionHash }),
   };
 }
 
@@ -47,7 +57,10 @@ export function rememberAsset(entry: LocalAssetEntry): void {
   const current = localAssets()
     .filter((item) => item.asset.assetId !== entry.asset.assetId)
     .map(storableAssetEntry);
-  window.localStorage.setItem(ASSET_KEY, JSON.stringify([storableAssetEntry(entry), ...current]));
+  window.localStorage.setItem(
+    ASSET_KEY,
+    JSON.stringify([storableAssetEntry(entry), ...current]),
+  );
 }
 
 export function localVerifications(): LocalVerificationEntry[] {
@@ -55,8 +68,13 @@ export function localVerifications(): LocalVerificationEntry[] {
 }
 
 export function rememberVerification(entry: LocalVerificationEntry): void {
-  const current = localVerifications().filter((item) => item.result.sessionId !== entry.result.sessionId);
-  window.localStorage.setItem(VERIFICATION_KEY, JSON.stringify([entry, ...current]));
+  const current = localVerifications().filter(
+    (item) => item.result.sessionId !== entry.result.sessionId,
+  );
+  window.localStorage.setItem(
+    VERIFICATION_KEY,
+    JSON.stringify([entry, ...current]),
+  );
 }
 
 export function localEscrows(): LocalEscrowEntry[] {
@@ -64,7 +82,9 @@ export function localEscrows(): LocalEscrowEntry[] {
 }
 
 export function rememberEscrow(entry: LocalEscrowEntry): void {
-  const current = localEscrows().filter((item) => item.escrowId !== entry.escrowId);
+  const current = localEscrows().filter(
+    (item) => item.escrowId !== entry.escrowId,
+  );
   window.localStorage.setItem(ESCROW_KEY, JSON.stringify([entry, ...current]));
 }
 
@@ -75,11 +95,12 @@ export function clearPresentationState(): void {
 }
 
 export function localSubjectAccount(): ReturnType<typeof privateKeyToAccount> {
-  if (typeof window === "undefined") throw new Error("Local signer is available only in the browser.");
+  if (typeof window === "undefined")
+    throw new Error("Local signer is available only in the browser.");
   const key = "alive.local.signing-key";
   const existing = window.sessionStorage.getItem(key);
   const privateKey = existing?.match(/^0x[0-9a-fA-F]{64}$/)
-    ? existing as Hex
+    ? (existing as Hex)
     : (() => {
         const value = generatePrivateKey();
         window.sessionStorage.setItem(key, value);

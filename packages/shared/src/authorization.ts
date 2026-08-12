@@ -76,7 +76,9 @@ export function hashCreateVerificationSessionAuthorizationPayload(input: {
   });
 }
 
-export function getAliveAuthorizationDomain(input: WalletAuthorizationDomain): TypedDataDomain {
+export function getAliveAuthorizationDomain(
+  input: WalletAuthorizationDomain,
+): TypedDataDomain {
   const domain = WalletAuthorizationDomainSchema.parse(input);
   return {
     name: ALIVE_AUTHORIZATION_DOMAIN_NAME,

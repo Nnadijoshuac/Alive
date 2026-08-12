@@ -76,10 +76,33 @@ describe("protocol schema bounds", () => {
       mimeType: "image/jpeg" as const,
       capturedAt: "2026-01-01T00:00:01.000Z",
     };
-    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame, frame] }).success).toBe(true);
-    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame] }).success).toBe(false);
-    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, frames: [frame, frame, frame, frame] }).success).toBe(false);
-    expect(VerificationCaptureRequestSchema.safeParse({ challengeId: bytes32, ...frame }).success).toBe(false);
-    expect(RegistrationCaptureRequestSchema.safeParse({ ...frame, view: "FRONT" }).success).toBe(true);
+    expect(
+      VerificationCaptureRequestSchema.safeParse({
+        challengeId: bytes32,
+        frames: [frame, frame, frame],
+      }).success,
+    ).toBe(true);
+    expect(
+      VerificationCaptureRequestSchema.safeParse({
+        challengeId: bytes32,
+        frames: [frame, frame],
+      }).success,
+    ).toBe(false);
+    expect(
+      VerificationCaptureRequestSchema.safeParse({
+        challengeId: bytes32,
+        frames: [frame, frame, frame, frame],
+      }).success,
+    ).toBe(false);
+    expect(
+      VerificationCaptureRequestSchema.safeParse({
+        challengeId: bytes32,
+        ...frame,
+      }).success,
+    ).toBe(false);
+    expect(
+      RegistrationCaptureRequestSchema.safeParse({ ...frame, view: "FRONT" })
+        .success,
+    ).toBe(true);
   });
 });
