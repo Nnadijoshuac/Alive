@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import assetIdParityVector from "../../shared/test/fixtures/asset-id-parity.json";
 
 type Attestation = {
   assetId: string;
@@ -38,11 +39,19 @@ const ATTESTATION_TYPES = {
 const hashLabel = (label: string): string =>
   ethers.keccak256(ethers.toUtf8Bytes(label));
 
-const ASSET_ID = hashLabel("alive-asset-0001");
+const REGISTRATION_NONCE = hashLabel("alive-asset-registration-0001");
 const FINGERPRINT_HASH = hashLabel("private-fingerprint-commitment");
 const METADATA_HASH = hashLabel("asset-metadata");
 const EVIDENCE_HASH = hashLabel("inspection-evidence");
 const PAYMENT = 250n * 10n ** 6n;
+
+const deriveAssetId = (owner: string, registrationNonce: string): string =>
+  ethers.keccak256(
+    ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address", "bytes32"],
+      [owner, registrationNonce],
+    ),
+  );
 
 let nextSession = 0;
 
@@ -61,10 +70,13 @@ async function deployProtocolFixture() {
   const assetRegistry: any = await AssetRegistry.deploy();
   await assetRegistry.waitForDeployment();
 
+  const assetId = deriveAssetId(seller.address, REGISTRATION_NONCE);
+
   await assetRegistry
     .connect(seller)
     .registerAsset(
-      ASSET_ID,
+      assetId,
+      REGISTRATION_NONCE,
       FINGERPRINT_HASH,
       METADATA_HASH,
       "ipfs://public-metadata-only",
@@ -103,6 +115,8 @@ async function deployProtocolFixture() {
     buyer,
     attacker,
     replacementVerifier,
+    assetId,
+    registrationNonce: REGISTRATION_NONCE,
     assetRegistry,
     attestationRegistry,
     escrow,
@@ -139,7 +153,7 @@ async function makeAttestation(
   const now = await time.latest();
   nextSession += 1;
   return {
-    assetId: ASSET_ID,
+    assetId: fixture.assetId,
     fingerprintHash: FINGERPRINT_HASH,
     sessionId: hashLabel(`session-${nextSession}`),
     subject: fixture.seller.address,
@@ -167,7 +181,7 @@ async function createEscrow(
   } = {},
 ): Promise<string> {
   const token = options.token ?? fixture.token;
-  const assetId = options.assetId ?? ASSET_ID;
+  const assetId = options.assetId ?? fixture.assetId;
   const amount = options.amount ?? PAYMENT;
   const expiresAt = options.expiresAt ?? (await time.latest()) + 3_600;
   const args = [
@@ -200,25 +214,59 @@ async function fundEscrow(
 
 describe("AliveAssetRegistry", function () {
   it("registers a compact offchain commitment and emits its owner", async function () {
-    const { assetRegistry, seller } = await loadFixture(deployProtocolFixture);
-    const asset = await assetRegistry.getAsset(ASSET_ID);
+    const { assetRegistry, seller, assetId } = await loadFixture(deployProtocolFixture);
+    const asset = await assetRegistry.getAsset(assetId);
 
     expect(asset.owner).to.equal(seller.address);
     expect(asset.fingerprintHash).to.equal(FINGERPRINT_HASH);
     expect(asset.metadataHash).to.equal(METADATA_HASH);
     expect(asset.metadataURI).to.equal("ipfs://public-metadata-only");
     expect(asset.registeredAt).to.be.greaterThan(0n);
-    expect(await assetRegistry.assetExists(ASSET_ID)).to.equal(true);
+    expect(await assetRegistry.assetExists(assetId)).to.equal(true);
+  });
+
+  it("matches the shared abi.encode asset-ID derivation vector", async function () {
+    const { assetRegistry } = await loadFixture(deployProtocolFixture);
+    expect(
+      await assetRegistry.deriveAssetId(
+        assetIdParityVector.owner,
+        assetIdParityVector.registrationNonce,
+      ),
+    ).to.equal(assetIdParityVector.assetId);
+  });
+
+  it("prevents another caller from front-running the same asset ID and nonce", async function () {
+    const { assetRegistry, seller, attacker } = await loadFixture(deployProtocolFixture);
+    const registrationNonce = hashLabel("front-run-regression");
+    const assetId = deriveAssetId(seller.address, registrationNonce);
+    const attackerAssetId = deriveAssetId(attacker.address, registrationNonce);
+
+    await expect(
+      assetRegistry
+        .connect(attacker)
+        .registerAsset(assetId, registrationNonce, hashLabel("front-run-fp"), METADATA_HASH, ""),
+    )
+      .to.be.revertedWithCustomError(assetRegistry, "AssetIdMismatch")
+      .withArgs(attackerAssetId, assetId);
+    expect(await assetRegistry.assetExists(assetId)).to.equal(false);
+
+    await expect(
+      assetRegistry
+        .connect(seller)
+        .registerAsset(assetId, registrationNonce, hashLabel("front-run-fp"), METADATA_HASH, ""),
+    ).to.emit(assetRegistry, "AssetRegistered");
+    expect(await assetRegistry.assetOwner(assetId)).to.equal(seller.address);
   });
 
   it("rejects duplicate IDs and invalid commitments", async function () {
-    const { assetRegistry, seller } = await loadFixture(deployProtocolFixture);
+    const { assetRegistry, seller, assetId, registrationNonce } = await loadFixture(deployProtocolFixture);
 
     await expect(
       assetRegistry
         .connect(seller)
         .registerAsset(
-          ASSET_ID,
+          assetId,
+          registrationNonce,
           hashLabel("new"),
           METADATA_HASH,
           "ipfs://other",
@@ -228,13 +276,16 @@ describe("AliveAssetRegistry", function () {
         assetRegistry,
         "AssetAlreadyRegistered",
       )
-      .withArgs(ASSET_ID);
+      .withArgs(assetId);
+
+    const nextRegistrationNonce = hashLabel("new-registration");
 
     await expect(
       assetRegistry
         .connect(seller)
         .registerAsset(
-          hashLabel("new-id"),
+          deriveAssetId(seller.address, nextRegistrationNonce),
+          nextRegistrationNonce,
           ethers.ZeroHash,
           METADATA_HASH,
           "",
@@ -243,19 +294,19 @@ describe("AliveAssetRegistry", function () {
   });
 
   it("allows only the current owner to transfer an asset", async function () {
-    const { assetRegistry, seller, attacker, buyer } =
+    const { assetRegistry, seller, attacker, buyer, assetId } =
       await loadFixture(deployProtocolFixture);
 
     await expect(
-      assetRegistry.connect(attacker).transferAsset(ASSET_ID, buyer.address),
+      assetRegistry.connect(attacker).transferAsset(assetId, buyer.address),
     ).to.be.revertedWithCustomError(assetRegistry, "NotAssetOwner");
 
     await expect(
-      assetRegistry.connect(seller).transferAsset(ASSET_ID, buyer.address),
+      assetRegistry.connect(seller).transferAsset(assetId, buyer.address),
     )
       .to.emit(assetRegistry, "AssetOwnershipTransferred")
-      .withArgs(ASSET_ID, seller.address, buyer.address);
-    expect(await assetRegistry.assetOwner(ASSET_ID)).to.equal(buyer.address);
+      .withArgs(assetId, seller.address, buyer.address);
+    expect(await assetRegistry.assetOwner(assetId)).to.equal(buyer.address);
   });
 });
 
@@ -280,7 +331,7 @@ describe("AliveAttestationRegistry", function () {
     )
       .to.emit(fixture.attestationRegistry, "AssetVerified")
       .withArgs(
-        ASSET_ID,
+        fixture.assetId,
         FINGERPRINT_HASH,
         attestation.sessionId,
         fixture.seller.address,
@@ -296,7 +347,7 @@ describe("AliveAttestationRegistry", function () {
       );
 
     const record =
-      await fixture.attestationRegistry.latestVerification(ASSET_ID);
+      await fixture.attestationRegistry.latestVerification(fixture.assetId);
     expect(record.digest).to.equal(expectedDigest);
     expect(record.fingerprintHash).to.equal(FINGERPRINT_HASH);
     expect(record.identityScore).to.equal(9_200n);
@@ -306,7 +357,7 @@ describe("AliveAttestationRegistry", function () {
       ),
     ).to.equal(true);
     expect(
-      await fixture.attestationRegistry.verificationCount(ASSET_ID),
+      await fixture.attestationRegistry.verificationCount(fixture.assetId),
     ).to.equal(1n);
   });
 
@@ -480,7 +531,7 @@ describe("AliveAttestationRegistry", function () {
       ),
     ).to.equal(false);
     expect(
-      await fixture.attestationRegistry.verificationCount(ASSET_ID),
+      await fixture.attestationRegistry.verificationCount(fixture.assetId),
     ).to.equal(0n);
   });
 
@@ -626,11 +677,13 @@ describe("AliveEscrow", function () {
 
   it("rejects a proof for another asset", async function () {
     const fixture = await loadFixture(deployProtocolFixture);
-    const secondAsset = hashLabel("alive-asset-0002");
+    const secondRegistrationNonce = hashLabel("alive-asset-registration-0002");
+    const secondAsset = deriveAssetId(fixture.seller.address, secondRegistrationNonce);
     await fixture.assetRegistry
       .connect(fixture.seller)
       .registerAsset(
         secondAsset,
+        secondRegistrationNonce,
         hashLabel("fp-2"),
         hashLabel("metadata-2"),
         "",
@@ -715,7 +768,7 @@ describe("AliveEscrow", function () {
     const escrowId = await createEscrow(fixture);
     await fixture.assetRegistry
       .connect(fixture.seller)
-      .transferAsset(ASSET_ID, fixture.attacker.address);
+      .transferAsset(fixture.assetId, fixture.attacker.address);
 
     await fixture.token
       .connect(fixture.buyer)
@@ -728,11 +781,11 @@ describe("AliveEscrow", function () {
 
     await fixture.assetRegistry
       .connect(fixture.attacker)
-      .transferAsset(ASSET_ID, fixture.seller.address);
+      .transferAsset(fixture.assetId, fixture.seller.address);
     await fundEscrow(fixture, escrowId);
     await fixture.assetRegistry
       .connect(fixture.seller)
-      .transferAsset(ASSET_ID, fixture.attacker.address);
+      .transferAsset(fixture.assetId, fixture.attacker.address);
 
     const attestation = await makeAttestation(fixture, {
       context: await fixture.escrow.escrowContext(escrowId),

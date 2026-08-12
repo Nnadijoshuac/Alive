@@ -10,6 +10,19 @@ interface IAliveAssetRegistry {
         string metadataURI;
     }
 
+    function deriveAssetId(
+        address owner,
+        bytes32 registrationNonce
+    ) external pure returns (bytes32);
+
+    function registerAsset(
+        bytes32 assetId,
+        bytes32 registrationNonce,
+        bytes32 fingerprintHash,
+        bytes32 metadataHash,
+        string calldata metadataURI
+    ) external returns (bytes32);
+
     function assetExists(bytes32 assetId) external view returns (bool);
 
     function assetOwner(bytes32 assetId) external view returns (address);

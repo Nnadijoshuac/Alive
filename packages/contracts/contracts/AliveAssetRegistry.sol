@@ -8,6 +8,7 @@ import {IAliveAssetRegistry} from "./interfaces/IAliveAssetRegistry.sol";
 /// inspection media and visual feature data must remain offchain.
 contract AliveAssetRegistry is IAliveAssetRegistry {
     error AssetAlreadyRegistered(bytes32 assetId);
+    error AssetIdMismatch(bytes32 expectedAssetId, bytes32 suppliedAssetId);
     error AssetNotRegistered(bytes32 assetId);
     error InvalidAssetId();
     error InvalidCommitment();
@@ -30,14 +31,27 @@ contract AliveAssetRegistry is IAliveAssetRegistry {
 
     mapping(bytes32 assetId => Asset asset) private _assets;
 
-    /// @notice Registers an externally generated, globally unique asset ID.
+    /// @notice Derives the identifier committed to an owner and one registration nonce.
+    function deriveAssetId(
+        address owner,
+        bytes32 registrationNonce
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(owner, registrationNonce));
+    }
+
+    /// @notice Registers an owner-bound asset ID derived from the caller and nonce.
     function registerAsset(
         bytes32 assetId,
+        bytes32 registrationNonce,
         bytes32 fingerprintHash,
         bytes32 metadataHash,
         string calldata metadataURI
     ) external returns (bytes32) {
         if (assetId == bytes32(0)) revert InvalidAssetId();
+        bytes32 expectedAssetId = deriveAssetId(msg.sender, registrationNonce);
+        if (assetId != expectedAssetId) {
+            revert AssetIdMismatch(expectedAssetId, assetId);
+        }
         if (fingerprintHash == bytes32(0) || metadataHash == bytes32(0)) {
             revert InvalidCommitment();
         }

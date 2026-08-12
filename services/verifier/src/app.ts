@@ -6,6 +6,7 @@ import {
   REQUIRED_REGISTRATION_VIEWS,
   VerificationCaptureRequestSchema,
   WalletAuthorizationChallengeRequestSchema,
+  createAssetId,
   createEvidenceCommitment,
   hashCreateAssetAuthorizationPayload,
   hashCreateVerificationSessionAuthorizationPayload,
@@ -234,12 +235,13 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
     const issued = now();
     const issuedAt = unixSeconds(issued);
     repository.pruneAuthorizations(issuedAt);
-    const resource = randomBytes32();
     const expiresAt = issuedAt + config.authorizationTtlSeconds;
 
     let authorization: WalletAuthorization;
     if (input.action === "CREATE_ASSET") {
       requireNonzeroAddress(input.request.owner, "Asset owner");
+      const registrationNonce = randomBytes32();
+      const resource = createAssetId(input.request.owner, registrationNonce);
       authorization = {
         audience: config.authorizationAudience,
         action: input.action,
@@ -251,12 +253,13 @@ export async function buildApp(config: VerifierConfig, dependencies: AppDependen
           owner: input.request.owner,
           metadata: input.request.metadata,
         }),
-        nonce: randomBytes32(),
+        nonce: registrationNonce,
         issuedAt,
         expiresAt,
       };
     } else {
       requireNonzeroAddress(input.request.wallet, "Verification wallet");
+      const resource = randomBytes32();
       const asset = requireAsset(repository, input.request.assetId);
       if (!repository.isAssetOwnerAuthorized(input.request.assetId)) {
         throw new ProtocolError(409, "ASSET_REAUTHORIZATION_REQUIRED", "Legacy asset owner was not wallet-authenticated");

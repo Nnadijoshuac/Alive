@@ -8,6 +8,7 @@ import type {
   ViewFingerprint,
 } from "@alive/shared";
 import {
+  createAssetId,
   getAliveAuthorizationTypedData,
   type AssetMetadata,
   type WalletAuthorization,
@@ -17,7 +18,8 @@ import { privateKeyToAccount } from "viem/accounts";
 
 export const ownerAccount = privateKeyToAccount(`0x${"22".repeat(32)}`);
 export const owner = ownerAccount.address;
-export const assetId = `0x${"11".repeat(32)}` as const;
+export const registrationNonce = `0x${"11".repeat(32)}` as const;
+export const assetId = createAssetId(owner, registrationNonce);
 export const zeroBytes32 = `0x${"00".repeat(32)}` as const;
 
 export function viewFingerprint(view: RegistrationView, suffix = "01"): ViewFingerprint {

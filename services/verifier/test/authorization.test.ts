@@ -1,5 +1,6 @@
 import {
   createEvidenceCommitment,
+  createAssetId,
   getAliveAuthorizationTypedData,
   type AssetMetadata,
   type WalletAuthorization,
@@ -18,6 +19,7 @@ import {
   authorizationDomain,
   owner,
   ownerAccount,
+  registrationNonce,
   testAssetMetadata,
   viewFingerprint,
   zeroBytes32,
@@ -78,6 +80,9 @@ describe("wallet-authorized verifier resources", () => {
     });
     expect(challengeResponse.statusCode).toBe(201);
     const challenge = challengeResponse.json();
+    expect(challenge.authorization.resource).toBe(
+      createAssetId(owner, challenge.authorization.nonce),
+    );
     const signature = await sign(ownerAccount, challenge.authorization);
     const createdResponse = await app.inject({
       method: "POST",
@@ -409,7 +414,7 @@ describe("wallet-authorized verifier resources", () => {
       resource: assetId,
       context: zeroBytes32,
       payloadHash: `0x${"44".repeat(32)}`,
-      nonce: `0x${"45".repeat(32)}`,
+      nonce: registrationNonce,
       issuedAt: Math.floor(now.getTime() / 1_000),
       expiresAt: Math.floor(now.getTime() / 1_000) + 120,
     };

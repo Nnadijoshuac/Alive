@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import {
+  AddressSchema,
   AssetFingerprintSchema,
   AssetMetadataSchema,
   SignedAttestationSchema,
@@ -10,6 +11,7 @@ import {
   VerificationSessionSchema,
   ViewFingerprintSchema,
   WalletAuthorizationSchema,
+  createAssetId,
   type AssetFingerprint,
   type AssetMetadata,
   type AssetRecord,
@@ -234,6 +236,14 @@ export class AliveRepository {
     capabilityExpiresAt: number;
   }): AssetRecord {
     const metadata = AssetMetadataSchema.parse(input.metadata);
+    const expectedAssetId = createAssetId(AddressSchema.parse(input.owner), input.authorization.nonce);
+    if (expectedAssetId.toLowerCase() !== input.assetId.toLowerCase()) {
+      throw new ProtocolError(
+        403,
+        "AUTHORIZATION_MISMATCH",
+        "Asset ID must be derived from the authorized owner and registration nonce",
+      );
+    }
     try {
       this.database.transaction(() => {
         this.consumeAuthorization(input.authorization, input.consumedAtSeconds);
