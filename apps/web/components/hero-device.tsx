@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { Component, useEffect, useState, type ReactNode } from "react";
-import { useReducedMotion } from "motion/react";
 import { ScanIcon } from "@phosphor-icons/react";
+import { useHydrationSafeReducedMotion } from "@/lib/reduced-motion";
 
 const DeviceScene = dynamic(() => import("./device-scene"), {
   ssr: false,
@@ -60,7 +60,7 @@ export function ForensicFallback({ loading = false }: { loading?: boolean }) {
 }
 
 export function HeroDevice() {
-  const reduceMotion = useReducedMotion() ?? false;
+  const reduceMotion = useHydrationSafeReducedMotion();
   const [webgl, setWebgl] = useState<boolean | null>(null);
   useEffect(() => setWebgl(supportsWebGL()), []);
 

@@ -369,6 +369,7 @@ describe("resource capabilities", () => {
     await expect(finalizeAsset(hex, capability)).resolves.toEqual(asset);
     expect(headersAt(fetchMock, 0).Authorization).toBe(`Bearer ${capability}`);
     expect(headersAt(fetchMock, 1).Authorization).toBe(`Bearer ${capability}`);
+    expect(headersAt(fetchMock, 1)["Content-Type"]).toBeUndefined();
     expect(fetchMock.mock.calls[1]?.[0]).toMatch(
       `/api/assets/${hex}/fingerprint`,
     );
@@ -447,6 +448,11 @@ describe("resource capabilities", () => {
       `Bearer ${capability}`,
     ]);
     expect(bodyAt(fetchMock, 0)).toEqual({ challengeId: hex, frames });
+    expect(headersAt(fetchMock, 0)["Content-Type"]).toBe("application/json");
+    expect(headersAt(fetchMock, 1)["Content-Type"]).toBeUndefined();
+    expect(headersAt(fetchMock, 2)["Content-Type"]).toBeUndefined();
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).body).toBeUndefined();
+    expect((fetchMock.mock.calls[2]?.[1] as RequestInit).body).toBeUndefined();
   });
 
   it("does not leak capabilities into a URL or JSON body", async () => {

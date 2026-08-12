@@ -66,10 +66,11 @@ async function request(
 ): Promise<unknown> {
   let response: Response;
   try {
+    const hasBody = init.body !== undefined && init.body !== null;
     response = await fetch(`${verifierUrl}${path}`, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
+        ...(hasBody ? { "Content-Type": "application/json" } : {}),
         ...(capability ? { Authorization: `Bearer ${capability}` } : {}),
         ...init.headers,
       },
