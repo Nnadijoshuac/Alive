@@ -20,4 +20,4 @@ This keeps costs low, avoids publishing private media, and gives contracts a sta
 
 ## Consequences
 
-The verifier and evidence host are trusted in the MVP. Production deployments need encrypted durable storage, key management, and stronger provenance controls.
+The verifier and evidence host are trusted in the MVP. The verifier includes the finalized fingerprint commitment in every attestation, and the attestation registry requires exact equality with the asset registry before consumption; this detects commitment substitution but does not make private evidence independently reproducible. Production deployments need encrypted durable storage, key management, retention governance, and stronger capture provenance controls.

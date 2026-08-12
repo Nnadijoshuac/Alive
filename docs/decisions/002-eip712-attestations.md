@@ -6,11 +6,11 @@ Escrow needs a compact physical-state result that can be authenticated and repla
 
 ## Decision
 
-Sign canonical typed attestation data with a dedicated verifier key. Include asset ID, session ID, subject, basis-point scores, verdict, evidence hash, issue time, and expiry.
+Sign canonical typed attestation data with a dedicated verifier key. Include asset ID, the exact finalized fingerprint commitment, session ID, subject, operation context, basis-point scores, verdict, evidence hash, issue time, and expiry. The domain binds chain ID and the deployed attestation-registry address.
 
 ## Why
 
-Typed data is inspectable, deterministic, and efficiently recoverable in Solidity. Session IDs and expiries provide bounded replay protection.
+Typed data is inspectable, deterministic, and efficiently recoverable in Solidity. Session IDs and expiries provide bounded replay protection. The registry checks the signed `fingerprintHash` against the asset registry before consumption. Escrow context is `keccak256(abi.encode(escrowAddress, escrowId))`, preventing a proof for one escrow from settling another, while `AliveEscrow` also requires `issuedAt >= fundedAt(escrowId)` so a pre-funding proof cannot release newly locked value.
 
 ## Alternatives considered
 
@@ -20,4 +20,4 @@ Typed data is inspectable, deterministic, and efficiently recoverable in Solidit
 
 ## Consequences
 
-Verifier-key security is a central MVP trust assumption. Production evolution can introduce key rotation, hardware-backed signing, and multi-verifier consensus.
+Verifier-key security is a central MVP trust assumption. The current registry supports owner-controlled signer rotation, exact registered-fingerprint binding, and global session consumption. A separate `ALIVE Verifier Authorization` EIP-712 domain authenticates wallet control for HTTP resource creation; it is intentionally not interchangeable with the onchain attestation domain. Production evolution can add hardware-backed signing and multi-verifier consensus.

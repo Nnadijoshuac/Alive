@@ -1,0 +1,21 @@
+{
+  "network": "xlayerTestnet",
+  "chainId": 1952,
+  "deployedAt": "2026-08-12T04:56:22.000Z",
+  "deployerWallet": "0x8b91361f58980992c2eeca0410f21cc9c181ee97",
+  "contracts": {
+    "AliveAssetRegistry": {
+      "address": "0x036caD7F90A8A7ecf9B918dc214659aCb3D07Ab9",
+      "transactionHash": "0xcf102772641d7a061709295a3679676cf24c90ad2917e6541ebc9accb5574883",
+      "runtimeBytecodeMatchesArtifact": true
+    }
+  },
+  "deploymentState": "PARTIAL",
+  "pending": [
+    "AliveAttestationRegistry",
+    "AliveEscrow",
+    "MockUSDT",
+    "AliveEscrow consumer authorization"
+  ],
+  "blocker": "The OKX Agentic Wallet accepted the remaining writes but left them pending without transaction hashes; later X Layer Testnet writes fail before broadcast with may_be_out_of_gas."
+}

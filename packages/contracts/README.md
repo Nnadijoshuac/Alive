@@ -11,9 +11,10 @@ result is valid for the exact escrow.
 
 ## Contracts
 
-- `AliveAssetRegistry.sol` registers an application-generated `bytes32` asset ID,
-  owner, fingerprint commitment, metadata commitment, public metadata URI, and
-  timestamp. It never stores raw inspection media.
+- `AliveAssetRegistry.sol` registers an owner-bound `bytes32` asset ID derived as
+  `keccak256(abi.encode(owner, registrationNonce))`, plus its fingerprint
+  commitment, metadata commitment, public metadata URI, and timestamp. It never
+  stores raw inspection media.
 - `AliveAttestationRegistry.sol` validates the authorized verifier's EIP-712
   signature, registered asset, score bounds, issuance/expiry window, and globally
   single-use session ID. Standalone proofs can be submitted only by their subject.
@@ -42,6 +43,7 @@ The primary type and exact field order are:
 ```text
 Attestation(
   bytes32 assetId,
+  bytes32 fingerprintHash,
   bytes32 sessionId,
   address subject,
   bytes32 context,
@@ -66,6 +68,7 @@ For escrow `E`, the verifier must sign:
 context = keccak256(abi.encode(aliveEscrowAddress, E));
 subject = escrow.seller;
 assetId = escrow.assetId;
+fingerprintHash = assetRegistry.getAsset(assetId).fingerprintHash;
 ```
 
 Call `AliveEscrow.escrowContext(E)` instead of reproducing this encoding in a UI.
