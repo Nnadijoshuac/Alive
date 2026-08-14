@@ -2,33 +2,68 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRightIcon, ListIcon, XIcon } from "@phosphor-icons/react";
-import { useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  ArrowRightIcon,
+  FingerprintIcon,
+  FlaskIcon,
+  FlowArrowIcon,
+  ListIcon,
+  PlayCircleIcon,
+  SquaresFourIcon,
+  XIcon,
+} from "@phosphor-icons/react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AliveLogo } from "./logo";
+import { ScrollProgress, useSafeReducedMotion } from "./motion-system";
 
 const headerButtonClass =
   "button inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-semibold";
 
 const navigation = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/assets/register", label: "Register" },
-  { href: "/attack-lab", label: "Attack Lab" },
-  { href: "/protocol", label: "Protocol" },
+  { href: "/dashboard", label: "Dashboard", icon: SquaresFourIcon },
+  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
+  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
+  { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
+];
+
+const landingNavigation = [
+  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
+  { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
+  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
+  { href: "/demo", label: "Demo", icon: PlayCircleIcon },
 ];
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isHome = pathname === "/";
+  const pageNavigation = isHome ? landingNavigation : navigation;
   const [open, setOpen] = useState(false);
+  const reducedMotion = useSafeReducedMotion();
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = previous;
+    };
+  }, [open]);
   if (pathname === "/demo") return <>{children}</>;
 
   return (
-    <div className="site-shell">
-      <header className="site-header">
-        <div className="shell-width nav-row">
+    <div className={`site-shell${isHome ? " site-shell-home" : ""}`}>
+      <ScrollProgress className="site-scroll-progress" />
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      {!isHome ? (
+        <aside className="site-rail">
+        <div>
           <Link href="/" className="logo-link" aria-label="ALIVE home">
             <AliveLogo />
           </Link>
-          <nav className="desktop-nav" aria-label="Primary navigation">
+          <nav className="rail-nav" aria-label="Primary navigation">
             {navigation.map((item) => (
               <Link
                 key={item.href}
@@ -38,70 +73,161 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   pathname.startsWith(item.href) ? "page" : undefined
                 }
               >
+                {pathname.startsWith(item.href) ? (
+                  <motion.span
+                    className="rail-active-line"
+                    layoutId="rail-active-line"
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                ) : null}
+                <item.icon size={19} weight="regular" aria-hidden="true" />
                 {item.label}
               </Link>
             ))}
           </nav>
-          <div className="nav-wallet">
-            <Link
-              href="/dashboard"
-              prefetch={false}
-              className={`${headerButtonClass} button-secondary`}
-            >
-              Launch app
-              <ArrowRightIcon size={18} weight="bold" />
-            </Link>
-          </div>
-          <button
-            className="mobile-menu-button"
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            aria-controls="mobile-navigation"
-            aria-label="Toggle navigation"
-          >
-            {open ? <XIcon size={22} /> : <ListIcon size={22} />}
-          </button>
         </div>
-        {open ? (
-          <nav
-            id="mobile-navigation"
-            className="mobile-nav"
-            aria-label="Mobile navigation"
+        <div className="rail-meta">
+          <span className="rail-status">
+            <i aria-hidden="true" /> Proof pipeline
+          </span>
+          <span>X Layer Testnet · Chain 1952</span>
+          <span>Raw media stays offchain</span>
+        </div>
+        </aside>
+      ) : null}
+
+      <div className={`site-frame${isHome ? " site-frame-home" : ""}`}>
+        <header
+          className={`site-header${isHome ? " landing-site-header" : ""}`}
+        >
+          <div
+            className={`shell-width nav-row${isHome ? " home-nav-row" : ""}`}
           >
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                onClick={() => setOpen(false)}
+            <Link
+              href="/"
+              className={isHome ? "landing-brand" : "mobile-brand"}
+              aria-label="ALIVE home"
+            >
+              <AliveLogo compact={!isHome} />
+            </Link>
+            {isHome ? (
+              <nav
+                className="landing-desktop-nav"
+                aria-label="Landing navigation"
               >
-                {item.label}
+                {landingNavigation.map((item) => (
+                  <Link key={item.href} href={item.href} prefetch={false}>
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            ) : (
+              <div
+                className="protocol-ticker"
+                aria-label="Protocol properties"
+              >
+                <span>
+                  <i aria-hidden="true" /> Capture
+                </span>
+                <span>Analyze + attest</span>
+                <span>Validate + settle</span>
+              </div>
+            )}
+            <div className="nav-wallet">
+              <Link
+                href="/dashboard"
+                prefetch={false}
+                className={`${headerButtonClass} button-paper`}
+              >
+                Launch app
+                <ArrowRightIcon size={18} weight="bold" />
               </Link>
-            ))}
-            <Link
-              href="/dashboard"
-              prefetch={false}
-              className={`${headerButtonClass} button-secondary`}
-              onClick={() => setOpen(false)}
+            </div>
+            <button
+              className="mobile-menu-button"
+              type="button"
+              onClick={() => setOpen((value) => !value)}
+              aria-expanded={open}
+              aria-controls="mobile-navigation"
+              aria-label="Toggle navigation"
             >
-              Launch app
-              <ArrowRightIcon size={18} weight="bold" />
-            </Link>
-          </nav>
-        ) : null}
-      </header>
-      <main>{children}</main>
-      <footer className="site-footer">
-        <div className="shell-width footer-grid">
-          <AliveLogo />
-          <p>Observable physical state, signed for programmable settlement.</p>
-          <div>
-            <Link href="/protocol">Security model</Link>
-            <Link href="/dev/design-system">Design system</Link>
+              {open ? <XIcon size={22} /> : <ListIcon size={22} />}
+            </button>
           </div>
-        </div>
-      </footer>
+          <AnimatePresence initial={false}>
+            {open ? (
+              <motion.nav
+                id="mobile-navigation"
+                className="mobile-nav"
+                aria-label="Mobile navigation"
+                initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0.65 }}
+                animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
+                exit={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
+                transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {pageNavigation.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    aria-current={
+                      pathname.startsWith(item.href) ? "page" : undefined
+                    }
+                    onClick={() => setOpen(false)}
+                  >
+                    <item.icon size={20} aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                ))}
+                <Link
+                  href="/dashboard"
+                  prefetch={false}
+                  className={`${headerButtonClass} button-paper`}
+                  onClick={() => setOpen(false)}
+                >
+                  Launch app
+                  <ArrowRightIcon size={18} weight="bold" />
+                </Link>
+              </motion.nav>
+            ) : null}
+          </AnimatePresence>
+        </header>
+        <motion.main
+          id="main-content"
+          key={pathname}
+          initial={false}
+          animate={
+            reducedMotion
+              ? { opacity: 1, y: 0 }
+              : { opacity: [0.985, 1], y: [6, 0] }
+          }
+          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {children}
+        </motion.main>
+        <footer
+          className={`site-footer${isHome ? " landing-site-footer" : ""}`}
+        >
+          <div className="shell-width footer-grid">
+            <div className="footer-brand">
+              <AliveLogo />
+              <p>
+                Observable physical state, signed for programmable settlement.
+              </p>
+            </div>
+            <div className="footer-meta">
+              <span>Evidence offchain</span>
+              <span>Scores in basis points</span>
+              <span>Attestations expire</span>
+            </div>
+            <div className="footer-links">
+              <Link href="/protocol">Security model</Link>
+              <Link href="/attack-lab">Attack Lab</Link>
+              <Link href="/dev/design-system">Interface system</Link>
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

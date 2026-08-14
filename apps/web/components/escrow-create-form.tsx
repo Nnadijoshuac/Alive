@@ -13,10 +13,10 @@ import { usePublicClient, useWriteContract } from "wagmi";
 import {
   activeChain,
   contractAddresses,
-  contractsConfigured,
+  escrowConfigured,
   explorerTransactionUrl,
 } from "@/lib/chain";
-import { escrowAbi } from "@/lib/contracts";
+import { erc20Abi, escrowAbi } from "@/lib/contracts";
 import { rememberEscrow } from "@/lib/local-state";
 import type { Hex } from "@/lib/types";
 import { Button, Field, InlineNotice, KeyValue } from "./ui";
@@ -44,10 +44,13 @@ export function EscrowCreateForm() {
     isAddress(seller) &&
     isAddress(token) &&
     Number(amount) > 0 &&
+    Number.isInteger(Number(identity)) &&
     Number(identity) >= 0 &&
     Number(identity) <= 10_000 &&
+    Number.isInteger(Number(liveness)) &&
     Number(liveness) >= 0 &&
     Number(liveness) <= 10_000 &&
+    Number.isInteger(Number(duration)) &&
     Number(duration) > 0 &&
     Number(duration) <= 30;
 
@@ -70,7 +73,7 @@ export function EscrowCreateForm() {
             ? "pending"
             : transactionHash
               ? "confirmed"
-              : contractsConfigured
+              : escrowConfigured
                 ? "idle"
                 : "blocked",
       },
@@ -87,6 +90,7 @@ export function EscrowCreateForm() {
     if (
       !valid ||
       !contractAddresses.escrow ||
+      !publicClient ||
       !wallet.connected ||
       !wallet.correctNetwork
     )
@@ -94,6 +98,11 @@ export function EscrowCreateForm() {
     setWorking(true);
     setError(null);
     try {
+      const tokenDecimals = await publicClient.readContract({
+        address: token as `0x${string}`,
+        abi: erc20Abi,
+        functionName: "decimals",
+      });
       const hash = await writeContractAsync({
         address: contractAddresses.escrow,
         abi: escrowAbi,
@@ -103,14 +112,14 @@ export function EscrowCreateForm() {
           assetId as Hex,
           seller as `0x${string}`,
           token as `0x${string}`,
-          parseUnits(amount, 6),
+          parseUnits(amount, tokenDecimals),
           Number(identity),
           Number(liveness),
           BigInt(Math.floor(Date.now() / 1000) + Number(duration) * 86_400),
         ],
       });
       setTransactionHash(hash);
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (!receipt || receipt.status !== "success")
         throw new Error("Escrow creation did not confirm successfully.");
       const logs = parseEventLogs({
@@ -197,7 +206,7 @@ export function EscrowCreateForm() {
           </Field>
           <Field
             label="Amount"
-            hint="Displayed and submitted using 6 token decimals."
+            hint="Token decimals are read from the contract at submission."
           >
             <input
               className="input"
@@ -246,7 +255,7 @@ export function EscrowCreateForm() {
             />
           </Field>
         </div>
-        {!contractsConfigured ? (
+        {!escrowConfigured ? (
           <InlineNotice tone="warning" title="Contracts not deployed">
             Escrow submission is disabled until public contract addresses are
             configured.
@@ -273,7 +282,7 @@ export function EscrowCreateForm() {
           className="button-primary create-escrow-button"
           disabled={
             !valid ||
-            !contractsConfigured ||
+            !escrowConfigured ||
             !wallet.connected ||
             !wallet.correctNetwork ||
             working

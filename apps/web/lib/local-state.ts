@@ -26,6 +26,8 @@ export interface LocalEscrowEntry {
   assetId: Hex;
   transactionHash: Hex;
   createdAt: string;
+  status?: number;
+  settlementTransactionHash?: Hex;
 }
 
 function readArray<T>(key: string): T[] {
@@ -86,6 +88,22 @@ export function rememberEscrow(entry: LocalEscrowEntry): void {
     (item) => item.escrowId !== entry.escrowId,
   );
   window.localStorage.setItem(ESCROW_KEY, JSON.stringify([entry, ...current]));
+}
+
+export function updateLocalEscrow(
+  escrowId: Hex,
+  update: Pick<LocalEscrowEntry, "status"> & {
+    settlementTransactionHash?: Hex;
+  },
+): void {
+  const current = localEscrows();
+  let matched = false;
+  const next = current.map((entry) => {
+    if (entry.escrowId !== escrowId) return entry;
+    matched = true;
+    return { ...entry, ...update };
+  });
+  if (matched) window.localStorage.setItem(ESCROW_KEY, JSON.stringify(next));
 }
 
 export function clearPresentationState(): void {

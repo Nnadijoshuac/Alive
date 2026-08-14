@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { ReactNode } from "react";
+import { AliveMotionProvider } from "@/components/motion-system";
 import { SiteShell } from "@/components/site-shell";
 import "./globals.css";
 
@@ -23,17 +24,17 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/media/forensic-laptop.png",
-        width: 1600,
-        height: 900,
-        alt: "A physical laptop under an ALIVE forensic scan",
+        url: "/media/alive/inspection-studio.jpg",
+        width: 1536,
+        height: 1024,
+        alt: "A conceptual studio view of a wristwatch beside an ALIVE inspection laptop",
       },
     ],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#080b09",
+  themeColor: "#141518",
   colorScheme: "dark",
 };
 
@@ -43,7 +44,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
-        <SiteShell>{children}</SiteShell>
+        <AliveMotionProvider>
+          <SiteShell>{children}</SiteShell>
+        </AliveMotionProvider>
       </body>
     </html>
   );

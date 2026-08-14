@@ -90,29 +90,38 @@ export function ProtocolExplorer() {
   const SelectedIcon = selected.icon;
   return (
     <div className="protocol-explorer">
-      <div
+      <ol
         className="protocol-track"
-        role="list"
         aria-label="Protocol causal chain"
+        style={{ margin: 0, padding: 0, listStyle: "none" }}
       >
         {nodes.map((node, index) => {
           const Icon = node.icon;
           return (
-            <button
-              type="button"
-              role="listitem"
-              key={node.id}
-              className={node.id === selected.id ? "active" : ""}
-              onClick={() => setSelected(node)}
-            >
-              <span>{index + 1}</span>
-              <Icon size={23} />
-              <strong>{node.label}</strong>
-              <small>{node.boundary}</small>
-            </button>
+            <li key={node.id} style={{ minWidth: 0 }}>
+              <button
+                type="button"
+                className={node.id === selected.id ? "active" : ""}
+                onClick={() => setSelected(node)}
+                aria-pressed={node.id === selected.id}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRight:
+                    index < nodes.length - 1
+                      ? "1px solid var(--line)"
+                      : "none",
+                }}
+              >
+                <span>{index + 1}</span>
+                <Icon size={23} />
+                <strong>{node.label}</strong>
+                <small>{node.boundary}</small>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ol>
       <article className="protocol-detail">
         <div className="protocol-detail-icon">
           <SelectedIcon size={36} weight="duotone" />

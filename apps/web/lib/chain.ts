@@ -33,10 +33,14 @@ export const contractAddresses = {
   testToken: configuredAddress(process.env.NEXT_PUBLIC_TEST_TOKEN_ADDRESS),
 } as const;
 
+export const assetRegistryConfigured = Boolean(contractAddresses.assetRegistry);
+export const attestationRegistryConfigured = Boolean(
+  contractAddresses.attestationRegistry,
+);
+export const escrowConfigured = Boolean(contractAddresses.escrow);
+
 export const contractsConfigured = Boolean(
-  contractAddresses.assetRegistry &&
-  contractAddresses.attestationRegistry &&
-  contractAddresses.escrow,
+  assetRegistryConfigured && attestationRegistryConfigured && escrowConfigured,
 );
 
 export function explorerTransactionUrl(hash: string): string | undefined {

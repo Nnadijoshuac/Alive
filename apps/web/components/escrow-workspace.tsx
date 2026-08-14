@@ -12,7 +12,7 @@ import { usePublicClient, useWriteContract } from "wagmi";
 import {
   activeChain,
   contractAddresses,
-  contractsConfigured,
+  escrowConfigured,
   explorerTransactionUrl,
 } from "@/lib/chain";
 import { erc20Abi, escrowAbi } from "@/lib/contracts";
@@ -23,6 +23,7 @@ import {
   escrowWasFunded,
 } from "@/lib/escrow-status";
 import { formatDate, formatScore, truncateHash } from "@/lib/format";
+import { updateLocalEscrow } from "@/lib/local-state";
 import type { Address, Hex } from "@/lib/types";
 import { VerificationWorkflow } from "./verification-workflow";
 import {
@@ -70,7 +71,7 @@ export function EscrowWorkspace({ escrowId }: { escrowId: string }) {
 
   const load = useCallback(async () => {
     if (
-      !contractsConfigured ||
+      !escrowConfigured ||
       !contractAddresses.escrow ||
       !publicClient ||
       !/^0x[0-9a-fA-F]{64}$/.test(escrowId)
@@ -97,6 +98,7 @@ export function EscrowWorkspace({ escrowId }: { escrowId: string }) {
       ]);
       const typed = returned as EscrowRecord;
       setRecord(typed);
+      updateLocalEscrow(escrowId as Hex, { status: typed.status });
       setContext(returnedContext);
       const tokenInfo = await Promise.allSettled([
         publicClient.readContract({
@@ -224,7 +226,7 @@ export function EscrowWorkspace({ escrowId }: { escrowId: string }) {
     }
   };
 
-  if (!contractsConfigured)
+  if (!escrowConfigured)
     return (
       <div className="state-panel">
         <LockKeyIcon size={42} />
@@ -511,7 +513,13 @@ export function EscrowWorkspace({ escrowId }: { escrowId: string }) {
             context={context}
             escrowId={escrowId as Hex}
             expectedSubject={record.seller}
-            onSettled={load}
+            onSettled={async (transactionHash) => {
+              updateLocalEscrow(escrowId as Hex, {
+                status: EscrowStatus.Released,
+                settlementTransactionHash: transactionHash,
+              });
+              await load();
+            }}
           />
         </section>
       ) : null}

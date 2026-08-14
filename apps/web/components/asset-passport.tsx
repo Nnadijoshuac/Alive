@@ -97,6 +97,10 @@ export function AssetPassport({ assetId }: { assetId: string }) {
       </div>
     );
 
+  const registrationTransactionUrl = rememberedEntry?.transactionHash
+    ? explorerTransactionUrl(rememberedEntry.transactionHash)
+    : undefined;
+
   return (
     <div className="passport-content">
       {error ? (
@@ -154,14 +158,20 @@ export function AssetPassport({ assetId }: { assetId: string }) {
         </KeyValue>
         <KeyValue label="Registration transaction">
           {rememberedEntry?.transactionHash ? (
-            <a
-              className="text-link inline-link"
-              href={explorerTransactionUrl(rememberedEntry.transactionHash)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {truncateHash(rememberedEntry.transactionHash)}
-            </a>
+            registrationTransactionUrl ? (
+              <a
+                className="text-link inline-link"
+                href={registrationTransactionUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {truncateHash(rememberedEntry.transactionHash)}
+              </a>
+            ) : (
+              <span className="mono">
+                {truncateHash(rememberedEntry.transactionHash)}
+              </span>
+            )
           ) : (
             "Not submitted from this browser"
           )}

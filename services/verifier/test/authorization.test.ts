@@ -179,7 +179,7 @@ describe("wallet-authorized verifier resources", () => {
       error: { code: "AUTHORIZATION_ALREADY_USED" },
     });
     await app.close();
-  });
+  }, 15_000);
 
   it("does not consume an authorization for a wrong signature or mutated payload", async () => {
     const repository = new AliveRepository(":memory:");

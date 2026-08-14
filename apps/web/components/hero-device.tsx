@@ -6,13 +6,10 @@ import { Component, useEffect, useState, type ReactNode } from "react";
 import { ScanIcon } from "@phosphor-icons/react";
 import { useHydrationSafeReducedMotion } from "@/lib/reduced-motion";
 
-const DeviceScene =
-  process.env.NODE_ENV === "production"
-    ? dynamic(() => import("./device-scene"), {
-        ssr: false,
-        loading: () => <ForensicFallback loading />,
-      })
-    : null;
+const DeviceScene = dynamic(() => import("./device-scene"), {
+  ssr: false,
+  loading: () => <ForensicFallback loading />,
+});
 
 class WebGLErrorBoundary extends Component<
   { children: ReactNode },
@@ -59,7 +56,6 @@ export function ForensicFallback({ loading = false }: { loading?: boolean }) {
           src="/media/forensic-laptop.png"
           alt="A physical laptop under a forensic ALIVE scan"
           fill
-          priority
           sizes="(max-width: 1120px) calc(100vw - 40px), 50vw"
           onError={() => setImageFailed(true)}
         />
@@ -88,7 +84,7 @@ export function HeroDevice() {
       className="hero-device"
       aria-label="Procedural three-dimensional physical asset scan"
     >
-      {DeviceScene === null || webgl === false || reduceMotion ? (
+      {webgl === false || reduceMotion ? (
         <ForensicFallback />
       ) : webgl === null || !sceneReady ? (
         <ForensicFallback loading />

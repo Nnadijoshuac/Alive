@@ -17,6 +17,7 @@ import {
   localEscrows,
   localVerifications,
 } from "@/lib/local-state";
+import { EscrowStatus } from "@/lib/escrow-status";
 import { AliveLogo } from "./logo";
 import { buttonClass, Button, InlineNotice, KeyValue, StatusBadge } from "./ui";
 
@@ -30,6 +31,9 @@ export function DemoConsole() {
   const escrows = localEscrows();
   const asset = assets[0]?.asset;
   const lastResult = verifications[0]?.result;
+  const releasedEscrow = escrows.find(
+    (entry) => entry.status === EscrowStatus.Released,
+  );
   const reset = () => {
     clearPresentationState();
     setRevision((value) => value + 1);
@@ -65,8 +69,8 @@ export function DemoConsole() {
     {
       title: "Present the genuine object",
       body: "Complete fresh randomized challenges and inspect returned scores, reasons, and signature.",
-      href: asset ? `/verify/${asset.assetId}` : "/dashboard",
-      label: "Open verification",
+      href: asset ? `/verify/${asset.assetId}` : "/assets/register",
+      label: asset ? "Open verification" : "Register an asset first",
       ready: Boolean(lastResult?.verified),
       icon: FingerprintIcon,
     },
@@ -75,7 +79,7 @@ export function DemoConsole() {
       body: "Open the funded escrow and consume the context-bound attestation in one atomic settlement.",
       href: escrows[0] ? `/escrow/${escrows[0].escrowId}` : "/escrow/create",
       label: "Open settlement flow",
-      ready: false,
+      ready: Boolean(releasedEscrow),
       icon: CheckCircleIcon,
     },
   ];

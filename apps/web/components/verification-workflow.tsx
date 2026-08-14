@@ -37,7 +37,9 @@ import type {
   Address,
   Hex,
   ResourceCapability,
+  SignedAttestation,
   VerificationAnalysis,
+  VerificationResult,
   VerificationSession,
 } from "@/lib/types";
 import { AttestationCard } from "./attestation-card";
@@ -53,6 +55,35 @@ import {
 
 type WorkflowState = "intro" | "capturing" | "ready" | "analyzing" | "result";
 
+export function preserveAnalysisAfterConsumerFailure(
+  result: VerificationResult,
+  caught: unknown,
+): VerificationAnalysis {
+  const detail =
+    caught instanceof Error
+      ? caught.message
+      : "The asset or chain binding check was unavailable.";
+  return {
+    result,
+    attestationError: `Analysis completed and was preserved, but the signed proof could not be validated for consumption: ${detail} Retry proof validation; do not repeat the camera challenge.`,
+  };
+}
+
+export function attestationDestination(
+  escrowId: Hex | undefined,
+  configured: boolean,
+): "escrow-ready" | "escrow-unconfigured" | "unbound" {
+  if (!escrowId) return "unbound";
+  return configured ? "escrow-ready" : "escrow-unconfigured";
+}
+
+export function isVerificationSessionExpired(
+  expiresAt: string,
+  now = Date.now(),
+): boolean {
+  return new Date(expiresAt).getTime() <= now;
+}
+
 export function VerificationWorkflow({
   assetId,
   context,
@@ -66,7 +97,7 @@ export function VerificationWorkflow({
   escrowId?: Hex;
   intentLabel?: string;
   expectedSubject?: Address;
-  onSettled?: () => void | Promise<void>;
+  onSettled?: (transactionHash: Hex) => void | Promise<void>;
 }) {
   const wallet = useWalletSnapshot();
   const walletSigner = useWalletAuthorizationSigner();
@@ -78,6 +109,9 @@ export function VerificationWorkflow({
     useState<ResourceCapability | null>(null);
   const [challengeIndex, setChallengeIndex] = useState(0);
   const [analysis, setAnalysis] = useState<VerificationAnalysis | null>(null);
+  const [pendingAttestation, setPendingAttestation] =
+    useState<SignedAttestation | null>(null);
+  const [validatingAttestation, setValidatingAttestation] = useState(false);
   const [localMode, setLocalMode] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +125,11 @@ export function VerificationWorkflow({
   const [settlementHash, setSettlementHash] = useState<Hex | null>(null);
   const [settling, setSettling] = useState(false);
   const currentChallenge = session?.challenges[challengeIndex];
+  const proofDestination = attestationDestination(
+    escrowId,
+    contractsConfigured,
+  );
+  const sessionExpired = Boolean(session && secondsLeft <= 0);
 
   useEffect(() => {
     if (!session) return;
@@ -166,6 +205,14 @@ export function VerificationWorkflow({
         signature,
       );
       setAuthorizationChainId(challenge.domain.chainId);
+      setSecondsLeft(
+        Math.max(
+          0,
+          Math.floor(
+            (new Date(created.session.expiresAt).getTime() - Date.now()) / 1000,
+          ),
+        ),
+      );
       setSession(created.session);
       setSessionCapability(created.capability);
       setChallengeIndex(0);
@@ -187,6 +234,12 @@ export function VerificationWorkflow({
     setWorking(true);
     setError(null);
     try {
+      if (isVerificationSessionExpired(session.expiresAt)) {
+        setSecondsLeft(0);
+        throw new Error(
+          "This one-time verification session expired. Start a new session to receive fresh challenges.",
+        );
+      }
       if (frame.burstFrames.length !== 3)
         throw new Error(
           "Active verification requires exactly three live burst frames.",
@@ -214,49 +267,36 @@ export function VerificationWorkflow({
 
   const analyze = async () => {
     if (!session || !sessionCapability) return;
+    if (isVerificationSessionExpired(session.expiresAt)) {
+      setSecondsLeft(0);
+      setError(
+        "This one-time verification session expired before analysis. Start a new session; the expired capability cannot be reused.",
+      );
+      return;
+    }
     setWorking(true);
     setState("analyzing");
     setError(null);
     try {
-      let returned = await analyzeVerification(
+      const returned = await analyzeVerification(
         session.sessionId,
         sessionCapability.token,
       );
-      if (returned.signedAttestation) {
-        const verifiedAsset = await getAsset(session.assetId);
-        const expectedVerifier =
-          contractAddresses.attestationRegistry && publicClient
-            ? await publicClient.readContract({
-                address: contractAddresses.attestationRegistry,
-                abi: attestationRegistryAbi,
-                functionName: "authorizedVerifier",
-              })
-            : undefined;
-        const bindingError = await validateAttestationBinding(
+      const preservedResult = returned.attestationError
+        ? {
+            result: returned.result,
+            attestationError: returned.attestationError,
+          }
+        : { result: returned.result };
+      setAnalysis(preservedResult);
+      rememberVerification({ result: returned.result });
+      setState("result");
+      if (returned.signedAttestation)
+        await validateForConsumption(
           session,
           returned.result,
           returned.signedAttestation,
-          activeChain.id,
-          contractAddresses.attestationRegistry,
-          expectedVerifier,
-          verifiedAsset.fingerprintHash ?? undefined,
         );
-        if (bindingError)
-          returned = {
-            result: returned.result,
-            attestationError: bindingError,
-          };
-      }
-      setAnalysis(returned);
-      rememberVerification(
-        returned.signedAttestation
-          ? {
-              result: returned.result,
-              signedAttestation: returned.signedAttestation,
-            }
-          : { result: returned.result },
-      );
-      setState("result");
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Verifier analysis failed.",
@@ -265,6 +305,73 @@ export function VerificationWorkflow({
     } finally {
       setWorking(false);
     }
+  };
+
+  const validateForConsumption = async (
+    activeSession: VerificationSession,
+    result: VerificationResult,
+    signedAttestation: SignedAttestation,
+  ) => {
+    setValidatingAttestation(true);
+    try {
+      const verifiedAsset = await getAsset(activeSession.assetId);
+      let expectedVerifier: Address | undefined;
+      if (contractAddresses.attestationRegistry) {
+        if (!publicClient)
+          throw new Error(
+            `The ${activeChain.name} RPC client is not available for the verifier-registry check.`,
+          );
+        expectedVerifier = await publicClient.readContract({
+          address: contractAddresses.attestationRegistry,
+          abi: attestationRegistryAbi,
+          functionName: "authorizedVerifier",
+        });
+      }
+      const bindingError = await validateAttestationBinding(
+        activeSession,
+        result,
+        signedAttestation,
+        activeChain.id,
+        contractAddresses.attestationRegistry,
+        expectedVerifier,
+        verifiedAsset.fingerprintHash ?? undefined,
+      );
+      if (bindingError) {
+        setPendingAttestation(null);
+        setAnalysis({ result, attestationError: bindingError });
+        rememberVerification({ result });
+        return;
+      }
+      const validated = { result, signedAttestation };
+      setPendingAttestation(null);
+      setAnalysis(validated);
+      rememberVerification(validated);
+    } catch (caught) {
+      setPendingAttestation(signedAttestation);
+      setAnalysis(preserveAnalysisAfterConsumerFailure(result, caught));
+      rememberVerification({ result });
+    } finally {
+      setValidatingAttestation(false);
+    }
+  };
+
+  const retryAttestationValidation = async () => {
+    if (!session || !analysis || !pendingAttestation) return;
+    setError(null);
+    await validateForConsumption(session, analysis.result, pendingAttestation);
+  };
+
+  const resetWorkflow = () => {
+    setState("intro");
+    setSession(null);
+    setSessionCapability(null);
+    setAuthorizationChainId(null);
+    setAnalysis(null);
+    setPendingAttestation(null);
+    setSubmittedSettlementHash(null);
+    setSettlementHash(null);
+    setSecondsLeft(0);
+    setError(null);
   };
 
   const settle = async () => {
@@ -296,7 +403,7 @@ export function VerificationWorkflow({
       if (!receipt || receipt.status !== "success")
         throw new Error("Settlement transaction did not confirm successfully.");
       setSettlementHash(hash);
-      await onSettled?.();
+      await onSettled?.(hash);
     } catch (caught) {
       setError(
         caught instanceof Error &&
@@ -342,16 +449,20 @@ export function VerificationWorkflow({
       },
       {
         label: "Signed attestation",
-        detail: analysis?.signedAttestation
-          ? truncateHash(analysis.signedAttestation.digest)
-          : analysis
-            ? "No signed attestation returned"
-            : "Not issued",
-        state: analysis?.signedAttestation
-          ? "confirmed"
-          : analysis
-            ? "blocked"
-            : "idle",
+        detail: validatingAttestation
+          ? "Checking asset and verifier-registry binding"
+          : analysis?.signedAttestation
+            ? truncateHash(analysis.signedAttestation.digest)
+            : analysis
+              ? "No signed attestation returned"
+              : "Not issued",
+        state: validatingAttestation
+          ? "pending"
+          : analysis?.signedAttestation
+            ? "confirmed"
+            : analysis
+              ? "blocked"
+              : "idle",
       },
       {
         label: "Settlement",
@@ -383,6 +494,7 @@ export function VerificationWorkflow({
       settling,
       state,
       submittedSettlementHash,
+      validatingAttestation,
     ],
   );
 
@@ -542,20 +654,32 @@ export function VerificationWorkflow({
                 </span>
               ))}
             </div>
-            <CameraCapture
-              key={currentChallenge.id}
-              label={humanizeCode(currentChallenge.type)}
-              instruction={currentChallenge.prompt}
-              burst
-              onCapture={submitChallenge}
-            />
+            {sessionExpired ? (
+              <div className="analysis-ready">
+                <InlineNotice tone="warning" title="Session expired">
+                  This capability is no longer valid. Start a new session to
+                  receive a fresh nonce and challenge sequence.
+                </InlineNotice>
+                <Button className="button-primary" onClick={resetWorkflow}>
+                  Start a new session
+                </Button>
+              </div>
+            ) : (
+              <CameraCapture
+                key={currentChallenge.id}
+                label={humanizeCode(currentChallenge.type)}
+                instruction={currentChallenge.prompt}
+                burst
+                onCapture={submitChallenge}
+              />
+            )}
             {working ? (
               <InlineNotice tone="loading" title="Submitting observation">
                 The next instruction unlocks only after the verifier accepts
                 this challenge.
               </InlineNotice>
             ) : null}
-            {error ? (
+            {error && !sessionExpired ? (
               <InlineNotice tone="warning" title="Challenge not accepted">
                 {error}
               </InlineNotice>
@@ -583,17 +707,28 @@ export function VerificationWorkflow({
               </KeyValue>
               <KeyValue label="Server state">Ready to analyze</KeyValue>
             </div>
-            {error ? (
+            {sessionExpired ? (
+              <InlineNotice tone="warning" title="Session expired">
+                Analysis cannot consume this expired capability. Start a new
+                session and complete its fresh challenges.
+              </InlineNotice>
+            ) : error ? (
               <InlineNotice tone="warning" title="Analysis not completed">
                 {error}
               </InlineNotice>
             ) : null}
             <Button
               className="button-primary verify-primary"
-              onClick={() => void analyze()}
+              onClick={sessionExpired ? resetWorkflow : () => void analyze()}
             >
-              <FingerprintIcon size={18} />
-              Analyze physical state
+              {sessionExpired ? (
+                "Start a new session"
+              ) : (
+                <>
+                  <FingerprintIcon size={18} />
+                  Analyze physical state
+                </>
+              )}
             </Button>
           </div>
         ) : null}
@@ -633,12 +768,30 @@ export function VerificationWorkflow({
                 Reason codes are shown above. No settlement transaction is
                 available.
               </InlineNotice>
-            ) : !analysis.signedAttestation ? (
-              <InlineNotice tone="warning" title="No signed attestation">
-                {analysis.attestationError ??
-                  "The result was accepted, but the verifier did not return a consumable signature."}
+            ) : validatingAttestation ? (
+              <InlineNotice tone="loading" title="Validating signed proof">
+                The analysis result is already preserved. ALIVE is checking the
+                asset fingerprint and authorized verifier before enabling proof
+                consumption.
               </InlineNotice>
-            ) : escrowId && contractsConfigured ? (
+            ) : !analysis.signedAttestation ? (
+              <>
+                <InlineNotice tone="warning" title="No consumable attestation">
+                  {analysis.attestationError ??
+                    "The result was accepted, but the verifier did not return a consumable signature."}
+                </InlineNotice>
+                {pendingAttestation ? (
+                  <Button
+                    className="button-secondary"
+                    disabled={validatingAttestation}
+                    onClick={() => void retryAttestationValidation()}
+                  >
+                    <ShieldCheckIcon size={18} />
+                    Retry proof validation
+                  </Button>
+                ) : null}
+              </>
+            ) : proofDestination === "escrow-ready" ? (
               <>
                 <Button
                   className="button-primary settlement-button"
@@ -669,10 +822,19 @@ export function VerificationWorkflow({
                   </>
                 ) : null}
               </>
+            ) : proofDestination === "escrow-unconfigured" ? (
+              <InlineNotice
+                tone="warning"
+                title="Escrow contracts are not configured"
+              >
+                The signed proof is bound to this escrow context, but ALIVE
+                cannot submit settlement until the local contract addresses are
+                configured for {activeChain.name}.
+              </InlineNotice>
             ) : (
               <InlineNotice tone="success" title="Signed proof ready">
-                This attestation is not bound to a configured escrow, so no
-                payment transaction will be claimed.
+                This verification was started without an escrow context. The
+                signed proof is available, but no payment transaction applies.
               </InlineNotice>
             )}
             {submittedSettlementHash &&
@@ -693,16 +855,8 @@ export function VerificationWorkflow({
             ) : null}
             <Button
               className="button-secondary"
-              onClick={() => {
-                setState("intro");
-                setSession(null);
-                setSessionCapability(null);
-                setAuthorizationChainId(null);
-                setAnalysis(null);
-                setSubmittedSettlementHash(null);
-                setSettlementHash(null);
-                setError(null);
-              }}
+              disabled={validatingAttestation}
+              onClick={resetWorkflow}
             >
               Start a new session
             </Button>

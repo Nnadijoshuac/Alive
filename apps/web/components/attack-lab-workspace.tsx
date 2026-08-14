@@ -112,10 +112,10 @@ export function AttackLabWorkspace() {
         </div>
         <Button
           className="button-primary"
-          disabled={!/^0x[0-9a-fA-F]{64}$/.test(assetId)}
-          onClick={() => setRunning(true)}
+          disabled={!running && !/^0x[0-9a-fA-F]{64}$/.test(assetId)}
+          onClick={() => setRunning((value) => !value)}
         >
-          {running ? "Lab active" : "Run real verification"}
+          {running ? "Stop verification" : "Run real verification"}
         </Button>
       </aside>
       <section className="attack-stage">

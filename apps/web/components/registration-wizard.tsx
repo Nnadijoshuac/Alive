@@ -28,13 +28,14 @@ import {
 } from "@/lib/authorization";
 import {
   activeChain,
+  assetRegistryConfigured,
   contractAddresses,
-  contractsConfigured,
   explorerTransactionUrl,
 } from "@/lib/chain";
 import { assetRegistrationArgs, assetRegistryAbi } from "@/lib/contracts";
 import { truncateHash } from "@/lib/format";
 import { localSubjectAccount, rememberAsset } from "@/lib/local-state";
+import { getRegistrationCommitState } from "@/lib/registration-state";
 import type {
   AssetCategory,
   AssetMetadata,
@@ -161,6 +162,15 @@ export function RegistrationWizard() {
   }, [form]);
   const currentView = views[activeView] ?? views[0];
   const capturedCount = Object.keys(captures).length;
+  const commitState = getRegistrationCommitState({
+    transactionHash,
+    locallyAuthorized: assetWasLocallyAuthorized,
+    registryConfigured: assetRegistryConfigured,
+    walletConnected: wallet.connected,
+    walletCorrectNetwork: wallet.correctNetwork,
+    ...(wallet.address ? { walletAddress: wallet.address } : {}),
+    ...(asset?.owner ? { assetOwner: asset.owner } : {}),
+  });
 
   const advance = () => {
     setError(null);
@@ -185,7 +195,14 @@ export function RegistrationWizard() {
   };
 
   const buildFingerprint = async () => {
-    let signer: AuthorizationSigner | undefined = walletSigner;
+    if (asset) {
+      advance();
+      return;
+    }
+
+    let signer: AuthorizationSigner | undefined = localMode
+      ? undefined
+      : walletSigner;
     let locallyAuthorized = false;
     if (!signer && localMode) {
       const account = localSubjectAccount();
@@ -258,13 +275,11 @@ export function RegistrationWizard() {
 
   const registerOnchain = async () => {
     if (
+      commitState !== "ready" ||
       !asset?.fingerprintHash ||
       !registrationNonce ||
       !contractAddresses.assetRegistry ||
-      !wallet.address ||
-      !wallet.correctNetwork ||
-      assetWasLocallyAuthorized ||
-      wallet.address.toLowerCase() !== asset.owner.toLowerCase()
+      !wallet.address
     )
       return;
     setWorking(true);
@@ -320,15 +335,15 @@ export function RegistrationWizard() {
       label: "Wallet signature",
       detail: assetWasLocallyAuthorized
         ? "Ephemeral browser authorization cannot register onchain"
-        : contractsConfigured
+        : assetRegistryConfigured
           ? "Confirm asset registration in your wallet."
-          : "Unavailable until contracts are deployed.",
+          : "Unavailable until the Asset Registry is configured.",
       state:
         working && !transactionHash
           ? "pending"
           : transactionHash
             ? "confirmed"
-            : contractsConfigured && !assetWasLocallyAuthorized
+            : assetRegistryConfigured && !assetWasLocallyAuthorized
               ? "idle"
               : "blocked",
     },
@@ -481,15 +496,24 @@ export function RegistrationWizard() {
               <span>or</span>
               <Button
                 className={localMode ? "button-primary" : "button-secondary"}
-                onClick={() => setLocalMode(true)}
+                aria-pressed={localMode}
+                onClick={() => setLocalMode((selected) => !selected)}
               >
-                Use local capture mode
+                {localMode
+                  ? "Local capture selected"
+                  : "Use local capture mode"}
               </Button>
             </div>
-            {localMode && !wallet.connected ? (
-              <InlineNotice title="Local mode is explicit">
-                Capture and verifier analysis will work, but registration cannot
-                be submitted to X Layer.
+            {localMode ? (
+              <InlineNotice
+                tone="warning"
+                title="Wallet authorization is required for X Layer"
+              >
+                Local mode uses a session-only browser owner, even when a wallet
+                is connected. Capture and verifier analysis will work, but this
+                record cannot be registered onchain. Deselect local mode and
+                continue with a connected wallet if X Layer registration is
+                required.
               </InlineNotice>
             ) : null}
             <WizardFooter
@@ -654,7 +678,7 @@ export function RegistrationWizard() {
               </Button>
               <Button
                 className="button-primary"
-                onClick={() => void buildFingerprint()}
+                onClick={() => (asset ? advance() : void buildFingerprint())}
                 disabled={working}
               >
                 {working ? (
@@ -729,23 +753,46 @@ export function RegistrationWizard() {
               </div>
             </header>
             <TransactionFlow steps={transactionSteps} />
-            {assetWasLocallyAuthorized ? (
-              <InlineNotice tone="warning" title="Ephemeral signer asset">
-                This asset is owned by a session-only browser signer. It cannot
-                be registered onchain from a different connected wallet.
+            {commitState === "submitted" ? (
+              <InlineNotice
+                tone={working ? "loading" : "info"}
+                title="Registration transaction already submitted"
+              >
+                A second registration transaction is disabled for this record.
+                Check the recorded transaction result before taking another
+                action.
               </InlineNotice>
-            ) : !contractsConfigured ? (
-              <InlineNotice tone="warning" title="Contracts not deployed">
-                The offchain asset is ready. Set the public registry addresses
-                to enable a real transaction.
+            ) : commitState === "local-only" ? (
+              <InlineNotice tone="warning" title="Offchain-only owner">
+                This asset was authorized by a session-only browser signer, so
+                it can only be completed as an offchain record. X Layer
+                registration requires wallet authorization before fingerprint
+                generation.
               </InlineNotice>
-            ) : !wallet.connected ? (
+            ) : commitState === "contracts-missing" ? (
+              <InlineNotice
+                tone="warning"
+                title="Asset Registry not configured"
+              >
+                The offchain asset is ready. Set the public Asset Registry
+                address to enable a real registration transaction.
+              </InlineNotice>
+            ) : commitState === "wallet-required" ? (
               <InlineNotice tone="warning" title="Connected wallet required">
                 Connect the same wallet that authorized this asset before
                 onchain registration.
               </InlineNotice>
-            ) : !wallet.correctNetwork ? (
+            ) : commitState === "wrong-network" ? (
               <WalletRequirement />
+            ) : commitState === "owner-mismatch" ? (
+              <InlineNotice
+                tone="warning"
+                title="Connected wallet does not match the asset owner"
+              >
+                The connected wallet {truncateHash(wallet.address ?? "", 10, 8)}{" "}
+                did not authorize this asset. Reconnect the owner wallet{" "}
+                {truncateHash(asset.owner, 10, 8)} to submit the registration.
+              </InlineNotice>
             ) : null}
             {error ? (
               <InlineNotice tone="warning" title="Transaction not completed">
@@ -761,21 +808,22 @@ export function RegistrationWizard() {
                 <ArrowLeftIcon size={17} />
                 Back
               </Button>
-              {!assetWasLocallyAuthorized &&
-              contractsConfigured &&
-              wallet.connected &&
-              wallet.correctNetwork &&
-              wallet.address?.toLowerCase() === asset.owner.toLowerCase() ? (
+              {commitState === "ready" || commitState === "submitted" ? (
                 <Button
                   className="button-primary"
                   disabled={
-                    working || !asset.fingerprintHash || !registrationNonce
+                    working ||
+                    commitState === "submitted" ||
+                    !asset.fingerprintHash ||
+                    !registrationNonce
                   }
                   onClick={() => void registerOnchain()}
                 >
-                  {working
-                    ? "Awaiting confirmation"
-                    : `Register on ${activeChain.name}`}
+                  {transactionHash
+                    ? "Registration submitted"
+                    : working
+                      ? "Awaiting confirmation"
+                      : `Register on ${activeChain.name}`}
                   <ArrowRightIcon size={17} />
                 </Button>
               ) : (
