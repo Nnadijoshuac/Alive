@@ -13,7 +13,7 @@ import {
   type RwaCatalog,
   type RwaExtractionMetadata,
 } from "@alive/shared";
-import type { MarketDataProvider } from "@alive/market-data";
+import { MarketDataError, type MarketDataProvider } from "@alive/market-data";
 import {
   detectPolicyDrift,
   optimizePortfolio,
@@ -24,6 +24,11 @@ import {
 
 import { compileMandate } from "./compiler.js";
 import type { IntelligenceConfig } from "./config.js";
+import {
+  createDemoEligibilityPolicy,
+  evaluateEligibility,
+} from "@alive/eligibility-engine";
+
 import { extractPassportFacts } from "./extraction/passport-extractor.js";
 import { mergeExtractedFactsIntoPassport } from "./extraction/extraction-normalizer.js";
 import type { DocumentInput } from "./ingestion/document-loader.js";
@@ -402,6 +407,60 @@ export async function buildIntelligenceApp(
               completedAt: latestRun.completedAt,
             }
           : undefined,
+        disclaimer: dependencies.catalog.disclaimer,
+      };
+    },
+  );
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/eligibility",
+    async (request, reply) => {
+      const assetId = request.params.assetId;
+      const passport = dependencies.repository.getAsset(assetId);
+      if (!passport) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+
+      const capturedAt = now().toISOString();
+      let quote;
+      try {
+        quote = await dependencies.marketData.getQuote(assetId);
+      } catch (error) {
+        if (!(error instanceof MarketDataError)) throw error;
+        quote = undefined;
+      }
+
+      let marketSnapshotHash: `0x${string}` | undefined;
+      if (quote) {
+        dependencies.repository.saveQuotes([quote], capturedAt);
+        const snapshot = MarketSnapshotSchema.parse({
+          version: 1,
+          dataMode: quote.dataMode,
+          capturedAt,
+          quotes: [quote],
+        });
+        marketSnapshotHash = hashMarketSnapshot(snapshot);
+        dependencies.repository.saveMarketSnapshot(marketSnapshotHash, snapshot);
+      }
+
+      const policy = createDemoEligibilityPolicy();
+      const verdict = evaluateEligibility({
+        passport,
+        policy,
+        ...(quote ? { quote } : {}),
+        ...(marketSnapshotHash ? { marketSnapshotHash } : {}),
+        now: now(),
+      });
+
+      return {
+        verdict,
+        policy,
         disclaimer: dependencies.catalog.disclaimer,
       };
     },

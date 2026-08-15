@@ -6,6 +6,7 @@ export * from "./chains.js";
 export * from "./market.js";
 export * from "./policy.js";
 export * from "./rwa.js";
+export * from "./eligibility.js";
 export * from "./schemas.js";
 export * from "./scoring.js";
 export * from "./strategy.js";

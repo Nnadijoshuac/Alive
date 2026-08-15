@@ -134,6 +134,62 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     new end-to-end route test (ingest -> extract -> passport, and the
     `NO_SOURCES_INGESTED` guard). `services/intelligence`: 32/32 tests
     passing, typecheck clean; `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck` all clean.
+- **2026-08-15 — Milestone 4 (deterministic eligibility engine):** the last
+  purely off-chain link before a signed verdict (milestone 5) can gate an
+  on-chain action.
+  - New `@alive/shared/src/eligibility.ts`: `EligibilityPolicySchema`,
+    `EligibilityReasonCodeSchema` (16 reason codes matching the directive's
+    vocabulary — `JURISDICTION_RESTRICTED`/`INVESTOR_RESTRICTION_FAILED` are
+    defined for wire-format completeness but never emitted, since
+    `RwaAssetSchema` has no structured jurisdiction/investor-type facts yet,
+    only free-text `restrictions[]`; guessing from that text would be a
+    hallucination the schema itself forbids elsewhere in the pipeline —
+    documented in-code, not silently skipped), `EligibilityVerdictSchema`,
+    `hashPassport`/`hashEligibilityPolicy` (compact commitments, same
+    pattern as the legacy `AliveAssetRegistry`'s `metadataHash`), and
+    `isVerdictExpired`.
+  - New package `packages/eligibility-engine` (mirrors `packages/optimizer`'s
+    structure): `evaluateEligibility(passport, policy, quote?, assetEnabled?,
+    now)` is a pure, deterministic function — AssetPassport + MarketQuote +
+    EligibilityPolicy + time in, EligibilityVerdict out, no LLM call, no
+    contract call. `RwaAssetSchema` carries one price signal (no separate
+    NAV field), so NAV-vs-price freshness is split by asset class: TREASURY
+    and FUND assets are evaluated against `maxNavAgeSeconds` with `NAV_*`
+    codes (real tokenized-Treasury funds report NAV daily); other classes
+    use `maxPriceAgeSeconds` with `PRICE_*` codes — documented as a
+    deliberate reuse of one field for two staleness semantics, not two data
+    sources. `PRICE_DEVIATION_TOO_HIGH` is evaluated from the quote's
+    bid/ask spread (the deviation signal actually available), not a
+    price-vs-NAV comparison the schema has no second value for. Verdict
+    `status` is a real three-way distinction, not just `eligible` restated:
+    `UNKNOWN` when the only problems are missing data (no quote,
+    undocumented redemption, incomplete sourcing — matching "UNKNOWN is
+    preferable to hallucination"), `RESTRICTED` when a rule is actively
+    violated, `ELIGIBLE` otherwise.
+  - `createDemoEligibilityPolicy()`: the directive's example policy
+    (86400s max NAV age, 3600s max price age, 500bps max deviation,
+    redemption required, approved-issuer required) with values matching
+    `data/rwa-catalog/catalog.demo.json`'s real demo issuers.
+  - New route: `GET /api/assets/:assetId/eligibility` — fetches the
+    passport and a live quote (missing quote degrades to `UNKNOWN`, not a
+    500), evaluates against the demo policy, persists the quote/snapshot it
+    used, returns the verdict plus the policy that produced it. A new
+    end-to-end test proves the pipeline dependency concretely: a catalog
+    asset with no `redemption` fact reports `UNKNOWN` with
+    `REDEMPTION_UNKNOWN` until milestone 3's ingest+extract flow runs
+    against it, after which the same endpoint reports `ELIGIBLE`.
+  - Tests: 11 new in `packages/eligibility-engine/test/engine.test.ts`
+    (healthy-pass, NAV-stale, price-stale, missing-market-data-is-UNKNOWN,
+    missing-documentation, unapproved-issuer, redemption-disabled,
+    asset-disabled, asset-class-not-allowed, determinism, verdict-expiry) —
+    covers every scenario the directive's testing-requirements section
+    lists for the eligibility engine. 7 new in
+    `packages/shared/test/eligibility.test.ts`. 1 new end-to-end route
+    test. 246 tests passing repo-wide (`shared` 48, `contracts` 54,
+    `market-data` 8, `optimizer` 5, `policy-engine` 6,
+    `eligibility-engine` 11, `intelligence` 33, `verifier` 29, `web` 43,
+    excluding the unrelated `videos/alive-launch` port collision). Full
+    `pnpm -r typecheck` clean across all 10 buildable workspaces.
 
 ## Pivot status
 

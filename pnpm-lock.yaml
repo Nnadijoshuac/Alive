@@ -134,6 +134,19 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/eligibility-engine:
+    dependencies:
+      '@alive/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^24.3.0
+        version: 24.13.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.49.2)(tsx@4.23.12)
+
   packages/market-data:
     dependencies:
       '@alive/shared':
@@ -197,6 +210,9 @@ importers:
 
   services/intelligence:
     dependencies:
+      '@alive/eligibility-engine':
+        specifier: workspace:*
+        version: link:../../packages/eligibility-engine
       '@alive/market-data':
         specifier: workspace:*
         version: link:../../packages/market-data

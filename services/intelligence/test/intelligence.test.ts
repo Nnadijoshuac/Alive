@@ -352,4 +352,58 @@ describe("intelligence API", () => {
 
     await app.close();
   });
+
+  it("reports UNKNOWN eligibility before extraction (no redemption fact yet), then ELIGIBLE after", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const app = await buildIntelligenceApp(config, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      now: () => NOW,
+    });
+
+    const before = await app.inject({
+      method: "GET",
+      url: "/api/assets/tusdc/eligibility",
+    });
+    expect(before.statusCode).toBe(200);
+    expect(before.json()).toMatchObject({
+      verdict: { status: "UNKNOWN", eligible: false },
+    });
+    expect(
+      (before.json() as { verdict: { reasons: { code: string }[] } }).verdict
+        .reasons.map((r) => r.code),
+    ).toContain("REDEMPTION_UNKNOWN");
+
+    await app.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/ingest",
+      payload: {
+        sourceId: "demo-doc-tusdc",
+        sourceType: "DEMO_FIXTURE",
+        input: { kind: "fixture", fixtureId: "tusdc", title: "tUSDC fact sheet" },
+      },
+    });
+    await app.inject({ method: "POST", url: "/api/assets/tusdc/extract" });
+
+    const after = await app.inject({
+      method: "GET",
+      url: "/api/assets/tusdc/eligibility",
+    });
+    expect(after.statusCode).toBe(200);
+    expect(after.json()).toMatchObject({
+      verdict: { status: "ELIGIBLE", eligible: true },
+    });
+
+    const missingAsset = await app.inject({
+      method: "GET",
+      url: "/api/assets/does-not-exist/eligibility",
+    });
+    expect(missingAsset.statusCode).toBe(404);
+
+    await app.close();
+  }, 15_000);
 });
