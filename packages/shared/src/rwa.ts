@@ -78,6 +78,10 @@ export const AssetProvenanceFieldSchema = z.enum([
   "fees.redemptionFeeBps",
   "restrictions",
   "lastUpdatedAt",
+  "redemption.supported",
+  "redemption.frequency",
+  "redemption.settlementPeriod",
+  "redemption.minimum",
 ]);
 
 function sortedUniqueArray<T extends z.ZodTypeAny>(
@@ -214,6 +218,34 @@ export const RwaFeesSchema = z
     { message: "At least one known fee must be provided" },
   );
 
+/**
+ * `supported` is the only mandatory field: "redemption status is unknown" is
+ * itself a fact worth representing (as `supported: "unknown"`), distinct from
+ * omitting the whole object. See directive: UNKNOWN is preferable to
+ * hallucination.
+ */
+export const RwaRedemptionSchema = z
+  .object({
+    supported: z.union([z.boolean(), z.literal("unknown")]),
+    frequency: knownText(120).optional(),
+    settlementPeriod: knownText(120).optional(),
+    minimum: z.number().nonnegative().optional(),
+  })
+  .strict();
+
+/** Metadata about how a passport was produced. Not a "fact" field: it is not
+ * subject to the sources[].supportedFields provenance-parity check below. */
+export const RwaExtractionMetadataSchema = z
+  .object({
+    pipelineVersion: knownText(60),
+    extractedAt: IsoDateSchema,
+    model: knownText(120).optional(),
+    promptVersion: knownText(60).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    mode: z.enum(["AI", "DETERMINISTIC_FALLBACK", "DEMO_FIXTURE"]),
+  })
+  .strict();
+
 const RwaAssetObjectSchema = z
   .object({
     id: AssetIdSchema,
@@ -238,10 +270,12 @@ const RwaAssetObjectSchema = z
     risk: RwaRiskSchema,
     marketHours: RwaMarketHoursSchema.optional(),
     fees: RwaFeesSchema.optional(),
+    redemption: RwaRedemptionSchema.optional(),
     restrictions: sortedUniqueArray(
       knownText(500),
       "An asset cannot contain duplicate restrictions",
     ).optional(),
+    extraction: RwaExtractionMetadataSchema.optional(),
     sources: z
       .array(AssetSourceSchema)
       .min(1)
@@ -316,6 +350,15 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
       fields.push("fees.redemptionFeeBps");
   }
   if (asset.restrictions !== undefined) fields.push("restrictions");
+  if (asset.redemption !== undefined) {
+    fields.push("redemption.supported");
+    if (asset.redemption.frequency !== undefined)
+      fields.push("redemption.frequency");
+    if (asset.redemption.settlementPeriod !== undefined)
+      fields.push("redemption.settlementPeriod");
+    if (asset.redemption.minimum !== undefined)
+      fields.push("redemption.minimum");
+  }
 
   return fields;
 }
@@ -440,5 +483,9 @@ export type AssetSource = z.infer<typeof AssetSourceSchema>;
 export type RwaYield = z.infer<typeof RwaYieldSchema>;
 export type RwaLiquidity = z.infer<typeof RwaLiquiditySchema>;
 export type RwaRisk = z.infer<typeof RwaRiskSchema>;
+export type RwaRedemption = z.infer<typeof RwaRedemptionSchema>;
+export type RwaExtractionMetadata = z.infer<
+  typeof RwaExtractionMetadataSchema
+>;
 export type RwaAsset = z.infer<typeof RwaAssetSchema>;
 export type RwaCatalog = z.infer<typeof RwaCatalogSchema>;

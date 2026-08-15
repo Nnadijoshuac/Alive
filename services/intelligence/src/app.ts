@@ -21,6 +21,11 @@ import {
 
 import { compileMandate } from "./compiler.js";
 import type { IntelligenceConfig } from "./config.js";
+import type { DocumentInput } from "./ingestion/document-loader.js";
+import {
+  INGESTION_SOURCE_TYPES,
+  ingestDocument,
+} from "./ingestion/ingestion-service.js";
 import type { LlmJsonProvider } from "./llm.js";
 import { IntelligenceRepository } from "./repository.js";
 
@@ -47,6 +52,29 @@ const PolicyReferenceSchema = z
     },
   );
 const OptimizeBodySchema = PolicyReferenceSchema;
+const IngestBodySchema = z
+  .object({
+    sourceId: z.string().trim().min(1).max(128),
+    sourceType: z.enum(INGESTION_SOURCE_TYPES),
+    input: z.discriminatedUnion("kind", [
+      z
+        .object({
+          kind: z.literal("fixture"),
+          fixtureId: z.string().trim().min(1).max(128),
+          title: z.string().trim().min(1).max(240),
+        })
+        .strict(),
+      z
+        .object({
+          kind: z.literal("text"),
+          text: z.string().trim().min(1).max(60_000),
+          title: z.string().trim().min(1).max(240),
+          uri: z.string().url().max(2_048).optional(),
+        })
+        .strict(),
+    ]),
+  })
+  .strict();
 const CheckBodySchema = z
   .object({
     policyId: z.string().uuid().optional(),
@@ -220,6 +248,64 @@ export async function buildIntelligenceApp(
       }
       return { asset, disclaimer: dependencies.catalog.disclaimer };
     },
+  );
+
+  app.post<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/ingest",
+    async (request, reply) => {
+      const body = IngestBodySchema.parse(request.body);
+      const input: DocumentInput =
+        body.input.kind === "fixture"
+          ? {
+              kind: "fixture",
+              fixtureId: body.input.fixtureId,
+              title: body.input.title,
+            }
+          : {
+              kind: "text",
+              text: body.input.text,
+              title: body.input.title,
+              ...(body.input.uri ? { uri: body.input.uri } : {}),
+            };
+      const document = ingestDocument(
+        {
+          assetId: request.params.assetId,
+          sourceId: body.sourceId,
+          sourceType: body.sourceType,
+          input,
+          retrievedAt: now().toISOString(),
+        },
+        config.sourceDocumentsPath,
+      );
+      dependencies.repository.saveSourceDocument(document, now().toISOString());
+      reply.status(201);
+      return {
+        sourceId: document.sourceId,
+        assetId: document.assetId,
+        sourceType: document.sourceType,
+        title: document.title,
+        textHash: document.textHash,
+        chunkCount: document.chunks.length,
+        retrievedAt: document.retrievedAt,
+      };
+    },
+  );
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/sources",
+    async (request) => ({
+      sources: dependencies.repository
+        .listSourceDocuments(request.params.assetId)
+        .map((document) => ({
+          sourceId: document.sourceId,
+          sourceType: document.sourceType,
+          title: document.title,
+          ...(document.uri ? { uri: document.uri } : {}),
+          textHash: document.textHash,
+          chunkCount: document.chunks.length,
+          retrievedAt: document.retrievedAt,
+        })),
+    }),
   );
 
   app.get("/api/markets", async () => {

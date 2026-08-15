@@ -53,7 +53,7 @@ function validDemoAsset() {
         sourceType: "DEMO_FIXTURE" as const,
         fixtureId: "rwa-demo-2026-08-14",
         retrievedAt: "2026-08-14T12:00:00.000Z",
-        supportedFields: coreFields,
+        supportedFields: [...coreFields],
         disclaimer: "Synthetic fixture; not live market data.",
       },
     ],
@@ -95,6 +95,50 @@ describe("RWA asset provenance", () => {
       RwaAssetSchema.safeParse({ ...validDemoAsset(), network: "X Layer" })
         .success,
     ).toBe(false);
+  });
+
+  it("accepts a redemption fact when its provenance is declared", () => {
+    const asset = validDemoAsset();
+    asset.sources[0]?.supportedFields.push(
+      "redemption.supported",
+      "redemption.frequency",
+    );
+    const parsed = RwaAssetSchema.parse({
+      ...asset,
+      redemption: { supported: true, frequency: "Daily" },
+    });
+    expect(parsed.redemption).toEqual({ supported: true, frequency: "Daily" });
+  });
+
+  it("represents unknown redemption status explicitly rather than omitting it", () => {
+    const asset = validDemoAsset();
+    asset.sources[0]?.supportedFields.push("redemption.supported");
+    const parsed = RwaAssetSchema.parse({
+      ...asset,
+      redemption: { supported: "unknown" },
+    });
+    expect(parsed.redemption?.supported).toBe("unknown");
+  });
+
+  it("rejects a redemption fact without matching source provenance", () => {
+    expect(
+      RwaAssetSchema.safeParse({
+        ...validDemoAsset(),
+        redemption: { supported: true },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts extraction metadata without requiring it to be source-provenanced", () => {
+    const parsed = RwaAssetSchema.parse({
+      ...validDemoAsset(),
+      extraction: {
+        pipelineVersion: "alive-passport-v1",
+        extractedAt: "2026-08-15T00:00:00.000Z",
+        mode: "DEMO_FIXTURE",
+      },
+    });
+    expect(parsed.extraction?.mode).toBe("DEMO_FIXTURE");
   });
 
   it("parses the catalog fixture and keeps it explicitly demo-only", () => {

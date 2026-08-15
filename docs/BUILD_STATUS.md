@@ -40,6 +40,57 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
   `apps/web`'s `site-shell` markup, not a Remotion project). Not part of the
   RWA stack and not chased further in this pass; free the port and re-run
   `pnpm --filter @alive/launch-video test` to confirm before relying on it.
+- **2026-08-15 — Milestone 2 (Asset Passport schema + source ingestion
+  pipeline):** the product is pivoting again, from "natural-language mandate
+  -> policy vault" toward "AI-powered verification/eligibility gateway for
+  tokenized RWAs" (`docs/PIVOT.md` target). This milestone builds the first
+  missing link: turning an issuer document into hashed, citable source
+  material an extraction step can read from.
+  - Extended `@alive/shared`'s existing `RwaAssetSchema` (kept as the Asset
+    Passport base per directive, not replaced) with an optional `redemption`
+    fact (`supported: boolean | "unknown"`, `frequency`, `settlementPeriod`,
+    `minimum` — unknown is represented explicitly, never omitted or
+    hallucinated) and optional `extraction` pipeline metadata
+    (`pipelineVersion`, `extractedAt`, `model`, `promptVersion`, `confidence`,
+    `mode`). Both are additive and backward-compatible with the existing demo
+    catalog. `redemption` participates in the schema's existing
+    source-provenance parity check; `extraction` deliberately does not, since
+    it describes how a passport was produced, not a claimed fact about the
+    asset. 4 new tests in `packages/shared/test/rwa.test.ts` (41/41 passing).
+    Found and fixed a pre-existing test bug while doing this: `validDemoAsset()`
+    reused one shared `coreFields` array by reference across every test,
+    so an earlier test's `.push()` silently mutated later tests' input.
+  - New `services/intelligence/src/ingestion/` module: `text-normalizer.ts`
+    (line-ending/control-character/whitespace normalization — conservative,
+    never rewrites words or numbers, since the hash binds to its output),
+    `source-hasher.ts` (canonical keccak256 hash of normalized text, reusing
+    `@alive/shared`'s `hashCanonical`), `chunker.ts` (paragraph-aware bounded
+    splitting), `document-loader.ts` (loads a named fixture from
+    `data/source-documents/` with a path-traversal guard modeled on
+    `services/verifier/src/storage.ts`'s `FileEvidenceStore`, or accepts
+    pasted text directly — deliberately no URL fetching or PDF parsing, per
+    directive: "do not spend the hackathon building elaborate web crawling"),
+    and `ingestion-service.ts` (orchestrates the above into a `SourceDocument`
+    with `sourceType` reusing `AssetSourceSchema`'s existing vocabulary rather
+    than inventing a second taxonomy).
+  - New `data/source-documents/` demo fixtures: `tusdc.txt`, `ttbill-a.txt`,
+    `tgold.txt`, `tsp500.txt` — fictional issuer fact sheets (redemption
+    terms, underlying, issuer) for the reduced 4-asset demo set, each ending
+    in a labelled "Key Facts" block so both a real LLM and the milestone-3
+    deterministic fallback extractor can read them reliably. All carry
+    explicit DEMO DATA disclaimers.
+  - New DB tables (`services/intelligence/src/repository.ts` migration v3):
+    `source_documents` (ingested text + hash, chunk count recomputed
+    deterministically on read rather than stored redundantly) and
+    `extraction_runs` (scaffolded now, used starting milestone 3).
+  - New routes: `POST /api/assets/:assetId/ingest`,
+    `GET /api/assets/:assetId/sources`.
+  - Tests: 15 new tests in `services/intelligence/test/ingestion.test.ts`
+    (normalizer, hasher, chunker, loader path-traversal guard, ingestion
+    service) plus one new route-level test in `intelligence.test.ts`.
+    `services/intelligence`: 20/20 tests passing, typecheck clean.
+    `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck`
+    all clean.
 
 ## Pivot status
 

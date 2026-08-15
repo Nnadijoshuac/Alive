@@ -16,11 +16,15 @@ const NOW = new Date("2026-08-14T20:00:00.000Z");
 const catalogPath = fileURLToPath(
   new URL("../../../data/rwa-catalog/catalog.demo.json", import.meta.url),
 );
+const sourceDocumentsPath = fileURLToPath(
+  new URL("../../../data/source-documents", import.meta.url),
+);
 const config: IntelligenceConfig = {
   host: "127.0.0.1",
   port: 4_200,
   databasePath: ":memory:",
   catalogPath,
+  sourceDocumentsPath,
   allowedOrigins: ["http://localhost:3000"],
   llm: { provider: "disabled", timeoutMs: 1_000 },
 };
@@ -230,4 +234,62 @@ describe("intelligence API", () => {
 
     await app.close();
   }, 30_000);
+
+  it("ingests a fixture document and lists it back by asset", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const app = await buildIntelligenceApp(config, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      now: () => NOW,
+    });
+
+    const ingest = await app.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/ingest",
+      payload: {
+        sourceId: "demo-doc-tusdc",
+        sourceType: "DEMO_FIXTURE",
+        input: {
+          kind: "fixture",
+          fixtureId: "tusdc",
+          title: "tUSDC fact sheet",
+        },
+      },
+    });
+    expect(ingest.statusCode).toBe(201);
+    expect(ingest.json()).toMatchObject({
+      sourceId: "demo-doc-tusdc",
+      assetId: "tusdc",
+      sourceType: "DEMO_FIXTURE",
+    });
+    expect((ingest.json() as { textHash: string }).textHash).toMatch(
+      /^0x[0-9a-f]{64}$/,
+    );
+
+    const list = await app.inject({
+      method: "GET",
+      url: "/api/assets/tusdc/sources",
+    });
+    expect(list.statusCode).toBe(200);
+    expect(list.json()).toMatchObject({
+      sources: [{ sourceId: "demo-doc-tusdc", sourceType: "DEMO_FIXTURE" }],
+    });
+
+    const missingFixture = await app.inject({
+      method: "POST",
+      url: "/api/assets/tgold/ingest",
+      payload: {
+        sourceId: "demo-doc-bad",
+        sourceType: "DEMO_FIXTURE",
+        input: { kind: "fixture", fixtureId: "does-not-exist", title: "x" },
+      },
+    });
+    expect(missingFixture.statusCode).toBeGreaterThanOrEqual(400);
+
+    await app.close();
+  });
 });

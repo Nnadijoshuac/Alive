@@ -16,6 +16,7 @@ export type IntelligenceConfig = {
   port: number;
   databasePath: string;
   catalogPath: string;
+  sourceDocumentsPath: string;
   allowedOrigins: string[];
   llm: {
     provider: LlmProviderName;
@@ -107,6 +108,9 @@ export function loadIntelligenceConfig(
         : workspacePath(rawDatabase.replace(/^file:/u, "")),
     catalogPath: workspacePath(
       environment.RWA_CATALOG_PATH ?? "./data/rwa-catalog/catalog.demo.json",
+    ),
+    sourceDocumentsPath: workspacePath(
+      environment.RWA_SOURCE_DOCUMENTS_PATH ?? "./data/source-documents",
     ),
     allowedOrigins: origins(environment.INTELLIGENCE_ALLOWED_ORIGINS),
     llm: {

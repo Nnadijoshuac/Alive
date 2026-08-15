@@ -16,6 +16,11 @@ import {
 import type { Allocation, PortfolioProposal } from "@alive/optimizer";
 
 import type { CompiledPolicy } from "./compiler.js";
+import { chunkDocumentText } from "./ingestion/chunker.js";
+import type {
+  IngestionSourceType,
+  SourceDocument,
+} from "./ingestion/ingestion-service.js";
 
 const MIGRATIONS = [
   {
@@ -137,6 +142,42 @@ const MIGRATIONS = [
         WHERE proposal_id IS NOT NULL;
     `,
   },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE IF NOT EXISTS source_documents (
+        source_id TEXT NOT NULL,
+        asset_id TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        uri TEXT,
+        text TEXT NOT NULL,
+        text_hash TEXT NOT NULL,
+        chunk_count INTEGER NOT NULL,
+        retrieved_at TEXT NOT NULL,
+        ingested_at TEXT NOT NULL,
+        PRIMARY KEY (asset_id, source_id)
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS source_documents_asset ON source_documents(asset_id);
+
+      CREATE TABLE IF NOT EXISTS extraction_runs (
+        id TEXT PRIMARY KEY,
+        asset_id TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        model TEXT,
+        prompt_version TEXT NOT NULL,
+        pipeline_version TEXT NOT NULL,
+        source_ids_json TEXT NOT NULL,
+        source_hashes_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        passport_json TEXT,
+        validation_errors_json TEXT,
+        started_at TEXT NOT NULL,
+        completed_at TEXT
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS extraction_runs_asset ON extraction_runs(asset_id, started_at DESC);
+    `,
+  },
 ] as const;
 
 export type PolicyRecord = CompiledPolicy & {
@@ -196,6 +237,85 @@ type ProposalRow = {
   execution_plan_json: string | null;
   created_at: string;
 };
+
+type SourceDocumentRow = {
+  source_id: string;
+  asset_id: string;
+  source_type: string;
+  title: string;
+  uri: string | null;
+  text: string;
+  text_hash: string;
+  retrieved_at: string;
+};
+
+function rowToSourceDocument(row: SourceDocumentRow): SourceDocument {
+  return {
+    sourceId: row.source_id,
+    assetId: row.asset_id,
+    sourceType: row.source_type as IngestionSourceType,
+    title: row.title,
+    ...(row.uri ? { uri: row.uri } : {}),
+    text: row.text,
+    textHash: row.text_hash as `0x${string}`,
+    chunks: chunkDocumentText(row.text),
+    retrievedAt: row.retrieved_at,
+  };
+}
+
+export type ExtractionRunRecord = {
+  id: string;
+  assetId: string;
+  mode: "AI" | "DETERMINISTIC_FALLBACK" | "DEMO_FIXTURE";
+  model?: string;
+  promptVersion: string;
+  pipelineVersion: string;
+  sourceIds: string[];
+  sourceHashes: string[];
+  status: "SUCCEEDED" | "FAILED";
+  passport?: unknown;
+  validationErrors?: string[];
+  startedAt: string;
+  completedAt?: string;
+};
+
+type ExtractionRunRow = {
+  id: string;
+  asset_id: string;
+  mode: string;
+  model: string | null;
+  prompt_version: string;
+  pipeline_version: string;
+  source_ids_json: string;
+  source_hashes_json: string;
+  status: string;
+  passport_json: string | null;
+  validation_errors_json: string | null;
+  started_at: string;
+  completed_at: string | null;
+};
+
+function rowToExtractionRun(row: ExtractionRunRow): ExtractionRunRecord {
+  return {
+    id: row.id,
+    assetId: row.asset_id,
+    mode: row.mode as ExtractionRunRecord["mode"],
+    ...(row.model ? { model: row.model } : {}),
+    promptVersion: row.prompt_version,
+    pipelineVersion: row.pipeline_version,
+    sourceIds: JSON.parse(row.source_ids_json) as string[],
+    sourceHashes: JSON.parse(row.source_hashes_json) as string[],
+    status: row.status as ExtractionRunRecord["status"],
+    ...(row.passport_json
+      ? { passport: JSON.parse(row.passport_json) as unknown }
+      : {}),
+    ...(row.validation_errors_json
+      ? { validationErrors: JSON.parse(row.validation_errors_json) as string[] }
+      : {}),
+    startedAt: row.started_at,
+    ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+  };
+}
 
 function repositoryError(code: string, message: string): Error & { code: string } {
   const error = new Error(message) as Error & { code: string };
@@ -640,6 +760,114 @@ export class IntelligenceRepository {
           record.createdAt,
         );
     })();
+  }
+
+  saveSourceDocument(document: SourceDocument, ingestedAt: string): void {
+    this.#database
+      .prepare(
+        `
+        INSERT INTO source_documents (
+          source_id, asset_id, source_type, title, uri, text, text_hash,
+          chunk_count, retrieved_at, ingested_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(asset_id, source_id) DO UPDATE SET
+          source_type = excluded.source_type,
+          title = excluded.title,
+          uri = excluded.uri,
+          text = excluded.text,
+          text_hash = excluded.text_hash,
+          chunk_count = excluded.chunk_count,
+          retrieved_at = excluded.retrieved_at,
+          ingested_at = excluded.ingested_at
+      `,
+      )
+      .run(
+        document.sourceId,
+        document.assetId,
+        document.sourceType,
+        document.title,
+        document.uri ?? null,
+        document.text,
+        document.textHash,
+        document.chunks.length,
+        document.retrievedAt,
+        ingestedAt,
+      );
+  }
+
+  getSourceDocument(
+    assetId: string,
+    sourceId: string,
+  ): SourceDocument | undefined {
+    const row = this.#database
+      .prepare(
+        `
+        SELECT source_id, asset_id, source_type, title, uri, text, text_hash, retrieved_at
+        FROM source_documents
+        WHERE asset_id = ? AND source_id = ?
+      `,
+      )
+      .get(assetId, sourceId) as SourceDocumentRow | undefined;
+    return row ? rowToSourceDocument(row) : undefined;
+  }
+
+  listSourceDocuments(assetId: string): SourceDocument[] {
+    const rows = this.#database
+      .prepare(
+        `
+        SELECT source_id, asset_id, source_type, title, uri, text, text_hash, retrieved_at
+        FROM source_documents
+        WHERE asset_id = ?
+        ORDER BY source_id
+      `,
+      )
+      .all(assetId) as SourceDocumentRow[];
+    return rows.map(rowToSourceDocument);
+  }
+
+  saveExtractionRun(run: ExtractionRunRecord): void {
+    this.#database
+      .prepare(
+        `
+        INSERT INTO extraction_runs (
+          id, asset_id, mode, model, prompt_version, pipeline_version,
+          source_ids_json, source_hashes_json, status, passport_json,
+          validation_errors_json, started_at, completed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      )
+      .run(
+        run.id,
+        run.assetId,
+        run.mode,
+        run.model ?? null,
+        run.promptVersion,
+        run.pipelineVersion,
+        JSON.stringify(run.sourceIds),
+        JSON.stringify(run.sourceHashes),
+        run.status,
+        run.passport ? JSON.stringify(run.passport) : null,
+        run.validationErrors ? JSON.stringify(run.validationErrors) : null,
+        run.startedAt,
+        run.completedAt ?? null,
+      );
+  }
+
+  getLatestExtractionRun(assetId: string): ExtractionRunRecord | undefined {
+    const row = this.#database
+      .prepare(
+        `
+        SELECT id, asset_id, mode, model, prompt_version, pipeline_version,
+          source_ids_json, source_hashes_json, status, passport_json,
+          validation_errors_json, started_at, completed_at
+        FROM extraction_runs
+        WHERE asset_id = ?
+        ORDER BY started_at DESC
+        LIMIT 1
+      `,
+      )
+      .get(assetId) as ExtractionRunRow | undefined;
+    return row ? rowToExtractionRun(row) : undefined;
   }
 
   tableNames(): string[] {

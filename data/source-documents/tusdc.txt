@@ -1,0 +1,32 @@
+DEMO DATA — NOT LIVE MARKET DATA. This is a fictional demo fact sheet.
+
+ALIVE DEMO CASH ISSUER
+Product Fact Sheet: Test USD Cash (tUSDC)
+
+Test USD Cash (symbol: tUSDC) is a synthetic, fully fictional stablecoin-style
+cash reference token created solely to exercise the ALIVE demo pipeline. It
+is issued by "ALIVE Demo Cash Issuer," a fictional entity with no
+affiliation to any real financial institution. tUSDC makes no claim on real
+US dollars, real USDC, or any real deposit account.
+
+Asset class: CASH. Underlying reference: synthetic USD cash reference,
+maintained at a fixed 1.00 reference value inside the ALIVE demo router.
+
+Redemption: redemption is supported and settles immediately within the
+ALIVE demo router (MockRwaRouter). There is no minimum redemption amount
+and no settlement delay, because this is a synthetic demo instrument, not a
+real cash equivalent.
+
+Documentation status: this fact sheet, together with the ALIVE demo market
+snapshot, is the complete and only source of information for tUSDC. There
+are no other issuer filings, prospectuses, or regulatory documents because
+tUSDC is not a real financial product.
+
+Key Facts:
+- Issuer: ALIVE Demo Cash Issuer
+- Asset class: CASH
+- Underlying: Synthetic USD cash reference
+- Redemption supported: true
+- Redemption frequency: Continuous
+- Redemption settlement period: Immediate
+- Redemption minimum: 0
