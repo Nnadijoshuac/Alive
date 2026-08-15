@@ -619,12 +619,12 @@ describe("DemoRwaFaucet", function () {
 describe("MockRwaRouter demo freshness", function () {
   it("lets any demo user refresh timestamps without changing prices", async function () {
     const fixture = await loadFixture(deployRwaFixture);
-    const tokenAddress = await fixture.tokens.tnvda.getAddress();
+    const tokenAddress = await fixture.tokens.tNVDA.getAddress();
     const before = await fixture.router.getPrice(tokenAddress);
 
     await time.increase(180);
     await fixture.router
-      .connect(fixture.other)
+      .connect(fixture.attacker)
       .refreshPriceTimestamps([tokenAddress]);
 
     const after = await fixture.router.getPrice(tokenAddress);

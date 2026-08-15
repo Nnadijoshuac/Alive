@@ -292,11 +292,9 @@ export async function buildIntelligenceApp(
       asOf,
     );
     const proposal = optimizePortfolio(input);
-    const record = dependencies.repository.saveProposal(
-      proposal,
-      asOf,
-      resolved.policyId,
-    );
+    const record = dependencies.repository.saveProposal(proposal, asOf, {
+      ...(resolved.policyId ? { policyId: resolved.policyId } : {}),
+    });
     reply.status(201);
     return {
       ...record,
@@ -341,7 +339,7 @@ export async function buildIntelligenceApp(
     const record = dependencies.repository.saveProposal(
       rebalance.proposal,
       asOf,
-      resolved.policyId,
+      { ...(resolved.policyId ? { policyId: resolved.policyId } : {}) },
     );
     reply.status(201);
     return {

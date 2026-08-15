@@ -1,10 +1,45 @@
 # ALIVE build status
 
-Current audit: **2026-08-14**
+Current audit: **2026-08-15**
 
-Active branch: `feat/rwa-intelligence-pivot`
+Active branch: `feat/rwa-verification-gateway` (checkpointed from `feat/rwa-intelligence-pivot`)
 
 Pre-pivot checkpoint: `v0.8.1-physical-state-archive` at `bf449f6`
+RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
+
+## Milestone log
+
+- **2026-08-15 — Milestone 0 (git checkpoint):** the RWA policy-vault pivot
+  (contracts, `services/intelligence`, `packages/{market-data,optimizer,policy-engine}`,
+  the RWA frontend workspace, demo fixtures, rewritten docs) had been sitting
+  entirely uncommitted in the working tree — verified via a full forensic
+  audit before this checkpoint. Committed as `85e186f`
+  ("chore: checkpoint RWA policy vault before verification gateway pivot"),
+  pushed to `origin/feat/rwa-intelligence-pivot`, tagged
+  `v0.9.0-policy-vault-checkpoint` (pushed), and branched to
+  `feat/rwa-verification-gateway` (pushed, tracked). This corrects the "Pivot
+  checkpoint and Git state" table below, which predates the checkpoint and
+  still describes the work as uncommitted.
+- **2026-08-15 — Milestone 1 (baseline fix):** fixed the one known failing
+  contract test (`test/AliveRwaProtocol.test.ts` "MockRwaRouter demo
+  freshness" — wrong-case token lookup `tokens.tnvda` vs the fixture's actual
+  key `tokens.tNVDA`, and a reference to a nonexistent `fixture.other` signer;
+  changed to `tokens.tNVDA` / `fixture.attacker`) and the two real type errors
+  in `services/intelligence/src/app.ts` (`saveProposal` was called with a raw
+  `policyId` string at the `POST /api/portfolios/optimize` and
+  `POST /api/rebalance` handlers, but its third parameter is a
+  `ProposalPersistenceContext` object — fixed both call sites). Verified:
+  `packages/contracts` 54/54 tests passing, typecheck clean;
+  `services/intelligence` typecheck clean, 4/4 tests passing; full
+  `pnpm -r typecheck` clean across all 9 workspace projects; full
+  `pnpm -r test` green across every workspace **except** `videos/alive-launch`,
+  which fails on a pre-existing, unrelated environmental port-3000 collision
+  (Remotion's compositions check tried to reach a Remotion dev server on
+  `:3000` and instead hit an already-running Next.js dev server bound to that
+  port on this machine — confirmed by the error payload containing
+  `apps/web`'s `site-shell` markup, not a Remotion project). Not part of the
+  RWA stack and not chased further in this pass; free the port and re-run
+  `pnpm --filter @alive/launch-video test` to confirm before relying on it.
 
 ## Pivot status
 
