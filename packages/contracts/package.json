@@ -2,7 +2,7 @@
   "name": "@alive/contracts",
   "version": "0.1.0",
   "private": true,
-  "description": "ALIVE Proof-of-Physical-State contracts and deployment tooling",
+  "description": "ALIVE RWA policy-vault and archived physical-state contract tooling",
   "license": "MIT",
   "scripts": {
     "build": "hardhat compile",
@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network xlayerTestnet",
-    "deploy:mainnet": "hardhat run scripts/deploy.ts --network xlayerMainnet"
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network xlayerMainnet",
+    "deploy:rwa:local": "hardhat run scripts/deploy-rwa.ts --network localhost",
+    "deploy:rwa:testnet": "hardhat run scripts/deploy-rwa.ts --network xlayerTestnet"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
@@ -32,11 +34,5 @@
     "solidity-coverage": "^0.8.16",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "keccak",
-      "secp256k1"
-    ]
   }
 }

@@ -1,13 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRightIcon,
   ArrowUpRightIcon,
   CheckCircleIcon,
+  CpuIcon,
+  DatabaseIcon,
   LockKeyIcon,
-  ScanIcon,
+  RepeatIcon,
+  ShieldWarningIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import { FingerprintVisualization } from "@/components/fingerprint-visualization";
 import { HeroDevice } from "@/components/hero-device";
 import {
   Reveal,
@@ -15,96 +16,93 @@ import {
   StaggerGroup,
   StaggerItem,
 } from "@/components/motion-system";
-import { PolicyPreview } from "@/components/policy-preview";
 import styles from "./page.module.css";
 
-const proofStages = [
+const assetClasses = [
+  { name: "Treasuries", purpose: "Income and duration" },
+  { name: "Gold", purpose: "Defensive exposure" },
+  { name: "Equities", purpose: "Bounded growth" },
+  { name: "Credit", purpose: "Issuer-aware yield" },
+  { name: "Cash", purpose: "Liquidity reserve" },
+] as const;
+
+const policyRows = [
   {
-    number: "01",
-    title: "Capture",
-    copy: "A fresh randomized camera challenge records the object presented now.",
+    name: "Treasuries",
+    range: "50-80%",
+    current: "62%",
+    proposed: "64%",
+    trackClass: styles.treasuryTrack,
   },
   {
-    number: "02",
-    title: "Analyze",
-    copy: "Visual signals produce bounded scores, uncertainty, and reason codes.",
+    name: "Gold",
+    range: "5-20%",
+    current: "12%",
+    proposed: "14%",
+    trackClass: styles.goldTrack,
   },
   {
-    number: "03",
-    title: "Attest",
-    copy: "The verifier signs the asset, subject, context, result, and expiry.",
+    name: "Equities",
+    range: "0-20%",
+    current: "16%",
+    proposed: "12%",
+    trackClass: styles.equityTrack,
   },
   {
-    number: "04",
-    title: "Validate",
-    copy: "The contract checks authorization, policy, freshness, and binding.",
-  },
-  {
-    number: "05",
-    title: "Settle",
-    copy: "A valid unused proof can permit the configured payment outcome.",
+    name: "Cash",
+    range: "10-30%",
+    current: "10%",
+    proposed: "10%",
+    trackClass: styles.cashTrack,
   },
 ] as const;
 
-const privateEvidence = [
-  "Raw camera captures",
-  "Local feature vectors",
-  "OCR and image-analysis output",
+const responseStages = [
+  {
+    title: "Observe the market",
+    copy: "A sourced snapshot carries provider, timestamp, and freshness status.",
+    icon: DatabaseIcon,
+  },
+  {
+    title: "Detect policy drift",
+    copy: "Deterministic checks compare the portfolio with its signed mandate.",
+    icon: ShieldWarningIcon,
+  },
+  {
+    title: "Propose a bounded rebalance",
+    copy: "The user reviews the calculation before any authorized execution.",
+    icon: RepeatIcon,
+  },
 ] as const;
-
-const portableEvidence = [
-  "Asset and fingerprint commitment",
-  "Scores, verdict, and reason codes",
-  "Context, subject, timestamps, and expiry",
-] as const;
-
-const chainStages = [
-  ["Capture", "Observe a fresh physical presentation."],
-  ["Analyze", "Measure similarity, quality, and liveness signals."],
-  ["Attest", "Sign a bounded result with visible uncertainty."],
-  ["Validate", "Check the proof against contract policy."],
-  ["Settle", "Consume the proof before payment can move."],
-] as const;
-
-function Chapter({ number, children }: { number: string; children: string }) {
-  return (
-    <p className={styles.chapter}>
-      <span>{number}</span>
-      <i aria-hidden="true" />
-      {children}
-    </p>
-  );
-}
 
 export default function HomePage() {
   return (
     <div className={styles.page}>
       <section className={styles.hero} aria-labelledby="alive-hero-title">
         <div className={`${styles.shell} ${styles.heroGrid}`}>
-          <Reveal className={styles.heroCopy} mode="focus" duration={0.74}>
-            <div>
-              <p className={styles.eyebrow}>Proof of Physical State</p>
-              <h1 id="alive-hero-title" className={styles.heroTitle}>
-                Physical State,
-                <em>On-Chain.</em>
-              </h1>
-            </div>
-
-            <div className={styles.heroIntro}>
-              <p>
-                Fresh camera evidence becomes a bounded attestation a contract
-                can enforce.
-              </p>
-              <div className={styles.actions}>
-                <Link className={styles.primaryAction} href="/assets/register">
-                  Register an asset
-                  <ArrowRightIcon size={18} weight="bold" />
-                </Link>
-                <Link className={styles.secondaryAction} href="/protocol">
-                  Explore protocol
-                  <ArrowUpRightIcon size={17} />
-                </Link>
-              </div>
+          <Reveal className={styles.heroCopy} mode="focus" duration={0.76}>
+            <p className={styles.eyebrow}>RWA policy intelligence, prototype</p>
+            <h1 id="alive-hero-title">
+              <span>
+                <span>Tell ALIVE</span> <span>what you want</span>
+              </span>
+              <span>
+                <span>your money</span> <span>to do.</span>
+              </span>
+            </h1>
+            <p className={styles.heroSummary}>
+              AI understands the mandate. Deterministic code calculates. Smart
+              contracts enforce the rules.
+            </p>
+            <div className={styles.heroActions}>
+              <Link className={styles.primaryAction} href="/create">
+                Build my RWA strategy
+                <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+              </Link>
+              <Link className={styles.textAction} href="/attack-lab">
+                Try to break ALIVE
+                <ArrowUpRightIcon size={17} aria-hidden="true" />
+              </Link>
             </div>
           </Reveal>
 
@@ -112,256 +110,313 @@ export default function HomePage() {
             className={styles.heroVisual}
             mode="aperture"
             delay={0.08}
-            duration={0.86}
+            duration={0.84}
           >
             <HeroDevice />
-            <div className={styles.visualCaption}>
-              <span>Interactive inspection model</span>
-              <span>Pointer + scroll reactive</span>
-            </div>
+            <p className={styles.visualNote}>
+              Illustrative policy universe. No live prices or allocations.
+            </p>
           </Reveal>
+        </div>
+      </section>
 
-          <dl className={styles.heroFacts}>
-            <div>
-              <dt>Physical input</dt>
-              <dd>Fresh camera challenge</dd>
-            </div>
-            <div>
-              <dt>Signed output</dt>
-              <dd>Context-bound attestation</dd>
-            </div>
-            <div>
-              <dt>Contract effect</dt>
-              <dd>Policy-gated settlement</dd>
-            </div>
-          </dl>
-
-          <p className={styles.heroCaveat}>
-            Experimental camera-based verification estimates observable
-            similarity and freshness. It does not certify authenticity or
-            hidden condition.
+      <section className={styles.causalSection} aria-label="How ALIVE works">
+        <div className={styles.shell}>
+          <StaggerGroup
+            className={styles.causalRail}
+            role="list"
+            stagger={0.08}
+          >
+            <StaggerItem role="listitem" index={0} mode="trace">
+              <CpuIcon size={20} weight="regular" aria-hidden="true" />
+              <span>
+                <strong>AI interprets</strong>
+                Candidate intent, research, and explanation
+              </span>
+            </StaggerItem>
+            <StaggerItem role="listitem" index={1} mode="trace">
+              <CheckCircleIcon size={20} weight="regular" aria-hidden="true" />
+              <span>
+                <strong>Code calculates</strong>
+                Strict validation and portfolio arithmetic
+              </span>
+            </StaggerItem>
+            <StaggerItem role="listitem" index={2} mode="trace">
+              <LockKeyIcon size={20} weight="regular" aria-hidden="true" />
+              <span>
+                <strong>Contracts enforce</strong>
+                Approved assets, bounds, freshness, authorization
+              </span>
+            </StaggerItem>
+          </StaggerGroup>
+          <p className={styles.buildDisclosure}>
+            The current build uses clearly labeled demo market data. Onchain
+            actions still require explicit authorization.
           </p>
         </div>
       </section>
 
-      <section className={styles.section} aria-labelledby="pipeline-title">
-        <div className={styles.shell}>
-          <Reveal className={styles.sectionHeading} mode="focus">
-            <Chapter number="01">Proof pipeline</Chapter>
-            <h2 id="pipeline-title">
-              From capture to <em>contract decision.</em>
-            </h2>
+      <section className={styles.assetSection} aria-labelledby="assets-title">
+        <div className={`${styles.shell} ${styles.assetLayout}`}>
+          <Reveal className={styles.assetStatement} mode="focus">
+            <h2 id="assets-title">RWAs are multiplying.</h2>
             <p>
-              One causal chain connects the physical presentation to the final
-              onchain outcome. Every boundary stays explicit.
+              Access is expanding. Selection, allocation, and enforceable risk
+              limits are now the harder problem.
             </p>
+            <Link className={styles.textAction} href="/markets">
+              Inspect the market layer
+              <ArrowUpRightIcon size={17} aria-hidden="true" />
+            </Link>
           </Reveal>
 
-          <div className={styles.workflowGrid}>
-            <StaggerGroup
-              className={styles.stageList}
-              role="list"
-              stagger={0.07}
-            >
-              {proofStages.map((stage, index) => (
-                <StaggerItem
-                  className={styles.stage}
-                  index={index}
-                  key={stage.number}
-                  mode="quiet"
-                  role="listitem"
-                >
-                  <span>{stage.number}</span>
-                  <div>
-                    <h3>{stage.title}</h3>
-                    <p>{stage.copy}</p>
-                  </div>
-                </StaggerItem>
+          <ScrollParallax className={styles.assetField} range={[34, -34]}>
+            <ul>
+              {assetClasses.map((asset) => (
+                <li key={asset.name}>
+                  <span>{asset.name}</span>
+                  <small>{asset.purpose}</small>
+                </li>
               ))}
-            </StaggerGroup>
-
-            <Reveal className={styles.workflowMedia} mode="wipe" direction="up">
-              <ScrollParallax className={styles.mediaParallax} range={[18, -18]}>
-                <Image
-                  src="/media/alive/inspection-studio.jpg"
-                  alt="Concept visualization of a wristwatch and laptop prepared for a camera inspection"
-                  fill
-                  sizes="(max-width: 900px) 100vw, 58vw"
-                />
-              </ScrollParallax>
-              <div className={styles.scanSweep} aria-hidden="true" />
-              <p className={styles.mediaCaption}>
-                Concept visualization <span>Not a verification result</span>
-              </p>
-            </Reveal>
-          </div>
-
-          <Reveal className={styles.invariants} mode="trace" direction="right">
-            <div>
-              <ScanIcon size={22} />
-              <span>
-                <strong>Evidence offchain</strong>
-                Raw inspection media stays outside the ledger.
-              </span>
-            </div>
-            <div>
-              <LockKeyIcon size={22} />
-              <span>
-                <strong>Attestations expire</strong>
-                Every signed result has a short validity window.
-              </span>
-            </div>
-            <div>
-              <CheckCircleIcon size={22} />
-              <span>
-                <strong>Sessions are single use</strong>
-                Consumed proofs cannot settle a second time.
-              </span>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section
-        className={`${styles.section} ${styles.boundarySection}`}
-        aria-labelledby="boundary-title"
-      >
-        <div className={styles.shell}>
-          <Reveal className={styles.boundaryHeading} mode="focus">
-            <Chapter number="02">Evidence boundary</Chapter>
-            <h2 id="boundary-title">
-              Media stays offchain.
-              <em>The signed result can travel.</em>
-            </h2>
-          </Reveal>
-
-          <div className={styles.boundaryGrid}>
-            <Reveal className={styles.boundaryMedia} mode="aperture">
-              <ScrollParallax className={styles.mediaParallax} range={[20, -20]}>
-                <Image
-                  src="/media/alive/evidence-boundary-v2.webp"
-                  alt="Concept visualization of a worn black watch and laptop surface crossed by a green inspection line"
-                  fill
-                  sizes="(max-width: 900px) 100vw, 57vw"
-                />
-              </ScrollParallax>
-              <p className={styles.mediaCaption}>
-                Observable surface detail <span>Concept visualization</span>
-              </p>
-            </Reveal>
-
-            <Reveal className={styles.boundaryCopy} mode="trace" direction="left">
-              <p className={styles.boundaryIntro}>
-                The verifier retains the evidence it needs for analysis.
-                Contracts receive only the commitment and signed decision they
-                need for policy enforcement.
-              </p>
-              <div className={styles.boundaryLists}>
-                <div>
-                  <h3>Kept offchain</h3>
-                  <ul>
-                    {privateEvidence.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3>Committed or signed</h3>
-                  <ul>
-                    {portableEvidence.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <p className={styles.uncertaintyNote}>
-                Reason codes and uncertainty remain visible in the verifier
-                result.
-              </p>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      <section
-        className={`${styles.section} ${styles.policySection}`}
-        aria-labelledby="policy-title"
-      >
-        <div className={styles.shell}>
-          <Reveal className={styles.sectionHeading} mode="focus">
-            <Chapter number="03">Settlement policy</Chapter>
-            <h2 id="policy-title">
-              Set the policy. <em>Let proof decide release.</em>
-            </h2>
+            </ul>
             <p>
-              Explore the shape of an escrow policy. The controls below change
-              configuration only; they do not simulate or run verification.
+              What should
+              <strong>you own?</strong>
             </p>
-          </Reveal>
-          <Reveal className={styles.policyWrap} mode="aperture" delay={0.08}>
-            <PolicyPreview />
-          </Reveal>
+          </ScrollParallax>
         </div>
       </section>
 
       <section
-        className={`${styles.section} ${styles.chainSection}`}
-        aria-labelledby="chain-title"
+        className={styles.mandateSection}
+        aria-labelledby="mandate-title"
       >
-        <div className={styles.shell}>
-          <Reveal className={styles.chainHeading} mode="focus">
-            <Chapter number="04">One causal chain</Chapter>
-            <h2 id="chain-title">
-              Observed state becomes
-              <em>a contract decision.</em>
-            </h2>
+        <div className={`${styles.shell} ${styles.mandateLayout}`}>
+          <Reveal className={styles.mandateCopy} mode="trace" direction="right">
+            <h2 id="mandate-title">Say what you want.</h2>
+            <p>
+              Start with the outcome in plain language. ALIVE turns the request
+              into a candidate policy you can inspect and change.
+            </p>
+            <div className={styles.mandatePrinciple}>
+              <span>Natural language begins the flow.</span>
+              <strong>It never becomes executable authority.</strong>
+            </div>
           </Reveal>
 
-          <div className={styles.chainVisual}>
-            <Reveal className={styles.fingerprintFrame} mode="aperture">
-              <FingerprintVisualization
-                hash="alive-conceptual-evidence-geometry"
-                label="Illustrative evidence geometry"
+          <Reveal className={styles.promptSurface} mode="aperture" delay={0.08}>
+            <form action="/create" method="get">
+              <label htmlFor="landing-mandate">
+                Tell ALIVE what you want your money to do.
+              </label>
+              <textarea
+                id="landing-mandate"
+                name="mandate"
+                rows={5}
+                placeholder="Protect capital and earn yield. Keep at least 50% in Treasuries and never put more than 20% into equities."
               />
-              <span className={styles.orbit} aria-hidden="true" />
-              <p>Illustrative geometry—not a live verification result.</p>
+              <div>
+                <p>Nothing is signed or submitted from this landing page.</p>
+                <button type="submit">
+                  Compile mandate
+                  <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className={styles.policySection} aria-labelledby="policy-title">
+        <div className={styles.shell}>
+          <Reveal className={styles.sectionHeading} mode="focus">
+            <p className={styles.eyebrow}>A strict policy, not a prompt</p>
+            <h2 id="policy-title">ALIVE turns intent into policy.</h2>
+            <p>
+              Ambiguity becomes typed limits. Portfolio math stays
+              deterministic, inspectable, and contract-compatible.
+            </p>
+          </Reveal>
+
+          <div className={styles.policyComposition}>
+            <Reveal
+              className={styles.policySource}
+              mode="wipe"
+              direction="right"
+            >
+              <p>Example mandate</p>
+              <blockquote>
+                Protect capital, keep most funds in Treasuries, retain cash, and
+                cap equity exposure.
+              </blockquote>
+              <dl>
+                <div>
+                  <dt>Interpretation</dt>
+                  <dd>Candidate only</dd>
+                </div>
+                <div>
+                  <dt>Arithmetic</dt>
+                  <dd>Deterministic</dd>
+                </div>
+                <div>
+                  <dt>Execution</dt>
+                  <dd>User authorized</dd>
+                </div>
+              </dl>
             </Reveal>
 
-            <StaggerGroup className={styles.chainRail} role="list" stagger={0.06}>
-              {chainStages.map(([title, copy], index) => (
-                <StaggerItem
-                  index={index}
-                  key={title}
-                  mode="quiet"
-                  role="listitem"
-                >
-                  <span>0{index + 1}</span>
-                  <h3>{title}</h3>
-                  <p>{copy}</p>
-                </StaggerItem>
-              ))}
-            </StaggerGroup>
+            <Reveal className={styles.policyMap} mode="aperture" delay={0.08}>
+              <header>
+                <div>
+                  <span>Your ALIVE mandate</span>
+                  <strong>Example policy</strong>
+                </div>
+                <p>Synthetic allocations</p>
+              </header>
+              <div className={styles.policyLegend} aria-hidden="true">
+                <span>Allowed range</span>
+                <span>Current</span>
+                <span>Proposed</span>
+              </div>
+              <div className={styles.policyRows}>
+                {policyRows.map((row) => (
+                  <div className={styles.policyRow} key={row.name}>
+                    <div>
+                      <strong>{row.name}</strong>
+                      <span>{row.range}</span>
+                    </div>
+                    <div
+                      className={`${styles.rangeLine} ${row.trackClass}`}
+                      role="img"
+                      aria-label={`${row.name}: allowed ${row.range}, current ${row.current}, proposed ${row.proposed}`}
+                    >
+                      <span className={styles.allowedRange} />
+                      <i className={styles.currentMarker} />
+                      <b className={styles.proposedMarker} />
+                    </div>
+                    <div className={styles.policyValues}>
+                      <span>{row.current}</span>
+                      <strong>{row.proposed}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <footer>
+                <span>Single asset max 20%</span>
+                <span>Single issuer max 25%</span>
+              </footer>
+            </Reveal>
           </div>
+        </div>
+      </section>
 
-          <Reveal className={styles.finalCta} mode="wipe" direction="up">
-            <div>
-              <p>Start with one object.</p>
+      <section
+        className={styles.rejectionSection}
+        aria-labelledby="rejection-title"
+      >
+        <div className={`${styles.shell} ${styles.rejectionLayout}`}>
+          <Reveal className={styles.rejectionCopy} mode="focus">
+            <h2 id="rejection-title">The AI can&apos;t break your rules.</h2>
+            <p>
+              A persuasive model output still fails when it violates the
+              canonical policy. The wall is code, not a suggestion.
+            </p>
+            <Link className={styles.textAction} href="/attack-lab">
+              Try the policy attacks
+              <ArrowUpRightIcon size={17} aria-hidden="true" />
+            </Link>
+          </Reveal>
+
+          <Reveal className={styles.rejectionVisual} mode="aperture">
+            <div className={styles.requestBlock}>
+              <span>AI proposal</span>
+              <strong>100%</strong>
+              <p>Equities</p>
+            </div>
+            <div className={styles.policyWall}>
+              <span>Policy wall</span>
+              <strong>20% max</strong>
+            </div>
+            <div className={styles.rejectedProbe} aria-hidden="true">
+              <i />
+            </div>
+            <div className={styles.rejectionResult}>
+              <ShieldWarningIcon size={22} weight="fill" aria-hidden="true" />
               <span>
-                Create an offchain baseline, then walk through the complete
-                proof flow.
+                <strong>Rejected before execution</strong>
+                EQUITY_CLASS_LIMIT_EXCEEDED
               </span>
             </div>
-            <div className={styles.actions}>
-              <Link className={styles.primaryAction} href="/assets/register">
-                Begin registration
-                <ArrowRightIcon size={18} weight="bold" />
-              </Link>
-              <Link className={styles.secondaryAction} href="/dashboard">
-                Open dashboard
-                <ArrowUpRightIcon size={17} />
-              </Link>
-            </div>
+            <p className={styles.exampleLabel}>
+              Illustrative violation against the example policy above.
+            </p>
           </Reveal>
+        </div>
+      </section>
+
+      <section
+        className={styles.responseSection}
+        aria-labelledby="response-title"
+      >
+        <div className={styles.shell}>
+          <Reveal className={styles.sectionHeading} mode="focus">
+            <h2 id="response-title">Portfolios that can respond.</h2>
+            <p>
+              Monitor changing conditions, surface drift, and prepare a bounded
+              rebalance without giving the model control of the wallet.
+            </p>
+          </Reveal>
+
+          <StaggerGroup
+            className={styles.responseRail}
+            role="list"
+            stagger={0.09}
+          >
+            {responseStages.map((stage, index) => (
+              <StaggerItem key={stage.title} role="listitem" index={index}>
+                <stage.icon size={24} weight="regular" aria-hidden="true" />
+                <span>{stage.title}</span>
+                <p>{stage.copy}</p>
+              </StaggerItem>
+            ))}
+          </StaggerGroup>
+
+          <Reveal
+            className={styles.responseActions}
+            mode="trace"
+            direction="right"
+          >
+            <p>
+              <strong>Market snapshot to execution outcome.</strong>
+              Every boundary remains visible.
+            </p>
+            <Link className={styles.secondaryAction} href="/rebalance">
+              Open rebalance
+              <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+            </Link>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className={styles.finalSection} aria-labelledby="final-title">
+        <div className={`${styles.shell} ${styles.finalPanel}`}>
+          <Reveal mode="focus">
+            <h2 id="final-title">Your mandate is the product.</h2>
+            <p>
+              Let intelligence propose. Keep calculation and authority inside
+              rules you can inspect.
+            </p>
+          </Reveal>
+          <div className={styles.finalActions}>
+            <Link className={styles.primaryAction} href="/create">
+              Build my RWA strategy
+              <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
+            </Link>
+            <Link className={styles.textAction} href="/demo">
+              View the demo flow
+              <ArrowUpRightIcon size={17} aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </section>
     </div>

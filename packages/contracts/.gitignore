@@ -11,3 +11,4 @@ typechain-types/
 # Deployment files contain public addresses, never private material. Keep local
 # and ephemeral chain exports out of version control.
 deployments/31337.json
+deployments/rwa-31337.json

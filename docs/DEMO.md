@@ -1,5 +1,9 @@
 # ALIVE demo runbook
 
+> **Historical V1 reference.** This runbook demonstrates the archived
+> physical-state product. The V2 RWA mandate/policy/vault demo has not replaced
+> it yet; do not use this script to present the current product thesis.
+
 ## Presenter objective
 
 Show one causal chain in two to three minutes:

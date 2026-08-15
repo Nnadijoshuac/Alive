@@ -1,192 +1,309 @@
 # ALIVE security model
 
+Status: **V2 pivot in progress; unaudited; test assets only**
+
 ## Scope
 
-ALIVE is an experimental Proof-of-Physical-State protocol. It produces AI-estimated confidence from observable camera evidence and encodes that result in a short-lived signed attestation. It does not certify legal title, provenance, market value, hidden damage, or absolute authenticity.
+ALIVE is experimental financial software for expressing and enforcing policy
+over tokenized real-world assets. The V2 system is being rebuilt on
+`feat/rwa-intelligence-pivot`; it is not a completed, deployed, or audited vault
+system.
 
-The MVP is appropriate for a hackathon demonstration with disposable accounts and test tokens. It has not received an external audit and must not custody valuable assets or funds.
+ALIVE does not provide investment advice, guarantee returns, certify an issuer,
+establish legal ownership of an offchain asset, guarantee redemption, or make a
+risk score objectively true. Demo assets and market values may be simulated and
+must be labelled as such. Do not custody valuable assets with this code.
+
+## Primary security assumption
+
+```text
+THE AI MAY BE WRONG OR COMPROMISED.
+```
+
+The system remains safe only if malformed, adversarial, or unreasonable model
+output cannot bypass deterministic validation, user authorization, approved
+asset/router boundaries, market freshness, or onchain policy.
+
+The intended authority split is:
+
+- AI interprets, extracts, compares, explains, and proposes.
+- Deterministic code validates schemas, normalizes policy, calculates
+  allocations, simulates execution, and detects violations.
+- The user approves policy and retains custody or grants narrowly bounded
+  authority.
+- Smart contracts enforce the supported policy subset, replay/expiry, and
+  execution boundaries.
+
+## Protected outcomes
+
+- A raw LLM response must never become policy, calldata, a signature, or an
+  execution instruction without strict deterministic processing.
+- An impossible, contradictory, malformed, or unsupported policy must fail
+  before approval.
+- The onchain policy hash and enforceable fields must correspond to the exact
+  user-approved normalized policy.
+- Only approved, enabled asset tokens and approved execution routers may be
+  used by a vault.
+- Allocations must respect encoded class, issuer, single-asset, cash, freshness,
+  and slippage limits after actual execution.
+- A strategy for one vault, policy, market snapshot, portfolio state, chain, or
+  verifier must not authorize another context.
+- Expired, future-issued, wrong-signer, stale-data, or replayed strategies must
+  fail.
+- Advisory mode requires user authorization. Guarded-auto authority, if
+  enabled, must remain bounded by the vault policy and must not expose a user's
+  private key.
+- A failed router call, malicious token transfer, short receipt, or invalid
+  post-balance must revert atomically.
+- Synthetic values, AI claims, and UI state must not be presented as live market
+  data or onchain facts.
 
 ## Assets and trust roots
 
-### Protected outcomes
+### User assets
 
-- A stale, incomplete, or duplicated verification session must not create a second analysis capability.
-- An attestation signed by an unexpected key must be rejected.
-- Expired, future-issued, overlong, malformed, or already consumed attestations must be rejected.
-- A proof for one asset, subject, chain, registry, or escrow must not settle another.
-- Escrow must not release a rejected or below-threshold result.
-- Funding, release, refund, and cancellation must obey explicit one-way states.
-- A token transfer failure or short deposit must not leave escrow falsely funded or settled.
-- Raw evidence must not be placed onchain or committed to Git.
+The intended V2 trust root is a user-owned vault. The owner controls deposits,
+withdrawals, policy approval/versioning, and approval mode. No AI service or
+strategy signer should hold the user's wallet key.
 
-### Trusted in the MVP
+### Canonical policy
 
-- the machine running the verifier;
-- its environment configuration and signing key;
-- its SQLite database and local evidence directory;
-- the camera and browser operating environment;
-- the contract owner that can rotate the signer and authorize consumers;
-- the correctness of the selected vision model and score policy.
+The approved normalized policy and its deterministic encoding are security
+artifacts. Any mismatch between displayed policy, hashed policy, registered
+fields, and executed checks is a critical bug.
 
-X Layer contracts are authoritative for registered commitments, current asset ownership, consumed sessions, escrow state, and token movement. They cannot independently inspect a camera frame or reproduce private inference.
+### RWA registry
 
-## Threats and current protections
+The approved-asset registry is authoritative only for the token address,
+class/issuer identifiers, enabled state, and metadata/provenance commitments it
+stores. It cannot prove that an issuer's offchain statements are true or that a
+token remains redeemable or legally accessible to a user.
 
-### Static photo replay
+### Market data
 
-The verifier issues four unpredictable ordered challenges. Every challenge requires exactly three frames with strictly increasing timestamps. The server independently decodes, freshness-checks, quality-checks, fingerprints, and stores all three, then evaluates intra-burst motion, cross-challenge change, exact evidence-hash reuse, and high perceptual-hash similarity. A still image repeated through a burst should receive motion or replay failures.
+A provider-labelled market snapshot is trusted only within its documented
+source, timestamp, status, and freshness boundary. Demo providers are not trust
+roots for real value. A future Chainlink adapter still requires correct feed
+selection, report verification, decimals, market-status handling, and staleness
+checks.
 
-Residual risk: moving a printed image or display can create motion. A responsive screen can attempt each requested viewpoint. The current system is resistance to simple replay, not proof against presentation attacks.
+### Strategy signer
 
-### Prerecorded or generated video
+The authorized strategy signer is a centralized trust point. Its authority is
+intended to be constrained to typed proposals that the vault independently
+validates. Signer compromise must not allow arbitrary withdrawals, arbitrary
+routers, unsupported assets, stale execution, or policy violations.
 
-Random session and challenge IDs, shuffled ordering, short expiry, timestamp validation, and one-time analysis make precomputation harder.
+### Contract owner and administrators
 
-Residual risk: synchronized playback, relay, virtual-camera injection, or real-time generation can defeat camera-only checks. There is no trusted depth sensor, camera attestation, watermark challenge, or anti-deepfake model in the MVP.
+Registry/verifier administration can affect approved assets and signer trust.
+Until roles, rotation delays, monitoring, multisig ownership, and emergency
+behavior are finalized, these accounts remain high-impact trust roots.
 
-### Different unit of the same model
+## Threats and required controls
 
-ALIVE combines multiple views, spatial appearance, local gradients, normalized identifiers, and observable distinctive marks. Stickers, scratches, finish, edge layout, ports, labels, and wear improve discrimination.
+The status column describes the pivot at the time of this document. `UNDER
+REVIEW` means source exists but the final test and integration evidence is not
+yet recorded.
 
-Residual risk: visually uniform objects without a reliable identifier may be indistinguishable at webcam resolution. The repository contains no statistically representative same-model evaluation set and makes no false-accept claim.
+| Threat                                                  | Required control                                                                                                    | Pivot status                                                                      |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Prompt injection asks the model to ignore policy        | Treat model output as candidate JSON; strict schema and semantic checks; contract policy remains final              | Foundation in progress; end-to-end proof pending                                  |
+| Hallucinated or unsupported asset                       | Resolve only canonical catalog IDs; require enabled registry entry and provenance; use `UNKNOWN` for missing fields | Foundation in progress                                                            |
+| Contradictory mandate                                   | Validate BPS ranges and feasibility before approval; return reason codes                                            | Shared/policy validation tests pass; UI approval remains                          |
+| Model chooses arbitrary weights                         | Deterministic optimizer owns all allocation arithmetic and rounding                                                 | Five focused optimizer tests pass; independent review remains                     |
+| Explanation differs from calculation                    | Generate explanation from deterministic result fields and test referenced values                                    | Not yet proven end to end                                                         |
+| Forged or ambiguous policy hash                         | Versioned canonical encoding, strict types, cross-language test vectors                                             | TypeScript and Solidity tuple-hash parity test passes; independent review remains |
+| User approves a different policy from the one shown     | Show normalized policy and hash before wallet action; bind owner/vault/version onchain                              | UI integration not complete                                                       |
+| Stale or fabricated quote                               | Provider, observation time, status, provenance, max-age checks; label demo mode                                     | Demo provider under review; production adapter not complete                       |
+| Oracle/feed substitution                                | Bind asset/feed identity and market snapshot hash into strategy; registry allowlist                                 | Design defined; public proof pending                                              |
+| Rounding or overflow changes limits                     | Integer BPS, fixed token decimals, checked math, exact-sum tests, post-balance validation                           | Unit/contract review in progress                                                  |
+| Single-asset or issuer concentration                    | Deterministic precheck plus direct vault enforcement of supported fields                                            | Contract implementation under review                                              |
+| Unapproved or blocked token                             | Registry enabled check and policy allow/block lists on every execution                                              | Contract implementation under review                                              |
+| Arbitrary calldata or malicious router                  | Fixed typed execution plan and approved router interface; no LLM calldata                                           | Contract implementation under review                                              |
+| Fee-on-transfer, rebasing, callback, or malicious token | Approved-token model, exact balance deltas, checks-effects-interactions, reentrancy guard, adversarial tests        | Contract tests pending final report                                               |
+| Wrong strategy signer                                   | EIP-712 recovery against authorized signer with domain/context binding                                              | Contract implementation under review                                              |
+| Cross-vault or cross-policy replay                      | Bind vault, policy hash/version, portfolio hashes, snapshot hash, nonce, chain, and verifier                        | Contract implementation under review                                              |
+| Expired or future strategy                              | Bounded `issuedAt`/`expiresAt`, freshness checks, one-time nonce consumption                                        | Contract implementation under review                                              |
+| Front-running changes the portfolio before execution    | Bind pre-portfolio hash and verify current state before router call                                                 | Contract implementation under review                                              |
+| Router produces a different result                      | Bound plan hash/slippage plus actual post-balance policy validation                                                 | Contract implementation under review                                              |
+| Unsolicited token transfer changes vault holdings       | Recompute the complete bounded portfolio; include the token in the next snapshot or fail explicitly                 | Contract behavior under review; transfers cannot be prevented                     |
+| Compromised vault owner                                 | Treat owner as custody root; owner withdrawal is intentionally not blocked by allocation policy                     | By design; wallet security remains critical                                       |
+| Compromised signer                                      | Vault-enforced limits, signer rotation, least-privilege host, short expiry, monitoring                              | Enforcement under review; operations incomplete                                   |
+| Compromised frontend                                    | Wallet displays exact typed data/transactions; contract rejects unauthorized or invalid state                       | Wallet/browser verification pending                                               |
+| Fake success in demo UI                                 | Derive onchain facts from receipts/state and expose reverts; never hardcode hashes or pass scores                   | V2 UI not complete                                                                |
 
-### Serial or model-label substitution
+## Policy compiler boundary
 
-When OCR sees text and the registered serial diverges strongly, the default policy emits a critical identifier mismatch. User-supplied registration identifiers also participate in comparison.
+The expected pipeline is:
 
-Residual risk: OCR is probabilistic, and a forged, covered, or replaced label can mislead a camera-only system. OCR may fail under glare, blur, occlusion, stylized fonts, or unsupported scripts.
+```text
+untrusted user text
+-> untrusted model response
+-> strict JSON/schema parse
+-> semantic validation
+-> normalization
+-> feasibility checks
+-> canonical encoding and hash
+-> user-visible review
+-> explicit approval
+```
 
-### Tampered registration evidence
+The parser must reject unknown fields when they could broaden authority. Default
+values must be conservative and visible. Policy updates create explicit
+versions; they do not mutate history silently.
 
-Asset creation requires a short-lived wallet signature over the exact generated asset ID, owner, strict metadata, audience, action, chain, nonce, and expiry. The asset ID is `keccak256(abi.encode(owner, nonce))`; the registry recomputes it from `msg.sender` and that signed registration nonce, so another caller cannot front-run the authenticated identifier. Follow-up capture writes require a random registration capability, only its Keccak hash is stored, and finalization revokes it. Onchain registration requires a real wallet transaction, and the registry records `msg.sender` as owner.
+An `LLM_PROVIDER=disabled` state is valid. An offline compiler must not be hidden
+behind deterministic example output labelled as AI.
 
-The signed attestation includes the finalized `fingerprintHash`. `AliveAttestationRegistry` reads the registered asset and rejects any proof whose signed hash differs from the onchain commitment. This closes the offchain-to-onchain commitment substitution path at proof consumption.
+## Market-data boundary
 
-Residual risk: the person controlling the registering wallet and the verifier host are trusted to establish an honest baseline. A compromised verifier can still assign false scores to evidence associated with the committed fingerprint. The registry comparison authenticates commitment identity, not the truth of the original photographs.
+Every quote or report used in a strategy must identify:
 
-### Forged or replayed attestation
+- canonical asset ID;
+- provider and provider-specific identity where applicable;
+- price and documented decimals;
+- observation timestamp;
+- retrieval timestamp or calculable age;
+- market status, if the provider supplies it;
+- demo/live status;
+- source/provenance reference.
 
-The EIP-712 domain binds signatures to `Alive Protocol`, version `1`, one chain ID, and one attestation-registry contract. The signed payload binds asset, fingerprint commitment, random session, subject, context, scores, verdict, evidence hash, issue time, and expiry. The registry recovers the configured signer and consumes each session globally once.
+Application and contract checks should reject data older than the approved
+policy allows. Clock skew, chain timestamp assumptions, feed outages, closed
+markets, and stale-but-signed reports require explicit behavior.
 
-Escrow context is `keccak256(abi.encode(escrowAddress, escrowId))`. The escrow validates this exact value before asking the registry to consume the signature. A proof for a different escrow, even for the same asset and seller, cannot release payment.
+Chainlink credentials, when used, are server-only. They must never use a
+`NEXT_PUBLIC_` name or enter browser bundles, logs, fixtures, or Git history.
 
-### Verifier-key theft
+## Strategy and EIP-712 boundary
 
-The browser never receives the key, and the service does not log it. The attestation-registry owner can rotate the authorized signer, invalidating old signatures that have not yet been consumed.
+A strategy proposal should bind at least:
 
-Residual risk: a stolen active key can forge results. Production requires hardware-backed or isolated signing, access control, short validity, monitoring, incident response, and preferably multiple independent verifiers.
+```text
+vault
+policy hash/version
+portfolio before hash
+portfolio after hash
+market snapshot hash
+execution plan hash
+strategy nonce
+issuedAt
+expiresAt
+```
 
-### Forged wallet claims and capability theft
+The domain must bind the active chain and verifying contract. The verifier must
+recover the authorized signer, reject malformed signatures, and consume a
+nonce exactly once. The vault must independently check its owner/mode, current
+policy, current portfolio, freshness, approved assets/router, and post-state.
 
-`CREATE_ASSET` and `CREATE_VERIFICATION_SESSION` each require a one-time `AliveAuthorization` EIP-712 signature. The authorization binds the exact action, wallet, resource ID, context, canonical request hash, configured audience, chain, nonce, issue time, and expiry. Asset resources are owner-and-nonce-derived; session resources are random. Nonces are persisted and consumed atomically. Verification-session creation also requires the signer to equal the authenticated offchain asset owner.
+Signing a proposal is not authorization to withdraw to the signer. The vault's
+withdrawal destination remains owner-controlled.
 
-The service returns a random 32-byte registration or session capability after consuming the wallet authorization. Only its Keccak hash is persisted. Registration capabilities expire and are revoked at fingerprint finalization; session capabilities expire with their sessions. Protected routes accept the plaintext value only as an `Authorization: Bearer` header.
+## Contract security expectations
 
-Residual risk: a bearer capability grants its scoped authority until revocation or expiry. TLS is required outside loopback, and clients must not put capabilities in URLs, logs, analytics, or durable storage. The browser keeps them only in component memory. Local mode stores an ephemeral EVM private key in `sessionStorage`; that identity is intentionally unable to act as a different connected wallet onchain.
-
-### Cross-origin and network exposure
-
-The verifier binds to `127.0.0.1` and allows browser origins listed in `VERIFIER_ALLOWED_ORIGINS`, defaulting to the two local port-3000 origins. Requests without an `Origin` header remain valid for CLI and service use.
-
-Origin filtering is not authorization. Signed mutation intents and bearer capabilities protect resource changes, but asset reads and authorization-challenge issuance remain available to direct clients. Do not bind the current service to a public interface. Production needs TLS, rate limits, audit logging, read authorization, abuse controls, revocation, and a narrowly managed origin policy.
-
-### Malicious frontend
-
-The browser can mislabel progress or suppress a failure, but it cannot produce the configured verifier signature or bypass contract checks. Final scores and evidence commitments come from the service, and final settlement state comes from the chain.
-
-Residual risk: a malicious client can submit arbitrary base64 images and timestamps within accepted windows after obtaining the owner's scoped capability. Capture provenance is not device-attested. Three server-observed frames establish change in submitted evidence, not trusted camera hardware.
-
-### Asset ownership changes during escrow
-
-The escrow requires the seller to own the asset at creation, funding, and settlement. Transferring the registered asset after escrow creation therefore blocks funding or release to the previous owner.
-
-Residual risk: registry ownership is still a digital claim and does not prove legal title or physical custody.
-
-### Reentrancy and malicious tokens
-
-Escrow uses OpenZeppelin `SafeERC20`, `ReentrancyGuard`, checks-effects-interactions, exact escrow balance-delta funding, exact recipient balance-delta payout, and atomic proof consumption plus payout. Tests include false-return, input-fee, output-fee, failed-payout, and callback attempts.
-
-Residual risk: rebasing and fee-on-transfer tokens are intentionally unsupported. Nonstandard balance behavior beyond tested cases may fail. The demo should use only the labelled test token.
-
-### Refunds, expiry, and disputes
-
-Before expiry, only the seller can authorize refund. After expiry, the buyer can recover funds. Either party may commit a nonzero offchain dispute-reason hash. A dispute adds no privileged payout path and does not override a valid signed proof.
-
-This is deliberate for the MVP, not a complete commercial dispute-resolution system.
-
-### Proof freshness relative to funding
-
-`AliveEscrow` records `fundedAt` when the exact deposit succeeds and rejects an attestation whose `issuedAt` is smaller. This prevents an older proof from being carried into a later-funded escrow.
-
-Residual risk: both values use EVM-second precision, so an attestation issued earlier within the same timestamp second satisfies `issuedAt >= fundedAt`. Production policy that requires strict wall-clock ordering should bind a post-funding nonce or block reference into the signed context.
-
-## Smart-contract controls
-
-- custom errors and explicit lifecycle checks;
-- asset existence and current ownership checks;
-- score bounds from 0 through 10,000;
-- signature recovery against one rotatable verifier;
-- exact signed `fingerprintHash` equality with the registered asset commitment;
-- maximum 24-hour attestation lifetime, with shorter five-minute service default;
-- globally consumed session IDs;
-- subject-gated standalone proofs;
-- owner-authorized contextual consumers;
-- exact escrow context, asset, seller, verdict, and thresholds;
-- attestation `issuedAt` at or after the escrow's recorded `fundedAt`;
-- exact token deposit and recipient-payout accounting;
-- no verifier-controlled withdrawal or admin settlement function;
-- single-execution release, refund, and cancellation.
-
-The contract test suite covers these cases, but a test suite is not an audit or formal proof.
+- Solidity compiler, optimizer, EVM target, and deployment configuration stay
+  pinned and documented.
+- All external token/router interaction follows checks-effects-interactions and
+  uses reentrancy protection where state/value flow requires it.
+- Deposits and withdrawals use actual balance deltas and documented token
+  decimal assumptions.
+- Strategy consumption and state transitions are atomic with execution.
+- Policy versions are owner-bound and immutable once registered.
+- Owner withdrawals intentionally bypass allocation policy so policy cannot
+  trap funds; this is not a protection against owner-key compromise.
+- Direct token transfers cannot be prevented and must be visible in the next
+  full portfolio snapshot rather than silently omitted.
+- Plan positions are bounded, but registry/position scan gas requires a
+  production scalability review.
+- Administrative changes emit events and require explicit authority.
+- Test mocks are named and labelled as mocks; they are not production venues or
+  securities.
+- Unit tests do not substitute for an external audit, fuzzing, invariant tests,
+  formal review, or public adversarial testing.
 
 ## Data handling
 
 ### Onchain
 
-- asset ID and current owner;
-- fingerprint and metadata commitments;
-- optional public metadata URI;
-- basis-point scores and verdict;
-- evidence hash, subject, context, timestamps, and digest;
-- consumed-session state;
-- escrow parties, token, amount, policy, expiry, status, and events.
+Store only the minimum required enforcement and audit data: hashes, identifiers,
+token addresses, bounded policy fields, timestamps/nonces, ownership, state,
+and events. Do not put user mandates, model prompts, source documents, API
+credentials, private portfolio notes, or large metadata onchain.
 
 ### Offchain
 
-- raw camera frames;
-- spatial, local, perceptual, neural, and quality features;
-- OCR intermediates and normalized identifiers;
-- challenge captures and timing;
-- wallet-authorization nonces, payload bindings, and consumed timestamps;
-- Keccak hashes and expiries for resource capabilities;
-- full private fingerprint;
-- HTTP and SQLite operational state.
+The planned local data model may contain catalog sources, quotes, policies,
+proposals, holdings, and execution/risk snapshots. Local SQLite is not encrypted
+by default and has no production retention policy. Do not commit it.
 
-Local files are unencrypted and demo reset deletes them. Reset is disabled without a configured `DEMO_RESET_TOKEN`, requires the matching `x-alive-demo-token` header, and refuses to delete an evidence root unless it is a dedicated descendant of the workspace `storage` boundary. These safeguards reduce accidental deletion; they are not encryption, backup, or access governance. Do not use personal or sensitive capture media without an explicit retention and access policy. Do not commit `storage/evidence`, SQLite files, model caches, or exported keys.
+Source documents may have licensing or personal-data restrictions. Cache only
+what the product is allowed to retain, record provenance, and keep restricted
+documents out of Git.
 
-## Deployment risks
+### Secrets
 
-- Only `AliveAssetRegistry` is currently recorded on X Layer Testnet. The attestation registry, escrow, test token, consumer authorization, and public end-to-end smoke test are still absent.
-- Solidity source has not received an external audit.
-- Contract source verification on the explorer is not automated.
-- The configured owner and verifier are single-key operational dependencies.
-- Public RPC availability and reorganization handling have not been production-tested.
-- Frontend deployment must use the same chain ID and addresses as the signer domain.
+Never commit or expose:
 
-Do not describe mainnet as supported merely because chain `196` is configured.
+- wallet, deployer, verifier, or strategy-signer private keys;
+- Chainlink or other provider credentials;
+- LLM provider keys;
+- database files, wallet exports, or mnemonic phrases;
+- model binaries, captured media, or rendered videos.
 
-## Production roadmap
+The browser may receive public RPC URLs, chain IDs, contract addresses, and
+non-secret feature flags only.
 
-1. Hardware-backed keys, protected owner, automated rotation, and monitoring.
-2. Encrypted evidence storage, access control, deletion receipts, and retention policy.
-3. Authenticated and paginated read APIs, rate limits, audit trails, and capability revocation.
-4. Signed native capture applications with device and camera attestation.
-5. Depth, challenge watermark, display detection, and stronger anti-deepfake liveness.
-6. Independent verifier quorum with economic accountability.
-7. Per-asset-class calibration and a public evaluation methodology.
-8. Independent contract audit, invariant testing, and formal review of settlement properties.
-9. Privacy-preserving evidence proofs where technically and economically justified.
+## Operational controls still required
+
+- independent contract and application security review;
+- production role design, multisig ownership, signer rotation, and emergency
+  response;
+- hardware-backed or isolated strategy-signing keys;
+- authenticated APIs, rate limits, abuse controls, audit logs, and TLS;
+- market-provider health monitoring and failover behavior;
+- reproducible deployments and source verification;
+- alerting for registry, policy, signer, withdrawal, and failed-execution events;
+- backup, recovery, migration, retention, and privacy procedures;
+- jurisdiction/product eligibility and appropriate legal review before real RWA
+  access.
+
+## Release security gate
+
+Do not call V2 testnet-ready until automated tests and public evidence cover:
+
+1. valid policy registration and owner-only versioning;
+2. invalid/unknown/blocked assets;
+3. asset, class, issuer, cash, risk/freshness, and slippage violations;
+4. wrong vault, policy, market snapshot, signer, and portfolio state;
+5. stale, expired, future-issued, and replayed strategies;
+6. malicious token/router and reentrancy behavior;
+7. successful deposit, allocation, drift detection, and minimum-turnover
+   rebalance;
+8. real contract rejection for the policy Attack Lab;
+9. exact transaction hashes, receipts, addresses, deployer, bytecode/source
+   verification, and current official X Layer network configuration;
+10. green frozen install, lint, typecheck, tests, contract tests, and production
+    build in GitHub Actions.
+
+## Historical V1 physical-state security
+
+V1 used camera evidence, resource-scoped bearer capabilities, wallet-bound
+authorization, short-lived fingerprint-bound attestations, and physical escrow.
+Its residual risks included camera injection, replay/video presentation,
+uncalibrated matching, a centralized verifier key, unencrypted local evidence,
+and incomplete public deployment.
+
+That source is preserved at tag `v0.8.1-physical-state-archive` (`bf449f6`). The
+full factual V1 audit remains in
+[BUILD_STATUS.md](BUILD_STATUS.md#historical-v1-physical-state-audit). V1
+controls should be reused as engineering patterns where appropriate, but they
+must not be represented as V2 portfolio-policy protection.
 
 ## Reporting
 
-Do not put private evidence, signing material, wallet secrets, or exploitable user data in a public issue. Contact the maintainers privately with the affected component, reproducible steps using synthetic evidence where possible, impact, and a suggested mitigation.
+Do not include funded keys, credentials, private source documents, user
+financial data, exploit payloads against a live deployment, or raw legacy
+capture media in a public report. Record affected commit, chain, contract,
+transaction, policy version, market snapshot, expected invariant, actual
+result, and a minimal safe reproduction.

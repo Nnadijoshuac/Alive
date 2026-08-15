@@ -1,5 +1,9 @@
 # ADR 002: EIP-712 verifier attestations
 
+Status: **Accepted for historical V1; adapted, not reused verbatim, for V2.**
+The pivot uses bounded EIP-712 strategy proposals rather than physical-state
+attestations. See [the architecture](../ARCHITECTURE.md).
+
 ## Context
 
 Escrow needs a compact physical-state result that can be authenticated and replay-protected on an EVM chain.

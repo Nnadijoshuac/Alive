@@ -5,14 +5,11 @@ packages:
   - videos/*
 
 allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  keccak: true
   onnxruntime-node: true
   protobufjs: true
+  secp256k1: true
+  sharp: true
   tesseract.js: true
-
-onlyBuiltDependencies:
-  - better-sqlite3
-  - esbuild
-  - onnxruntime-node
-  - protobufjs
-  - sharp
-  - tesseract.js

@@ -1,5 +1,223 @@
 # ALIVE build status
 
+Current audit: **2026-08-14**
+
+Active branch: `feat/rwa-intelligence-pivot`
+
+Pre-pivot checkpoint: `v0.8.1-physical-state-archive` at `bf449f6`
+
+## Pivot status
+
+ALIVE is being rebuilt from a Proof-of-Physical-State protocol into an
+AI-native intelligence and policy layer for tokenized real-world assets.
+
+The V2 target chain is:
+
+```text
+user mandate
+-> candidate AI interpretation
+-> strict deterministic validation
+-> canonical policy hash
+-> sourced market snapshot
+-> deterministic portfolio proposal and simulation
+-> user approval or bounded signer authorization
+-> smart-contract policy enforcement
+-> execution or rejection
+-> drift monitoring and compliant rebalance
+```
+
+This pivot is **not complete**. There is no complete V2 browser-to-contract
+flow, no V2 X Layer deployment, no public V2 transaction evidence, and no claim
+that the current frontend, AI compiler, optimizer, market data, contracts, or
+Attack Lab satisfy the full acceptance criteria.
+
+The stable V1 implementation remains reproducible from the archive tag. Its
+factual audit is retained unchanged under
+[Historical V1 physical-state audit](#historical-v1-physical-state-audit).
+
+## Pivot checkpoint and Git state
+
+| Item           | Current evidence                                                              |
+| -------------- | ----------------------------------------------------------------------------- |
+| Pivot date     | 2026-08-14                                                                    |
+| Old thesis     | Camera-derived Proof of Physical State for conditional settlement             |
+| New thesis     | Natural-language RWA mandates compiled into deterministic, enforceable policy |
+| Archive tag    | `v0.8.1-physical-state-archive` -> `bf449f6`                                  |
+| Active branch  | `feat/rwa-intelligence-pivot`                                                 |
+| Branch point   | `bf449f6` (`chore: archive physical-state product experience`)                |
+| V2 release tag | None; `v0.9.0-rwa-pivot` must remain absent until P1 is stable                |
+| V2 deployment  | None recorded locally as a stable export or on X Layer Testnet                |
+
+The branch and archive tag already existed before this documentation/CI update.
+Current pivot work is uncommitted and shared across parallel implementation
+tasks. Scoped passing checks are recorded below; integrations without runtime
+evidence remain `PARTIAL`, `IN PROGRESS`, or `NOT STARTED`.
+
+## Reused, adapted, and retired components
+
+| Component                                        | Pivot treatment              | Current boundary                                                        |
+| ------------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
+| Next.js/TypeScript/pnpm monorepo                 | Reused                       | Active foundation; V2 route acceptance pending                          |
+| wagmi, viem, wallet transaction UX               | Reused                       | Must be rebound to policy/vault state                                   |
+| Shared Zod/canonical hashing                     | Adapted                      | V2 schemas/hashes pass 37 shared tests; app integration remains         |
+| EIP-712/replay patterns                          | Adapted                      | V2 bounded strategies pass focused TypeScript/Solidity tests            |
+| Hardhat tests/deployment scripts                 | Reused                       | V2 contracts compile, pass 20 tests, and deploy to ephemeral local EVM  |
+| Three.js, motion, responsive fallbacks           | Adapted                      | V2 capital/policy narrative not yet accepted                            |
+| Remotion foundation                              | Adapted later                | Existing composition is V1 narrative only                               |
+| Camera registration, physical matching, OCR/CLIP | Retired from primary product | Preserved at archive tag; legacy source still present during transition |
+| Physical liveness Attack Lab                     | Retired from primary product | Must be replaced by policy/freshness/replay attacks                     |
+| Physical escrow                                  | Replaced                     | V2 user-owned policy vault works locally; app/public integration absent |
+
+## V2 capability ledger
+
+Status vocabulary is evidence-based: `WORKING`, `PARTIAL`, `IN PROGRESS`, `NOT
+STARTED`, or `BLOCKED`.
+
+| Capability                                              | Status          | Evidence and missing gate                                                                                                                   |
+| ------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical RWA and provenance schemas                    | WORKING LOCALLY | Shared build/typecheck and 37 tests pass; the eight assets remain synthetic demo data and UI is incomplete                                  |
+| Policy schema, semantic validation, normalization, hash | WORKING LOCALLY | Shared hash/validation plus five policy-engine tests pass; approval UI/onchain parity integration remains                                   |
+| Deterministic mandate fallback                          | WORKING LOCALLY | Bounded parser passes five tests and labels itself non-AI; it is not general language understanding                                         |
+| LLM provider abstraction                                | PARTIAL         | Ollama, OpenAI-compatible, and disabled modes compile and the strict candidate boundary is tested; no live-model acceptance run is recorded |
+| Asset-passport extraction with citations                | NOT STARTED     | V1 physical passport is not V2 asset intelligence                                                                                           |
+| Demo market-data provider                               | WORKING LOCALLY | Typecheck/build and eight package tests pass; values remain synthetic demo data and frontend integration is pending                         |
+| Chainlink Data Streams adapter                          | PARTIAL         | Normalization, configuration, and fail-closed credential paths are tested with fixtures; no live feed call is recorded                      |
+| Deterministic portfolio optimizer                       | WORKING LOCALLY | Typecheck/build and five tests pass for feasible, infeasible, exclusion, drift, and rebalance cases; no contract execution proof            |
+| Deterministic risk methodology                          | NOT STARTED     | RWA risk decomposition and published methodology are not complete                                                                           |
+| Drift detection and rebalance proposal                  | WORKING LOCALLY | Optimizer and Fastify integration tests exercise drift/rebalance logic; browser, wallet, and onchain execution remain absent                |
+| AliveRwaAssetRegistry                                   | WORKING LOCALLY | Owner-reviewed approved RWA records and status pass focused tests; unaudited/not deployed                                                   |
+| AlivePolicyRegistry                                     | WORKING LOCALLY | Immutable owner/vault policy versions and enforceable V1 fields pass focused tests; not deployed                                            |
+| AliveStrategyVerifier                                   | WORKING LOCALLY | EIP-712 binding, expiry/freshness, signer, nonce, and replay checks pass focused tests; not deployed                                        |
+| AliveVault                                              | WORKING LOCALLY | Custody, bounded router execution, and post-balance policy checks pass focused tests; not deployed                                          |
+| MockRwaToken and MockRwaRouter                          | WORKING LOCALLY | Test-only six-decimal tokens and admin-priced synthetic router; not a DEX or oracle                                                         |
+| V2 web routes and primary navigation                    | NOT STARTED     | Existing active routes still primarily describe V1                                                                                          |
+| Policy Attack Lab                                       | NOT STARTED     | No contract-backed V2 attack UI or underlying scenario suite is accepted                                                                    |
+| V2 Three.js policy universe                             | NOT STARTED     | Existing physical-device scene does not count                                                                                               |
+| V2 Remotion launch composition                          | NOT STARTED     | Existing physical-state composition does not count                                                                                          |
+| X Layer V2 deployment                                   | NOT STARTED     | No V2 address or transaction hash exists                                                                                                    |
+| Complete mandate-to-rebalance demo                      | NOT STARTED     | No complete local or public evidence chain exists                                                                                           |
+
+## CI status and frozen-install correction
+
+GitHub Actions is still **red** as of the latest public runs inspected on
+2026-08-14:
+
+- push run `31845477007` at `bf449f6` failed during
+  `pnpm install --frozen-lockfile`;
+- pull-request run `31845479653` at the same source failed at the same gate;
+- subsequent lint, typecheck, tests, build, and smoke steps were skipped.
+
+The public run metadata exposes the failed step and exit code, but not the pnpm
+stderr; downloading the log requires repository administration rights.
+Therefore the exact historical failure mechanism is **not conclusively
+proven** from public evidence.
+
+The strongest source-level configuration defect found was that reviewed native
+builders were split between pnpm 11's `allowBuilds`, a deprecated root
+`onlyBuiltDependencies` list, and a package-local `onlyBuiltDependencies`
+list. That creates an ambiguous strict-install policy and leaves several
+builders outside the root `allowBuilds` map. The minimal configuration
+correction consolidates all reviewed builders in one root map and removes the
+two legacy lists.
+
+The pivot changes consolidate all eight reviewed builders into one map:
+
+```yaml
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  keccak: true
+  onnxruntime-node: true
+  protobufjs: true
+  secp256k1: true
+  sharp: true
+  tesseract.js: true
+```
+
+An existing-tree Windows run of `pnpm install --frozen-lockfile` and a later
+`CI=true pnpm install --frozen-lockfile --lockfile-only` run passed with pnpm
+`11.1.2`. The pre-pivot snapshot's lockfile-only install also passes when
+scripts are disabled, so the lifecycle cleanup must not be presented as a
+proven explanation for the historical failure. None of these checks proves a
+fresh GitHub Linux install is fixed. CI remains red until this change is pushed
+and a new Actions run reaches every gate.
+
+The workflow now names and runs install, lint, typecheck, workspace tests, an
+explicit contract-test release gate, production build, and the retained V1
+integration regression. It also runs on direct pushes to the pivot branch. No
+workflow result exists for these uncommitted changes yet.
+
+## Fresh V2 policy-foundation results
+
+The following scoped checks completed on 2026-08-14:
+
+| Package                | Result                                                             |
+| ---------------------- | ------------------------------------------------------------------ |
+| `@alive/shared`        | Typecheck passed; build passed; 37/37 tests across 10 files passed |
+| `@alive/policy-engine` | Typecheck passed; build passed; 5/5 tests passed                   |
+| `@alive/optimizer`     | Typecheck passed; build passed; 5/5 tests passed                   |
+| `@alive/market-data`   | Typecheck passed; build passed; 8/8 tests passed                   |
+| `@alive/intelligence`  | Typecheck passed; build passed; 4/4 tests passed                   |
+
+The shared artifacts include strict RWA/provenance, policy, market-snapshot, and
+strategy schemas/hashes; an eight-asset synthetic catalog; an eight-quote demo
+snapshot; and a policy-hash parity fixture. The intelligence service includes
+Ollama, OpenAI-compatible, and disabled provider modes plus a 12-table SQLite
+V1 migration. Its integration test runs compile, optimize, a rejected 100%
+single-asset allocation, and rebalance through real Fastify application logic.
+The catalog has no real token addresses, the quotes are not live, the test does
+not submit a contract transaction, and the fallback parser is explicitly
+non-AI.
+
+## Fresh V2 contract results
+
+Contract verification completed on 2026-08-14:
+
+| Check                                      | Result                                                 |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `pnpm --filter @alive/contracts compile`   | Passed; nothing remained to compile on the final rerun |
+| `pnpm --filter @alive/contracts typecheck` | Passed                                                 |
+| RWA-focused Hardhat file                   | 20/20 passed in 28 seconds with `--no-compile`         |
+| Preserved V1 Hardhat file                  | 31/31 passed in 23 seconds with `--no-compile`         |
+| Current contract-test inventory            | 51 passing across the two completed file-level runs    |
+| Local `deploy-rwa.ts` smoke                | Passed; ephemeral chain-31337 export was not retained  |
+| Public V2 deployment                       | None                                                   |
+
+The latest combined wrapper did not finish within its 300-second limit while
+other workspace checks were contending for CPU. It produced no test failure.
+The 51 figure is the sum of the two separately completed Hardhat file runs, not
+a claim that a final one-command combined run completed after the last parity
+case was added.
+
+Production bytecode sizes from the compiled artifacts were 2,352 bytes for
+`AliveRwaAssetRegistry`, 6,740 for `AlivePolicyRegistry`, 4,720 for
+`AliveStrategyVerifier`, and 13,537 for `AliveVault`. The test-only mock router
+was 3,208 bytes. These sizes are below EIP-170 but are not an audit or gas
+scalability result.
+
+## Pivot milestone ledger
+
+| Milestone | Scope                                        | Status      | Release gate                                                                               |
+| --------- | -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| P1        | Pivot architecture and archive               | IN PROGRESS | Docs/CI/current app separation verified; then `v0.9.0-rwa-pivot` may be considered         |
+| P2        | Policy compiler, schema, hash, UI            | PARTIAL     | Schema/hash/fallback tests pass; real-model acceptance and approval UI remain              |
+| P3        | Catalog, provenance, intelligence, passports | PARTIAL     | Strict eight-asset demo catalog exists; extraction/passport UI remain                      |
+| P4        | Optimizer and risk engine                    | PARTIAL     | Five optimizer tests pass; complete published risk methodology and app/onchain flow remain |
+| P5        | Policy contracts and vault                   | PARTIAL     | 20 V2 tests and local deploy pass; app integration, audit, and public evidence remain      |
+| P6        | Mock RWA execution                           | PARTIAL     | Mock tokens/router work locally; complete application execution flow remains               |
+| P7        | Policy Attack Lab                            | NOT STARTED | Every UI attack backed by a real automated rejection test                                  |
+| P8        | X Layer Testnet end to end                   | NOT STARTED | Verified addresses and positive/negative/rebalance receipts                                |
+| P9        | Frontend, Three.js, Remotion rebuild         | NOT STARTED | Accepted V2 routes, fallbacks, performance, and new video                                  |
+| P10       | Hackathon release                            | NOT STARTED | Public causal chain, green CI, matching docs/deployment/tag                                |
+
+See [PIVOT.md](PIVOT.md) for the product decision and detailed reuse map,
+[ARCHITECTURE.md](ARCHITECTURE.md) for target boundaries, and
+[SECURITY.md](SECURITY.md) for the new threat model.
+
+---
+
+# Historical V1 physical-state audit
+
 Last audited: 2026-08-12
 
 Audited source tip: `346f06f` on `main`. This ledger update is documentation-only and may appear at a later commit.

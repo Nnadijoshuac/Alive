@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRightIcon,
-  FingerprintIcon,
+  DatabaseIcon,
   FlaskIcon,
   FlowArrowIcon,
   ListIcon,
   PlayCircleIcon,
+  PlusIcon,
+  RepeatIcon,
   SquaresFourIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -22,25 +24,24 @@ const headerButtonClass =
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: SquaresFourIcon },
-  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
+  { href: "/create", label: "Create", icon: PlusIcon },
+  { href: "/markets", label: "Markets", icon: DatabaseIcon },
+  { href: "/rebalance", label: "Rebalance", icon: RepeatIcon },
   { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
   { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
-];
-
-const landingNavigation = [
-  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
-  { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
-  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
   { href: "/demo", label: "Demo", icon: PlayCircleIcon },
-];
+] as const;
+
+const landingNavigation = navigation.filter((item) => item.href !== "/create");
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
-  const pageNavigation = isHome ? landingNavigation : navigation;
   const [open, setOpen] = useState(false);
   const reducedMotion = useSafeReducedMotion();
+
   useEffect(() => setOpen(false), [pathname]);
+
   useEffect(() => {
     if (!open) return;
     const previous = document.documentElement.style.overflow;
@@ -49,6 +50,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       document.documentElement.style.overflow = previous;
     };
   }, [open]);
+
   if (pathname === "/demo") return <>{children}</>;
 
   return (
@@ -57,42 +59,41 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
+
       {!isHome ? (
         <aside className="site-rail">
-        <div>
-          <Link href="/" className="logo-link" aria-label="ALIVE home">
-            <AliveLogo />
-          </Link>
-          <nav className="rail-nav" aria-label="Primary navigation">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                aria-current={
-                  pathname.startsWith(item.href) ? "page" : undefined
-                }
-              >
-                {pathname.startsWith(item.href) ? (
-                  <motion.span
-                    className="rail-active-line"
-                    layoutId="rail-active-line"
-                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                  />
-                ) : null}
-                <item.icon size={19} weight="regular" aria-hidden="true" />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="rail-meta">
-          <span className="rail-status">
-            <i aria-hidden="true" /> Proof pipeline
-          </span>
-          <span>X Layer Testnet · Chain 1952</span>
-          <span>Raw media stays offchain</span>
-        </div>
+          <div>
+            <Link href="/" className="logo-link" aria-label="ALIVE home">
+              <AliveLogo />
+            </Link>
+            <nav className="rail-nav" aria-label="Primary navigation">
+              {navigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={false}
+                  aria-current={
+                    pathname.startsWith(item.href) ? "page" : undefined
+                  }
+                >
+                  {pathname.startsWith(item.href) ? (
+                    <motion.span
+                      className="rail-active-line"
+                      layoutId="rail-active-line"
+                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                  ) : null}
+                  <item.icon size={18} weight="regular" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="rail-meta">
+            <span className="rail-status">Policy engine</span>
+            <span>Demo data is labeled</span>
+            <span>Execution requires authorization</span>
+          </div>
         </aside>
       ) : null}
 
@@ -110,6 +111,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
             >
               <AliveLogo compact={!isHome} />
             </Link>
+
             {isHome ? (
               <nav
                 className="landing-desktop-nav"
@@ -122,50 +124,52 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 ))}
               </nav>
             ) : (
-              <div
-                className="protocol-ticker"
-                aria-label="Protocol properties"
-              >
-                <span>
-                  <i aria-hidden="true" /> Capture
-                </span>
-                <span>Analyze + attest</span>
-                <span>Validate + settle</span>
+              <div className="protocol-ticker" aria-label="System boundaries">
+                <span>Candidate policy</span>
+                <span>Deterministic strategy</span>
+                <span>Authorized execution</span>
               </div>
             )}
+
             <div className="nav-wallet">
               <Link
-                href="/dashboard"
+                href="/create"
                 prefetch={false}
                 className={`${headerButtonClass} button-paper`}
               >
-                Launch app
-                <ArrowRightIcon size={18} weight="bold" />
+                {isHome ? "Build strategy" : "New policy"}
+                <ArrowRightIcon size={18} weight="bold" aria-hidden="true" />
               </Link>
             </div>
+
             <button
               className="mobile-menu-button"
               type="button"
               onClick={() => setOpen((value) => !value)}
               aria-expanded={open}
               aria-controls="mobile-navigation"
-              aria-label="Toggle navigation"
+              aria-label={open ? "Close navigation" : "Open navigation"}
             >
               {open ? <XIcon size={22} /> : <ListIcon size={22} />}
             </button>
           </div>
+
           <AnimatePresence initial={false}>
             {open ? (
               <motion.nav
                 id="mobile-navigation"
                 className="mobile-nav"
                 aria-label="Mobile navigation"
-                initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0.65 }}
+                initial={
+                  reducedMotion
+                    ? false
+                    : { clipPath: "inset(0 0 100% 0)", opacity: 0.65 }
+                }
                 animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
                 exit={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
                 transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
               >
-                {pageNavigation.map((item) => (
+                {navigation.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -179,19 +183,11 @@ export function SiteShell({ children }: { children: ReactNode }) {
                     {item.label}
                   </Link>
                 ))}
-                <Link
-                  href="/dashboard"
-                  prefetch={false}
-                  className={`${headerButtonClass} button-paper`}
-                  onClick={() => setOpen(false)}
-                >
-                  Launch app
-                  <ArrowRightIcon size={18} weight="bold" />
-                </Link>
               </motion.nav>
             ) : null}
           </AnimatePresence>
         </header>
+
         <motion.main
           id="main-content"
           key={pathname}
@@ -205,6 +201,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         >
           {children}
         </motion.main>
+
         <footer
           className={`site-footer${isHome ? " landing-site-footer" : ""}`}
         >
@@ -212,16 +209,19 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <div className="footer-brand">
               <AliveLogo />
               <p>
-                Observable physical state, signed for programmable settlement.
+                AI-native intelligence and policy infrastructure for tokenized
+                real-world assets.
               </p>
             </div>
             <div className="footer-meta">
-              <span>Evidence offchain</span>
-              <span>Scores in basis points</span>
-              <span>Attestations expire</span>
+              <span>AI interprets</span>
+              <span>Code calculates</span>
+              <span>Contracts enforce</span>
+              <span>X Layer target</span>
             </div>
             <div className="footer-links">
-              <Link href="/protocol">Security model</Link>
+              <Link href="/markets">Markets</Link>
+              <Link href="/protocol">Protocol</Link>
               <Link href="/attack-lab">Attack Lab</Link>
               <Link href="/dev/design-system">Interface system</Link>
             </div>

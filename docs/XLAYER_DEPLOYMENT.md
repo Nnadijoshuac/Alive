@@ -1,5 +1,9 @@
 # X Layer deployment guide
 
+> **Historical V1 reference.** This guide deploys the physical asset registry,
+> attestation registry, and escrow. It is not a deployment guide for the V2 RWA
+> policy contracts. No V2 X Layer deployment is currently recorded.
+
 ## Current deployment state
 
 X Layer Testnet is partially deployed. `AliveAssetRegistry` is confirmed at `0x036caD7F90A8A7ecf9B918dc214659aCb3D07Ab9` in transaction `0xcf102772641d7a061709295a3679676cf24c90ad2917e6541ebc9accb5574883`. Direct RPC readback found 2,123 runtime bytes and an exact match with the compiled artifact.

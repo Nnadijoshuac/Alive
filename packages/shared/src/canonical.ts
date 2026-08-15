@@ -1,5 +1,9 @@
 import { keccak256, toBytes, type Hex } from "viem";
 
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function serialize(value: unknown, path: string): string {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean")
@@ -18,7 +22,7 @@ function serialize(value: unknown, path: string): string {
       throw new TypeError(`Only plain objects are canonicalizable at ${path}`);
     }
     return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareCodeUnits(left, right))
       .map(([key, entry]) => {
         if (entry === undefined)
           throw new TypeError(`Undefined value at ${path}.${key}`);

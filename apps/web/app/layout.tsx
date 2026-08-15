@@ -8,33 +8,35 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://alive.local"),
-  title: { default: "ALIVE | Proof of Physical State", template: "%s | ALIVE" },
+  title: { default: "ALIVE | RWA Policy Intelligence", template: "%s | ALIVE" },
   description:
-    "ALIVE turns observable physical asset state into signed attestations that smart contracts can consume.",
+    "Tell ALIVE what you want your money to do. AI interprets the mandate, deterministic code calculates the strategy, and smart contracts enforce the rules.",
   applicationName: "ALIVE",
   keywords: [
-    "Proof of Physical State",
-    "physical asset verification",
+    "tokenized real-world assets",
+    "RWA portfolio policy",
+    "onchain vault",
     "X Layer",
-    "onchain attestation",
+    "deterministic portfolio optimization",
   ],
   openGraph: {
-    title: "ALIVE | Proof of Physical State",
-    description: "Give smart contracts eyes.",
+    title: "ALIVE | RWA Policy Intelligence",
+    description:
+      "AI understands the mandate. Deterministic code calculates. Smart contracts enforce the rules.",
     type: "website",
     images: [
       {
-        url: "/media/alive/inspection-studio.jpg",
-        width: 1536,
-        height: 1024,
-        alt: "A conceptual studio view of a wristwatch beside an ALIVE inspection laptop",
+        url: "/brand/alive-logo.png",
+        width: 1280,
+        height: 1280,
+        alt: "ALIVE logo",
       },
     ],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#141518",
+  themeColor: "#050806",
   colorScheme: "dark",
 };
 

@@ -1,0 +1,522 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "alive-rwa-demo-2026-08-14",
+  "label": "ALIVE synthetic RWA catalog",
+  "dataMode": "DEMO",
+  "asOf": "2026-08-14T12:00:00.000Z",
+  "disclaimer": "DEMO DATA — NOT LIVE MARKET DATA. These synthetic products, issuers, yields, risk scores, liquidity scores, and prices exist only to exercise ALIVE locally and on testnet. They are not investment products or investment advice.",
+  "assets": [
+    {
+      "id": "tusdc",
+      "symbol": "tUSDC",
+      "name": "Test USD Cash",
+      "assetClass": "CASH",
+      "issuer": "demo-cash-issuer",
+      "issuerName": "ALIVE Demo Cash Issuer",
+      "underlying": "Synthetic USD cash reference",
+      "liquidity": {
+        "score": 100,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 8,
+        "issuerRisk": 8,
+        "liquidityRisk": 2,
+        "marketRisk": 4,
+        "oracleRisk": 10,
+        "redemptionRisk": 3,
+        "productComplexityRisk": 2,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": { "type": "ALWAYS_OPEN" },
+      "restrictions": ["Demo token only", "No claim on real USDC"],
+      "sources": [
+        {
+          "id": "demo-source-tusdc",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "ttbill-a",
+      "symbol": "tTBILL-A",
+      "name": "Test Treasury Fund A",
+      "assetClass": "TREASURY",
+      "issuer": "demo-treasury-issuer-a",
+      "issuerName": "ALIVE Demo Treasury Issuer A",
+      "underlying": "Synthetic short-duration US Treasury reference basket",
+      "yield": {
+        "type": "Synthetic snapshot estimate",
+        "estimatedAprBps": 480
+      },
+      "liquidity": {
+        "score": 94,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 18,
+        "issuerRisk": 18,
+        "liquidityRisk": 8,
+        "marketRisk": 14,
+        "oracleRisk": 20,
+        "redemptionRisk": 12,
+        "productComplexityRisk": 10,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": { "type": "ALWAYS_OPEN" },
+      "restrictions": ["Demo token only", "No claim on US Treasuries"],
+      "sources": [
+        {
+          "id": "demo-source-ttbill-a",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "ttbill-b",
+      "symbol": "tTBILL-B",
+      "name": "Test Treasury Fund B",
+      "assetClass": "TREASURY",
+      "issuer": "demo-treasury-issuer-b",
+      "issuerName": "ALIVE Demo Treasury Issuer B",
+      "underlying": "Synthetic overnight Treasury repo reference basket",
+      "yield": {
+        "type": "Synthetic snapshot estimate",
+        "estimatedAprBps": 455
+      },
+      "liquidity": {
+        "score": 97,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 16,
+        "issuerRisk": 15,
+        "liquidityRisk": 6,
+        "marketRisk": 12,
+        "oracleRisk": 18,
+        "redemptionRisk": 10,
+        "productComplexityRisk": 11,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": { "type": "ALWAYS_OPEN" },
+      "restrictions": ["Demo token only", "No claim on US Treasuries"],
+      "sources": [
+        {
+          "id": "demo-source-ttbill-b",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "ttbill-c",
+      "symbol": "tTBILL-C",
+      "name": "Test Treasury Fund C",
+      "assetClass": "TREASURY",
+      "issuer": "demo-treasury-issuer-c",
+      "issuerName": "ALIVE Demo Treasury Issuer C",
+      "underlying": "Synthetic zero-to-three-month Treasury reference basket",
+      "yield": {
+        "type": "Synthetic snapshot estimate",
+        "estimatedAprBps": 465
+      },
+      "liquidity": {
+        "score": 91,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 21,
+        "issuerRisk": 22,
+        "liquidityRisk": 11,
+        "marketRisk": 15,
+        "oracleRisk": 21,
+        "redemptionRisk": 16,
+        "productComplexityRisk": 12,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": { "type": "ALWAYS_OPEN" },
+      "restrictions": ["Demo token only", "No claim on US Treasuries"],
+      "sources": [
+        {
+          "id": "demo-source-ttbill-c",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "tgold",
+      "symbol": "tGOLD",
+      "name": "Test Gold",
+      "assetClass": "GOLD",
+      "issuer": "demo-gold-issuer",
+      "issuerName": "ALIVE Demo Gold Issuer",
+      "underlying": "Synthetic gold spot reference",
+      "liquidity": {
+        "score": 83,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 36,
+        "issuerRisk": 24,
+        "liquidityRisk": 22,
+        "marketRisk": 42,
+        "oracleRisk": 27,
+        "redemptionRisk": 28,
+        "productComplexityRisk": 18,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": { "type": "ALWAYS_OPEN" },
+      "restrictions": ["Demo token only", "No claim on physical gold"],
+      "sources": [
+        {
+          "id": "demo-source-tgold",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "tsp500",
+      "symbol": "tSP500",
+      "name": "Test Broad Equity Index",
+      "assetClass": "EQUITY",
+      "issuer": "demo-equity-issuer",
+      "issuerName": "ALIVE Demo Equity Issuer",
+      "underlying": "Synthetic broad US equity index reference",
+      "yield": {
+        "type": "Synthetic distribution estimate",
+        "estimatedAprBps": 130
+      },
+      "liquidity": {
+        "score": 88,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 62,
+        "issuerRisk": 30,
+        "liquidityRisk": 18,
+        "marketRisk": 72,
+        "oracleRisk": 28,
+        "redemptionRisk": 24,
+        "productComplexityRisk": 25,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": {
+        "type": "TRADITIONAL_MARKET",
+        "timezone": "America/New_York"
+      },
+      "restrictions": ["Demo token only", "No claim on an equity index"],
+      "sources": [
+        {
+          "id": "demo-source-tsp500",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.timezone",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "tnvda",
+      "symbol": "tNVDA",
+      "name": "Test NVDA Reference",
+      "assetClass": "EQUITY",
+      "issuer": "demo-equity-issuer",
+      "issuerName": "ALIVE Demo Equity Issuer",
+      "underlying": "Synthetic NVDA price reference",
+      "yield": {
+        "type": "Synthetic distribution estimate",
+        "estimatedAprBps": 5
+      },
+      "liquidity": {
+        "score": 80,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 79,
+        "issuerRisk": 30,
+        "liquidityRisk": 25,
+        "marketRisk": 92,
+        "oracleRisk": 30,
+        "redemptionRisk": 25,
+        "productComplexityRisk": 30,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": {
+        "type": "TRADITIONAL_MARKET",
+        "timezone": "America/New_York"
+      },
+      "restrictions": ["Demo token only", "No claim on NVIDIA shares"],
+      "sources": [
+        {
+          "id": "demo-source-tnvda",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.timezone",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    },
+    {
+      "id": "taapl",
+      "symbol": "tAAPL",
+      "name": "Test AAPL Reference",
+      "assetClass": "EQUITY",
+      "issuer": "demo-equity-issuer",
+      "issuerName": "ALIVE Demo Equity Issuer",
+      "underlying": "Synthetic AAPL price reference",
+      "yield": {
+        "type": "Synthetic distribution estimate",
+        "estimatedAprBps": 45
+      },
+      "liquidity": {
+        "score": 84,
+        "redemptionWindow": "Immediate in MockRwaRouter"
+      },
+      "risk": {
+        "score": 68,
+        "issuerRisk": 30,
+        "liquidityRisk": 22,
+        "marketRisk": 78,
+        "oracleRisk": 29,
+        "redemptionRisk": 25,
+        "productComplexityRisk": 28,
+        "methodology": "ALIVE_DEMO_RISK_V1"
+      },
+      "marketHours": {
+        "type": "TRADITIONAL_MARKET",
+        "timezone": "America/New_York"
+      },
+      "restrictions": ["Demo token only", "No claim on Apple shares"],
+      "sources": [
+        {
+          "id": "demo-source-taapl",
+          "title": "ALIVE synthetic demo fixture",
+          "sourceType": "DEMO_FIXTURE",
+          "fixtureId": "alive-rwa-demo-2026-08-14",
+          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "supportedFields": [
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "lastUpdatedAt",
+            "liquidity.redemptionWindow",
+            "liquidity.score",
+            "marketHours.timezone",
+            "marketHours.type",
+            "name",
+            "restrictions",
+            "risk.issuerRisk",
+            "risk.liquidityRisk",
+            "risk.marketRisk",
+            "risk.methodology",
+            "risk.oracleRisk",
+            "risk.productComplexityRisk",
+            "risk.redemptionRisk",
+            "risk.score",
+            "symbol",
+            "underlying",
+            "yield.estimatedAprBps",
+            "yield.type"
+          ],
+          "disclaimer": "Synthetic fixture; not live market data."
+        }
+      ],
+      "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
+      "dataMode": "DEMO"
+    }
+  ]
+}

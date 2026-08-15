@@ -1,26 +1,13 @@
 import type { Metadata } from "next";
-import { AssetPassport } from "@/components/asset-passport";
-import { PageIntro } from "@/components/ui";
+import { AssetPassportWorkspace } from "@/components/rwa/asset-passport-workspace";
 
 export const metadata: Metadata = {
-  title: "Asset passport",
-  description: "Registration and physical-state history for an ALIVE asset.",
+  title: "RWA asset passport",
+  description: "Inspect known product facts, risk, liquidity, restrictions, quote freshness, and source provenance.",
 };
 
-export default async function AssetPassportPage({
-  params,
-}: {
-  params: Promise<{ assetId: string }>;
-}) {
+export default async function AssetPage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
-  return (
-    <div className="page-width">
-      <PageIntro
-        eyebrow="Asset passport"
-        title="A continuous record of observable state."
-        description="Registration anchors identity. Fresh inspections add time-bound evidence without publishing raw media."
-      />
-      <AssetPassport assetId={assetId} />
-    </div>
-  );
+  return <AssetPassportWorkspace assetId={assetId} />;
 }
+
