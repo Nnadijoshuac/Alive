@@ -29,6 +29,10 @@ import {
   evaluateEligibility,
 } from "@alive/eligibility-engine";
 
+import {
+  EligibilitySignerError,
+  type EligibilitySigner,
+} from "./attestations/eligibility-signer.js";
 import { extractPassportFacts } from "./extraction/passport-extractor.js";
 import { mergeExtractedFactsIntoPassport } from "./extraction/extraction-normalizer.js";
 import type { DocumentInput } from "./ingestion/document-loader.js";
@@ -105,6 +109,7 @@ export type IntelligenceAppDependencies = {
   catalog: RwaCatalog;
   llm: LlmJsonProvider;
   marketData: MarketDataProvider;
+  eligibilitySigner: EligibilitySigner;
   now?: () => Date;
 };
 
@@ -412,12 +417,48 @@ export async function buildIntelligenceApp(
     },
   );
 
+  async function computeEligibilityVerdict(assetId: string) {
+    const passport = dependencies.repository.getAsset(assetId);
+    if (!passport) return undefined;
+
+    const capturedAt = now().toISOString();
+    let quote;
+    try {
+      quote = await dependencies.marketData.getQuote(assetId);
+    } catch (error) {
+      if (!(error instanceof MarketDataError)) throw error;
+      quote = undefined;
+    }
+
+    let marketSnapshotHash: `0x${string}` | undefined;
+    if (quote) {
+      dependencies.repository.saveQuotes([quote], capturedAt);
+      const snapshot = MarketSnapshotSchema.parse({
+        version: 1,
+        dataMode: quote.dataMode,
+        capturedAt,
+        quotes: [quote],
+      });
+      marketSnapshotHash = hashMarketSnapshot(snapshot);
+      dependencies.repository.saveMarketSnapshot(marketSnapshotHash, snapshot);
+    }
+
+    const policy = createDemoEligibilityPolicy();
+    const verdict = evaluateEligibility({
+      passport,
+      policy,
+      ...(quote ? { quote } : {}),
+      ...(marketSnapshotHash ? { marketSnapshotHash } : {}),
+      now: now(),
+    });
+    return { passport, verdict, policy };
+  }
+
   app.get<{ Params: { assetId: string } }>(
     "/api/assets/:assetId/eligibility",
     async (request, reply) => {
-      const assetId = request.params.assetId;
-      const passport = dependencies.repository.getAsset(assetId);
-      if (!passport) {
+      const result = await computeEligibilityVerdict(request.params.assetId);
+      if (!result) {
         reply.status(404);
         return {
           error: {
@@ -426,43 +467,41 @@ export async function buildIntelligenceApp(
           },
         };
       }
-
-      const capturedAt = now().toISOString();
-      let quote;
-      try {
-        quote = await dependencies.marketData.getQuote(assetId);
-      } catch (error) {
-        if (!(error instanceof MarketDataError)) throw error;
-        quote = undefined;
-      }
-
-      let marketSnapshotHash: `0x${string}` | undefined;
-      if (quote) {
-        dependencies.repository.saveQuotes([quote], capturedAt);
-        const snapshot = MarketSnapshotSchema.parse({
-          version: 1,
-          dataMode: quote.dataMode,
-          capturedAt,
-          quotes: [quote],
-        });
-        marketSnapshotHash = hashMarketSnapshot(snapshot);
-        dependencies.repository.saveMarketSnapshot(marketSnapshotHash, snapshot);
-      }
-
-      const policy = createDemoEligibilityPolicy();
-      const verdict = evaluateEligibility({
-        passport,
-        policy,
-        ...(quote ? { quote } : {}),
-        ...(marketSnapshotHash ? { marketSnapshotHash } : {}),
-        now: now(),
-      });
-
       return {
-        verdict,
-        policy,
+        verdict: result.verdict,
+        policy: result.policy,
         disclaimer: dependencies.catalog.disclaimer,
       };
+    },
+  );
+
+  app.post<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/publish-verdict",
+    async (request, reply) => {
+      const assetId = request.params.assetId;
+      const result = await computeEligibilityVerdict(assetId);
+      if (!result) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+      try {
+        const signed = await dependencies.eligibilitySigner.sign(
+          assetId,
+          result.verdict,
+          now(),
+        );
+        reply.status(201);
+        return { signed, verdict: result.verdict };
+      } catch (error) {
+        if (!(error instanceof EligibilitySignerError)) throw error;
+        reply.status(503);
+        return { error: { code: error.code, message: error.message } };
+      }
     },
   );
 

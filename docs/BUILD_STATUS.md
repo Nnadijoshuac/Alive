@@ -190,6 +190,80 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     `eligibility-engine` 11, `intelligence` 33, `verifier` 29, `web` 43,
     excluding the unrelated `videos/alive-launch` port collision). Full
     `pnpm -r typecheck` clean across all 10 buildable workspaces.
+- **2026-08-15 — Milestone 5 (signed eligibility verdict +
+  AliveEligibilityRegistry.sol):** the first place the pipeline touches a
+  contract. Reuses `services/verifier`'s strongest generic pattern
+  (EIP-712 signer, fail-closed when unconfigured) applied to the new
+  attestation, per the directive's explicit instruction to reuse rather
+  than reinvent that infrastructure.
+  - `packages/shared/src/eligibility.ts` gained an EIP-712
+    `EligibilityAttestation` struct/domain/typed-data helpers, mirroring
+    `strategy.ts`'s `Strategy` struct pattern exactly (same
+    `hashTypedData`/`recoverTypedDataAddress` shape, same 24h max-lifetime
+    and non-zero-commitment `.refine` checks). The signed struct is
+    deliberately narrower than the full `EligibilityVerdict`: only
+    commitment hashes + the boolean outcome + a nonce cross the wire,
+    matching how `Strategy` commits to hashes rather than re-encoding
+    nested objects. `chainId` is not repeated as a message field — the
+    EIP-712 domain separator already binds it. Also added `hashAssetId()`,
+    which matches `packages/contracts/scripts/deploy-rwa.ts`'s
+    `hashLabel(key)` convention (`keccak256(utf8Bytes(id))`) exactly, so an
+    off-chain passport `id` and its on-chain bytes32 asset ID are always
+    derivable the same way everywhere — verified against a well-known
+    `keccak256("")` test vector, not just self-consistency.
+  - New `packages/contracts/contracts/AliveEligibilityRegistry.sol` +
+    `interfaces/IAliveEligibilityRegistry.sol`: stores the latest signed
+    verdict per asset behind one boolean gate, `isEligible(assetId)`. Its
+    core security property (documented in the contract's NatSpec and
+    proven by a dedicated test): an attestation is only accepted if its
+    `issuedAt` is strictly newer than whatever is currently stored for
+    that asset, so an old-but-still-time-valid ELIGIBLE attestation can
+    never be replayed to resurrect a status after a newer RESTRICTED one
+    superseded it — replay of the *same* attestation is separately blocked
+    by a global consumed-nonce mapping (belt-and-suspenders, matching
+    `AliveAttestationRegistry`'s existing style). `isEligible` also cross-
+    checks `AliveRwaAssetRegistry.assetExists`/`.enabled` live on every
+    call and fails closed (`false`) once `validUntil` passes without a
+    fresh attestation, an unregistered asset, a wrong signer, or a
+    malformed/zero commitment.
+  - New `services/intelligence/src/attestations/`: `nonce-store.ts`
+    (duplicates `services/verifier/src/random.ts`'s one-line
+    `randomBytes32` rather than taking a cross-service dependency for it)
+    and `eligibility-signer.ts` (`EligibilitySigner`, a direct structural
+    port of `services/verifier/src/signer.ts`'s `AttestationSigner` —
+    same fail-closed "not configured" error instead of a silent no-op,
+    same `privateKeyToAccount` + `signTypedData` call shape). New env vars
+    `ELIGIBILITY_SIGNER_PRIVATE_KEY`/`ELIGIBILITY_CHAIN_ID`/
+    `ELIGIBILITY_REGISTRY_ADDRESS` (must be all-set or all-blank) plus
+    `ELIGIBILITY_ATTESTATION_TTL_SECONDS`.
+  - New route: `POST /api/assets/:assetId/publish-verdict` — recomputes
+    the eligibility verdict (reusing the same logic as
+    `GET .../eligibility`, factored into one `computeEligibilityVerdict`
+    helper) and signs it; 503 with a typed error code when the signer
+    isn't configured, never a silent/fake signature.
+  - Tests: 12 new in `packages/contracts/test/AliveEligibilityRegistry.test.ts`
+    (default-ineligible, valid-publish, wrong-signer, unregistered-asset,
+    zero-commitment rejection, 24h-lifetime cap, future-issued rejection,
+    the old-ELIGIBLE-cannot-resurrect-after-newer-RESTRICTED property,
+    nonce-reuse rejection, expiry, disabled-registry-asset,
+    signer-rotation) — found and fixed a real flaky-test bug in the
+    process: building attestations from wall-clock `Date.now()` instead of
+    the Hardhat chain's own timestamp caused intermittent
+    `AttestationIssuedInFuture` reverts under parallel test load; fixed by
+    reading `time.latest()` instead, verified stable across repeated runs.
+    10 new EIP-712 tests in `packages/shared/test/eligibility.test.ts`
+    (attestation schema, signing round-trip, `hashAssetId` cross-checked
+    against a well-known `keccak256("")` vector). 6 new in
+    `services/intelligence/test/eligibility-signer.test.ts` (unconfigured
+    fail-closed, missing-market-snapshot refusal, signature recovery,
+    24h validUntil cap, deterministic assetIdHash) plus 1 new route test
+    (`publish-verdict` 503-then-201). 308 tests passing repo-wide
+    (`shared` 62, `contracts` 66, `market-data` 8, `optimizer` 5,
+    `policy-engine` 6, `eligibility-engine` 11, `intelligence` 40,
+    `verifier` 29, `web` 43 — excluding the unrelated
+    `videos/alive-launch` port collision), stable across repeated parallel
+    runs. Full `pnpm -r typecheck` clean across all 10 buildable
+    workspaces.
 
 ## Pivot status
 

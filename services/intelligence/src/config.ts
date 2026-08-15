@@ -25,6 +25,12 @@ export type IntelligenceConfig = {
     apiKey?: string;
     timeoutMs: number;
   };
+  eligibilitySigner: {
+    privateKey?: `0x${string}`;
+    chainId?: number;
+    verifyingContract?: `0x${string}`;
+    ttlSeconds: number;
+  };
 };
 
 function positiveInteger(
@@ -126,5 +132,43 @@ export function loadIntelligenceConfig(
         "LLM_TIMEOUT_MS",
       ),
     },
+    eligibilitySigner: eligibilitySignerConfig(environment),
+  };
+}
+
+function eligibilitySignerConfig(
+  environment: NodeJS.ProcessEnv,
+): IntelligenceConfig["eligibilitySigner"] {
+  const privateKey = environment.ELIGIBILITY_SIGNER_PRIVATE_KEY?.trim();
+  const chainIdRaw = environment.ELIGIBILITY_CHAIN_ID?.trim();
+  const verifyingContract = environment.ELIGIBILITY_REGISTRY_ADDRESS?.trim();
+  const ttlSeconds = positiveInteger(
+    environment.ELIGIBILITY_ATTESTATION_TTL_SECONDS,
+    900,
+    "ELIGIBILITY_ATTESTATION_TTL_SECONDS",
+  );
+  if (!privateKey && !chainIdRaw && !verifyingContract) {
+    return { ttlSeconds };
+  }
+  if (!privateKey || !chainIdRaw || !verifyingContract) {
+    throw new Error(
+      "ELIGIBILITY_SIGNER_PRIVATE_KEY, ELIGIBILITY_CHAIN_ID, and ELIGIBILITY_REGISTRY_ADDRESS must all be set together, or all left unset",
+    );
+  }
+  if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) {
+    throw new Error("ELIGIBILITY_SIGNER_PRIVATE_KEY must be a 32-byte hex value");
+  }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(verifyingContract)) {
+    throw new Error("ELIGIBILITY_REGISTRY_ADDRESS must be a 20-byte hex address");
+  }
+  const chainId = Number(chainIdRaw);
+  if (!Number.isInteger(chainId) || chainId <= 0) {
+    throw new Error("ELIGIBILITY_CHAIN_ID must be a positive integer");
+  }
+  return {
+    privateKey: privateKey as `0x${string}`,
+    chainId,
+    verifyingContract: verifyingContract as `0x${string}`,
+    ttlSeconds,
   };
 }

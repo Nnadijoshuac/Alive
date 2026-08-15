@@ -10,6 +10,7 @@ import {
 } from "@alive/market-data";
 
 import { buildIntelligenceApp } from "./app.js";
+import { EligibilitySigner } from "./attestations/eligibility-signer.js";
 import { loadRwaCatalog } from "./catalog.js";
 import { loadIntelligenceConfig } from "./config.js";
 import { createLlmProvider } from "./llm.js";
@@ -19,6 +20,10 @@ export {
   buildIntelligenceApp,
   type IntelligenceAppDependencies,
 } from "./app.js";
+export {
+  EligibilitySigner,
+  EligibilitySignerError,
+} from "./attestations/eligibility-signer.js";
 export { loadRwaCatalog } from "./catalog.js";
 export {
   compileMandate,
@@ -102,6 +107,7 @@ async function start(): Promise<void> {
     catalog,
     llm: createLlmProvider(config.llm),
     marketData: await marketDataFromEnvironment(),
+    eligibilitySigner: new EligibilitySigner(config.eligibilitySigner),
   });
   await app.listen({ host: config.host, port: config.port });
   process.stdout.write(

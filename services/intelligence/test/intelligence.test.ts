@@ -4,6 +4,7 @@ import { DemoMarketDataProvider } from "@alive/market-data";
 import { describe, expect, it } from "vitest";
 
 import {
+  EligibilitySigner,
   IntelligenceRepository,
   buildIntelligenceApp,
   compileMandate,
@@ -11,6 +12,10 @@ import {
   type IntelligenceConfig,
   type LlmJsonProvider,
 } from "../src/index.js";
+
+function unconfiguredEligibilitySigner(): EligibilitySigner {
+  return new EligibilitySigner({});
+}
 
 const NOW = new Date("2026-08-14T20:00:00.000Z");
 const catalogPath = fileURLToPath(
@@ -27,6 +32,7 @@ const config: IntelligenceConfig = {
   sourceDocumentsPath,
   allowedOrigins: ["http://localhost:3000"],
   llm: { provider: "disabled", timeoutMs: 1_000 },
+  eligibilitySigner: { ttlSeconds: 900 },
 };
 
 const mandate =
@@ -163,6 +169,7 @@ describe("intelligence API", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
       now: () => NOW,
     });
 
@@ -244,6 +251,7 @@ describe("intelligence API", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
       now: () => NOW,
     });
 
@@ -302,6 +310,7 @@ describe("intelligence API", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
       now: () => NOW,
     });
 
@@ -362,6 +371,7 @@ describe("intelligence API", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
       now: () => NOW,
     });
 
@@ -406,4 +416,55 @@ describe("intelligence API", () => {
 
     await app.close();
   }, 15_000);
+
+  it("returns 503 from publish-verdict when no signer is configured, and 201 with a valid signature once one is", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const unsignedRepository = new IntelligenceRepository(":memory:");
+    unsignedRepository.replaceCatalog(catalog.assets);
+
+    const unsignedApp = await buildIntelligenceApp(config, {
+      repository: unsignedRepository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+    const unsigned = await unsignedApp.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/publish-verdict",
+    });
+    expect(unsigned.statusCode).toBe(503);
+    expect(unsigned.json()).toMatchObject({
+      error: { code: "SIGNER_NOT_CONFIGURED" },
+    });
+    await unsignedApp.close();
+
+    const signedRepository = new IntelligenceRepository(":memory:");
+    signedRepository.replaceCatalog(catalog.assets);
+    const signedApp = await buildIntelligenceApp(config, {
+      repository: signedRepository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: new EligibilitySigner({
+        privateKey: `0x${"42".repeat(32)}`,
+        chainId: 31_337,
+        verifyingContract: `0x${"aa".repeat(20)}`,
+      }),
+      now: () => NOW,
+    });
+    const published = await signedApp.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/publish-verdict",
+    });
+    expect(published.statusCode).toBe(201);
+    const body = published.json() as {
+      signed: { attestation: { eligible: boolean }; signer: string };
+      verdict: { assetId: string };
+    };
+    expect(body.verdict.assetId).toBe("tusdc");
+    expect(body.signed.signer.toLowerCase()).toMatch(/^0x[0-9a-f]{40}$/);
+    await signedApp.close();
+  });
 });
