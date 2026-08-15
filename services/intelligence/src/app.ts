@@ -2,6 +2,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { z } from "zod";
 
+import { randomUUID } from "node:crypto";
+
 import {
   IsoDateSchema,
   MarketSnapshotSchema,
@@ -9,6 +11,7 @@ import {
   hashMarketSnapshot,
   type PortfolioPolicy,
   type RwaCatalog,
+  type RwaExtractionMetadata,
 } from "@alive/shared";
 import type { MarketDataProvider } from "@alive/market-data";
 import {
@@ -21,6 +24,8 @@ import {
 
 import { compileMandate } from "./compiler.js";
 import type { IntelligenceConfig } from "./config.js";
+import { extractPassportFacts } from "./extraction/passport-extractor.js";
+import { mergeExtractedFactsIntoPassport } from "./extraction/extraction-normalizer.js";
 import type { DocumentInput } from "./ingestion/document-loader.js";
 import {
   INGESTION_SOURCE_TYPES,
@@ -306,6 +311,100 @@ export async function buildIntelligenceApp(
           retrievedAt: document.retrievedAt,
         })),
     }),
+  );
+
+  app.post<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/extract",
+    async (request, reply) => {
+      const assetId = request.params.assetId;
+      const existing = dependencies.repository.getAsset(assetId);
+      if (!existing) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+      const sourceDocuments = dependencies.repository.listSourceDocuments(assetId);
+      if (sourceDocuments.length === 0) {
+        reply.status(422);
+        return {
+          error: {
+            code: "NO_SOURCES_INGESTED",
+            message:
+              "Ingest at least one source document for this asset before extracting.",
+          },
+        };
+      }
+
+      const startedAt = now().toISOString();
+      const { facts, meta, warnings } = await extractPassportFacts({
+        sourceDocuments,
+        llm: dependencies.llm,
+      });
+      const extraction: RwaExtractionMetadata = {
+        ...meta,
+        extractedAt: now().toISOString(),
+      };
+      const passport = mergeExtractedFactsIntoPassport({
+        existing,
+        facts,
+        sourceDocuments,
+        extraction,
+        lastUpdatedAt: now().toISOString(),
+      });
+      dependencies.repository.replaceCatalog([passport]);
+      dependencies.repository.saveExtractionRun({
+        id: randomUUID(),
+        assetId,
+        mode: extraction.mode,
+        ...(extraction.model ? { model: extraction.model } : {}),
+        promptVersion: extraction.promptVersion ?? extraction.pipelineVersion,
+        pipelineVersion: extraction.pipelineVersion,
+        sourceIds: sourceDocuments.map((document) => document.sourceId),
+        sourceHashes: sourceDocuments.map((document) => document.textHash),
+        status: "SUCCEEDED",
+        passport,
+        startedAt,
+        completedAt: now().toISOString(),
+      });
+
+      reply.status(201);
+      return { passport, extraction, warnings, disclaimer: dependencies.catalog.disclaimer };
+    },
+  );
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/passport",
+    async (request, reply) => {
+      const asset = dependencies.repository.getAsset(request.params.assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+      const latestRun = dependencies.repository.getLatestExtractionRun(
+        request.params.assetId,
+      );
+      return {
+        passport: asset,
+        extraction: latestRun
+          ? {
+              mode: latestRun.mode,
+              ...(latestRun.model ? { model: latestRun.model } : {}),
+              sourceIds: latestRun.sourceIds,
+              completedAt: latestRun.completedAt,
+            }
+          : undefined,
+        disclaimer: dependencies.catalog.disclaimer,
+      };
+    },
   );
 
   app.get("/api/markets", async () => {

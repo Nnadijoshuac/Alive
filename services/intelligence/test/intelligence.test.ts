@@ -292,4 +292,64 @@ describe("intelligence API", () => {
 
     await app.close();
   });
+
+  it("ingests a document, extracts a passport, and serves it back with provenance intact", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const app = await buildIntelligenceApp(config, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      now: () => NOW,
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/ingest",
+      payload: {
+        sourceId: "demo-doc-tusdc",
+        sourceType: "DEMO_FIXTURE",
+        input: {
+          kind: "fixture",
+          fixtureId: "tusdc",
+          title: "tUSDC fact sheet",
+        },
+      },
+    });
+
+    const extract = await app.inject({
+      method: "POST",
+      url: "/api/assets/tusdc/extract",
+    });
+    expect(extract.statusCode).toBe(201);
+    const extracted = extract.json() as {
+      passport: { redemption?: { supported: boolean } };
+      extraction: { mode: string };
+    };
+    expect(extracted.extraction.mode).toBe("DEMO_FIXTURE");
+    expect(extracted.passport.redemption).toMatchObject({ supported: true });
+
+    const passport = await app.inject({
+      method: "GET",
+      url: "/api/assets/tusdc/passport",
+    });
+    expect(passport.statusCode).toBe(200);
+    expect(passport.json()).toMatchObject({
+      passport: { redemption: { supported: true } },
+      extraction: { mode: "DEMO_FIXTURE", sourceIds: ["demo-doc-tusdc"] },
+    });
+
+    const withoutSources = await app.inject({
+      method: "POST",
+      url: "/api/assets/tgold/extract",
+    });
+    expect(withoutSources.statusCode).toBe(422);
+    expect(withoutSources.json()).toMatchObject({
+      error: { code: "NO_SOURCES_INGESTED" },
+    });
+
+    await app.close();
+  });
 });

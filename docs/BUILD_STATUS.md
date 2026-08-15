@@ -91,6 +91,49 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     `services/intelligence`: 20/20 tests passing, typecheck clean.
     `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck`
     all clean.
+- **2026-08-15 — Milestone 3 (AI extraction pipeline):** turns an ingested
+  document into candidate Asset Passport facts, gated by strict schema
+  validation and an anti-hallucination citation check, per directive
+  section 11: "AI proposes, deterministic code validates, AI never decides
+  eligibility and never touches a contract."
+  - New `services/intelligence/src/extraction/`: `passport-prompt.ts` (a
+    versioned system prompt forbidding inference beyond the supplied
+    sources), `extraction-validator.ts` (strict Zod schema +
+    citation-grounding check — every extracted fact must cite a supplied
+    `sourceId`, every citation must reference a source that was actually
+    supplied, unknown top-level fields are rejected), `extraction-normalizer.ts`
+    (merges cited facts into the existing passport, moving provenance for
+    each newly-claimed field from the old catalog source to the new
+    document source so `RwaAssetSchema`'s field/source parity check still
+    holds after the merge — re-validated end to end, not just asserted),
+    and `passport-extractor.ts` (the orchestrator: reuses `llm.ts`'s
+    existing `LlmJsonProvider.generatePolicyJson` rather than adding a
+    second LLM call shape; retries once with the validator's rejection
+    reason fed back to the model; falls back to a deterministic extractor
+    that reads the fixture documents' labelled "Key Facts:" block if no AI
+    is configured, or after two failed AI attempts — every path, AI or
+    deterministic, goes through the same citation-grounding validator, so
+    there is exactly one trust boundary, not two).
+  - Extraction mode is always visible, never silently mislabelled: `AI`
+    (a live model call was validated and used), `DETERMINISTIC_FALLBACK`
+    (an AI was configured but its output was rejected twice), or
+    `DEMO_FIXTURE` (no AI is configured; the labelled fixture text was read
+    directly) — matching the directive's AI LIVE / AI LOCAL / DEMO
+    EXTRACTION transparency requirement.
+  - New routes: `POST /api/assets/:assetId/extract` (ingests must exist
+    first — 422 `NO_SOURCES_INGESTED` otherwise; persists the merged
+    passport back into the `assets` table and records an `extraction_runs`
+    row), `GET /api/assets/:assetId/passport` (current passport plus the
+    latest extraction run's mode/model/sources).
+  - Tests: 11 new in `test/extraction.test.ts` (validator accept/reject
+    cases including a hallucinated-source-citation rejection and an
+    explicit-`"unknown"`-redemption acceptance; deterministic extraction
+    reading the real `tusdc.txt` fixture; AI path with a stubbed provider
+    covering direct-accept, retry-then-accept, and fallback-after-two-failures;
+    normalizer provenance-reassignment and source-pruning behavior) plus one
+    new end-to-end route test (ingest -> extract -> passport, and the
+    `NO_SOURCES_INGESTED` guard). `services/intelligence`: 32/32 tests
+    passing, typecheck clean; `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck` all clean.
 
 ## Pivot status
 
