@@ -1,8 +1,12 @@
 import {
+  EligibilityPolicySchema,
+  EligibilityVerdictSchema,
   MarketQuoteSchema,
   PortfolioPolicySchema,
   RwaAssetSchema,
   type AssetClass,
+  type EligibilityPolicy,
+  type EligibilityVerdict,
   type MarketQuote,
   type PortfolioPolicy,
   type RwaAsset,
@@ -415,6 +419,207 @@ export async function checkRwaPolicy(
     ) as `0x${string}`,
     enforcement: "DETERMINISTIC_SIMULATION",
     onchainExecutionAttempted: false,
+  };
+}
+
+export type SourceDocumentInput =
+  | { kind: "fixture"; fixtureId: string; title: string }
+  | { kind: "text"; text: string; title: string; uri?: string };
+
+export type IngestedSource = {
+  sourceId: string;
+  assetId: string;
+  sourceType: string;
+  title: string;
+  textHash: `0x${string}`;
+  chunkCount: number;
+  retrievedAt: string;
+};
+
+export type AssetSourceSummary = {
+  sourceId: string;
+  sourceType: string;
+  title: string;
+  uri?: string;
+  textHash: `0x${string}`;
+  chunkCount: number;
+  retrievedAt: string;
+};
+
+export async function ingestAssetSource(
+  assetId: string,
+  sourceId: string,
+  sourceType: string,
+  input: SourceDocumentInput,
+): Promise<IngestedSource> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/ingest`, {
+      method: "POST",
+      body: JSON.stringify({ sourceId, sourceType, input }),
+    }),
+    "Source ingestion",
+  );
+  return {
+    sourceId: text(payload.sourceId, "Source ID"),
+    assetId: text(payload.assetId, "Asset ID"),
+    sourceType: text(payload.sourceType, "Source type"),
+    title: text(payload.title, "Source title"),
+    textHash: text(payload.textHash, "Source text hash") as `0x${string}`,
+    chunkCount: Number(payload.chunkCount),
+    retrievedAt: text(payload.retrievedAt, "Retrieved at"),
+  };
+}
+
+export async function listAssetSources(
+  assetId: string,
+): Promise<AssetSourceSummary[]> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/sources`),
+    "Asset sources",
+  );
+  if (!Array.isArray(payload.sources)) return [];
+  return payload.sources.map((candidate) => {
+    const value = record(candidate, "Source summary");
+    return {
+      sourceId: text(value.sourceId, "Source ID"),
+      sourceType: text(value.sourceType, "Source type"),
+      title: text(value.title, "Source title"),
+      ...(typeof value.uri === "string" ? { uri: value.uri } : {}),
+      textHash: text(value.textHash, "Source text hash") as `0x${string}`,
+      chunkCount: Number(value.chunkCount),
+      retrievedAt: text(value.retrievedAt, "Retrieved at"),
+    };
+  });
+}
+
+export type ExtractionResult = {
+  passport: RwaAsset;
+  extraction: {
+    mode: "AI" | "DETERMINISTIC_FALLBACK" | "DEMO_FIXTURE";
+    model?: string;
+    promptVersion?: string;
+    extractedAt: string;
+  };
+  warnings: string[];
+  disclaimer: string;
+};
+
+export async function extractAssetPassport(
+  assetId: string,
+): Promise<ExtractionResult> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/extract`, {
+      method: "POST",
+    }),
+    "Passport extraction",
+  );
+  const extraction = record(payload.extraction, "Extraction metadata");
+  const mode = extraction.mode;
+  if (mode !== "AI" && mode !== "DETERMINISTIC_FALLBACK" && mode !== "DEMO_FIXTURE") {
+    throw new RwaApiError("INVALID_RESPONSE", "Extraction mode is invalid.", 502);
+  }
+  return {
+    passport: RwaAssetSchema.parse(payload.passport),
+    extraction: {
+      mode,
+      ...(typeof extraction.model === "string" ? { model: extraction.model } : {}),
+      ...(typeof extraction.promptVersion === "string"
+        ? { promptVersion: extraction.promptVersion }
+        : {}),
+      extractedAt: text(extraction.extractedAt, "Extraction time"),
+    },
+    warnings: stringList(payload.warnings),
+    disclaimer: text(payload.disclaimer, "Asset disclaimer"),
+  };
+}
+
+export async function getAssetPassport(assetId: string): Promise<{
+  passport: RwaAsset;
+  extraction?: { mode: string; model?: string; sourceIds: string[]; completedAt?: string };
+  disclaimer: string;
+}> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/passport`),
+    "Asset passport",
+  );
+  const extractionValue = payload.extraction;
+  let extraction:
+    | { mode: string; model?: string; sourceIds: string[]; completedAt?: string }
+    | undefined;
+  if (extractionValue && typeof extractionValue === "object") {
+    const value = record(extractionValue, "Passport extraction");
+    extraction = {
+      mode: text(value.mode, "Extraction mode"),
+      ...(typeof value.model === "string" ? { model: value.model } : {}),
+      sourceIds: stringList(value.sourceIds),
+      ...(typeof value.completedAt === "string"
+        ? { completedAt: value.completedAt }
+        : {}),
+    };
+  }
+  return {
+    passport: RwaAssetSchema.parse(payload.passport),
+    ...(extraction ? { extraction } : {}),
+    disclaimer: text(payload.disclaimer, "Asset disclaimer"),
+  };
+}
+
+export async function getAssetEligibility(assetId: string): Promise<{
+  verdict: EligibilityVerdict;
+  policy: EligibilityPolicy;
+  disclaimer: string;
+}> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/eligibility`),
+    "Eligibility verdict",
+  );
+  return {
+    verdict: EligibilityVerdictSchema.parse(payload.verdict),
+    policy: EligibilityPolicySchema.parse(payload.policy),
+    disclaimer: text(payload.disclaimer, "Asset disclaimer"),
+  };
+}
+
+export type PublishedVerdict = {
+  signed: {
+    attestation: {
+      assetIdHash: `0x${string}`;
+      eligible: boolean;
+      reasonHash: `0x${string}`;
+      passportHash: `0x${string}`;
+      marketSnapshotHash: `0x${string}`;
+      policyHash: `0x${string}`;
+      issuedAt: number;
+      validUntil: number;
+      nonce: `0x${string}`;
+    };
+    domain: { chainId: number; verifyingContract: `0x${string}` };
+    signature: `0x${string}`;
+    digest: `0x${string}`;
+    signer: `0x${string}`;
+  };
+  verdict: EligibilityVerdict;
+};
+
+export async function publishAssetVerdict(
+  assetId: string,
+): Promise<PublishedVerdict> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/publish-verdict`, {
+      method: "POST",
+    }),
+    "Published verdict",
+  ) as unknown as PublishedVerdict;
+  if (!payload.signed || !payload.verdict) {
+    throw new RwaApiError(
+      "INVALID_RESPONSE",
+      "Publish-verdict response is invalid.",
+      502,
+    );
+  }
+  return {
+    signed: payload.signed,
+    verdict: EligibilityVerdictSchema.parse(payload.verdict),
   };
 }
 

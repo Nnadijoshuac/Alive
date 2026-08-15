@@ -6,10 +6,13 @@ import {
   ArrowLeftIcon,
   ArrowSquareOutIcon,
   DatabaseIcon,
+  ProhibitIcon,
+  QuestionIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react";
-import type { RwaAsset } from "@alive/shared";
+import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
+  getAssetEligibility,
   getRwaAsset,
   listRwaMarkets,
   type RwaMarketQuote,
@@ -24,11 +27,14 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>();
   const [quoteError, setQuoteError] = useState<unknown>();
+  const [verdict, setVerdict] = useState<EligibilityVerdict>();
+  const [verdictError, setVerdictError] = useState<unknown>();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(undefined);
     setQuoteError(undefined);
+    setVerdictError(undefined);
     try {
       const passport = await getRwaAsset(assetId);
       setAsset(passport.asset);
@@ -38,6 +44,12 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
         setQuote(market.quotes.find((candidate) => candidate.assetId === passport.asset.id));
       } catch (marketError) {
         setQuoteError(marketError);
+      }
+      try {
+        const eligibility = await getAssetEligibility(passport.asset.id);
+        setVerdict(eligibility.verdict);
+      } catch (eligibilityError) {
+        setVerdictError(eligibilityError);
       }
     } catch (requestError) {
       setError(requestError);
@@ -78,6 +90,26 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
           <div className={styles.actions}>
             <span className={styles.badge}>{asset.assetClass}</span>
             <span className={styles.badge}>{asset.issuerName}</span>
+            {verdict ? (
+              <span
+                className={`${styles.status} ${
+                  verdict.status === "ELIGIBLE"
+                    ? styles.success
+                    : verdict.status === "RESTRICTED"
+                      ? styles.noticeDanger
+                      : styles.warning
+                }`}
+              >
+                {verdict.status === "ELIGIBLE" ? (
+                  <ShieldCheckIcon size={14} weight="fill" />
+                ) : verdict.status === "RESTRICTED" ? (
+                  <ProhibitIcon size={14} weight="fill" />
+                ) : (
+                  <QuestionIcon size={14} weight="fill" />
+                )}{" "}
+                ALIVE {verdict.status}
+              </span>
+            ) : null}
           </div>
         </div>
         <div className={styles.passportSide}>
@@ -103,6 +135,36 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
         <Notice title={`${asset.dataMode} asset disclosure`} tone={asset.dataMode === "LIVE" ? "success" : "warning"}>
           {disclaimer}
         </Notice>
+      </section>
+
+      <section className={styles.section} aria-labelledby="eligibility-title">
+        <div className={styles.sectionHeader}>
+          <div><p className={styles.kicker}>ALIVE verdict</p><h2 id="eligibility-title">What can it do?</h2></div>
+        </div>
+        {verdict ? (
+          <article className={styles.panel}>
+            <ul className={styles.violationList}>
+              {verdict.reasons.map((reason, index) => (
+                <li key={`${reason.code}-${index}`}>
+                  <strong>{reason.code}</strong>
+                  {reason.message}
+                </li>
+              ))}
+            </ul>
+            <p className={styles.fieldHint}>
+              Evaluated {formatTimestamp(verdict.evaluatedAt)}, valid until {formatTimestamp(verdict.validUntil)}.{" "}
+              {verdict.eligible
+                ? "Eligible for vault deposit, collateral use, and strategy allocation."
+                : "Not currently eligible for any ALIVE-gated financial action."}
+            </p>
+          </article>
+        ) : verdictError ? (
+          <ErrorState error={verdictError} />
+        ) : (
+          <Notice title="Eligibility unavailable" tone="warning">
+            ALIVE could not evaluate this asset&apos;s eligibility right now.
+          </Notice>
+        )}
       </section>
 
       <section className={styles.section} aria-labelledby="passport-facts">
@@ -145,6 +207,19 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
         <div className={styles.metricGrid}>
           <Metric label="Estimated APR" value={asset.yield?.estimatedAprBps === undefined ? "UNKNOWN" : formatBps(asset.yield.estimatedAprBps)} detail={asset.yield?.type ?? "No sourced yield field"} />
           <Metric label="Liquidity" value={`${asset.liquidity.score}/100`} detail={asset.liquidity.redemptionWindow ?? "Redemption window UNKNOWN"} />
+          <Metric
+            label="Redemption"
+            value={
+              asset.redemption === undefined
+                ? "UNKNOWN"
+                : asset.redemption.supported === "unknown"
+                  ? "UNKNOWN"
+                  : asset.redemption.supported
+                    ? "ACTIVE"
+                    : "DISABLED"
+            }
+            detail={asset.redemption?.frequency ?? asset.redemption?.settlementPeriod ?? "Not yet documented"}
+          />
           <Metric label="Management fee" value={asset.fees?.managementFeeBps === undefined ? "UNKNOWN" : formatBps(asset.fees.managementFeeBps)} detail="Catalog fact" />
           <Metric label="Redemption fee" value={asset.fees?.redemptionFeeBps === undefined ? "UNKNOWN" : formatBps(asset.fees.redemptionFeeBps)} detail="Catalog fact" />
         </div>

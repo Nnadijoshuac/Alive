@@ -317,6 +317,61 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     `packages/contracts`: 68/68 tests passing, stable across 3 repeated
     runs. Full `pnpm -r typecheck` clean across all 10 buildable
     workspaces; full cross-package test run green.
+- **2026-08-15 — Milestone 7 (frontend verification gateway
+  experience):** scoped deliberately to the highest-value real surface
+  rather than an 8-page visual overhaul — the directive's own priority
+  order ranks "killer demo UI" and "Attack Lab" additions below testnet
+  deployment (not yet reached) and above only "polish." A full landing
+  page / Three.js / markets / dashboard rewrite is explicitly deferred,
+  not attempted partially.
+  - `apps/web/lib/rwa-api.ts` gained typed, zod-validated clients for
+    every new intelligence route from milestones 2, 3, and 5:
+    `ingestAssetSource`, `listAssetSources`, `extractAssetPassport`,
+    `getAssetPassport`, `getAssetEligibility`, `publishAssetVerdict` —
+    following the file's existing `record()`/`text()` parsing pattern
+    exactly, no new conventions introduced.
+  - New `/verify` route (`components/rwa/verify-workspace.tsx`, added to
+    primary nav): the directive's core demo screen. Every one of its five
+    displayed stages (identifying token, reading documentation,
+    extracting facts, checking provenance, evaluating eligibility) is a
+    real sequential API call against `services/intelligence` — ingest,
+    extract, list-sources, then evaluate — not a timer-driven animation.
+    Shows the resulting ELIGIBLE/RESTRICTED/UNKNOWN verdict with typed
+    reason codes, hash bindings, and a working "Sign eligibility verdict"
+    button that calls the real `EligibilitySigner` and displays the
+    returned EIP-712 signature/digest. Explicitly labels what it does
+    *not* do yet: broadcasting that signature to
+    `AliveEligibilityRegistry.publishEligibility` on chain is not wired
+    into this screen (matches the app's existing "intentionally
+    unavailable" honesty pattern rather than faking it).
+  - `components/rwa/asset-passport-workspace.tsx`: added a live "ALIVE
+    {status}" badge in the hero (fetches `getAssetEligibility` alongside
+    the existing passport/market calls), a `Redemption` metric in the
+    economics grid reading the milestone-2 `redemption` fact, and a new
+    "What can it do?" section listing the verdict's typed reasons —
+    directly matching the directive's asset-passport mockup.
+  - **Verified live in a real browser**, not just typechecked: ran the
+    dev server against the real intelligence service and clicked through
+    `/verify` for `tTBILL-A` and `tGOLD` end to end (all five stages
+    completing with real hashes), signed a verdict and saw the real
+    signer address/digest, then confirmed `/assets/tgold` shows the
+    "ALIVE ELIGIBLE" badge and verdict reasons sourced from that same
+    evaluation. Found and fixed a real integration bug in the process:
+    `services/intelligence`'s default `INTELLIGENCE_ALLOWED_ORIGINS`
+    (`:3000`) didn't include the dev server's actual port (`:3001`, since
+    `:3000` was already occupied on this machine), so every browser
+    request failed CORS until the origin list was corrected — this is an
+    environment-configuration fact worth remembering for any future local
+    run, not a code defect. Also observed one non-reproducing transient
+    500 on the very first page load (Next.js dev-mode double-effect
+    invocation racing two concurrent eligibility evaluations); the next
+    three reloads were clean, so this is flagged for future attention
+    rather than chased further in this pass.
+  - `apps/web`: 43/43 pre-existing tests still passing unchanged;
+    typecheck clean. No new component-level tests were added for
+    `verify-workspace.tsx` in this pass (the live-browser verification
+    above stands in for it) — a real gap worth closing before relying on
+    this screen unattended.
 
 ## Pivot status
 
