@@ -264,6 +264,59 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     `videos/alive-launch` port collision), stable across repeated parallel
     runs. Full `pnpm -r typecheck` clean across all 10 buildable
     workspaces.
+- **2026-08-15 — Milestone 6 (gate AliveVault by eligibility):** the
+  contract-level enforcement point — an AI-derived, deterministically
+  validated, signed verdict now directly determines whether a financial
+  action succeeds on chain, per the directive's central claim.
+  - `AliveVault.sol` gained a new immutable `eligibilityRegistry` (new,
+    required constructor parameter — every existing deployer/factory/test
+    call site updated, see below) and one additional check inside its
+    *existing* per-position enforcement loop in `_enforcePolicy`
+    (deliberately not a new loop or a new function, per the directive's
+    "extend minimally" instruction): for every position with a nonzero
+    resulting balance other than the vault's own cash asset,
+    `eligibilityRegistry.isEligible(assetId)` must be true or the whole
+    `executeStrategy` call reverts with `AssetNotEligible`, rolling back
+    every effect (matching the existing `AssetAllocationExceeded` revert's
+    behavior one line below it). Cash is exempt — it's the vault's own
+    numeraire, not an externally-verified RWA. The check only applies to
+    positions with `balance > 0`, so bringing a now-RESTRICTED asset's
+    holding down to exactly zero is never blocked — the vault's existing
+    "the owner always retains an exit" principle now explicitly extends to
+    the eligibility gate, not just to `withdraw`.
+  - `AliveVaultFactory.sol` gained the matching new immutable + constructor
+    parameter and passes it through to every vault it creates.
+  - `packages/contracts/scripts/deploy-rwa.ts`: deploys
+    `AliveEligibilityRegistry` and wires it into the factory/vault. New
+    `RWA_ELIGIBILITY_SIGNER` env var (falls back to Hardhat account 2
+    locally, matching the existing `RWA_STRATEGY_SIGNER` pattern). On
+    local networks only (never on a network where the script doesn't
+    control the signer's actual private key), it also publishes an
+    ELIGIBLE verdict for every demo asset so the local demo works without
+    a running `services/intelligence` — verified by actually running the
+    full script end to end against an ephemeral Hardhat network, not just
+    unit tests.
+  - Tests: 2 new scenarios directly in `AliveRwaProtocol.test.ts`'s
+    "AliveVault onchain enforcement" suite, proving the literal
+    hackathon demo flow the directive describes: (1) a strategy allocating
+    into `tGOLD` after ALIVE publishes a RESTRICTED verdict for it reverts
+    with `AssetNotEligible`, funds and nonce untouched; ALIVE then
+    publishes ELIGIBLE again and the *exact same* signed plan (nothing
+    about the vault's state changed, since the revert rolled everything
+    back) succeeds; (2) an asset marked RESTRICTED can still always be
+    fully exited to zero. Updating the 20 existing `deployRwaFixture`-based
+    tests required **zero assertion changes** — the fixture now
+    auto-publishes an ELIGIBLE verdict for every demo asset except the
+    deliberately-unapproved `tNOPE`, so pre-existing test behavior is
+    unchanged; this is itself evidence the gate is additive, not
+    disruptive. While writing the two new tests, found and fixed two of my
+    own test-economics bugs (an omitted resulting cash balance triggering
+    `PortfolioAssetMissing`, and a full-exit trade that unintentionally
+    violated the TREASURY class's 50% minimum — fixed by using an EQUITY
+    asset, whose class minimum is 0, for the exit-always-works test).
+    `packages/contracts`: 68/68 tests passing, stable across 3 repeated
+    runs. Full `pnpm -r typecheck` clean across all 10 buildable
+    workspaces; full cross-package test run green.
 
 ## Pivot status
 

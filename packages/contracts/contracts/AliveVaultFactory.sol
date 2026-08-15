@@ -20,6 +20,7 @@ contract AliveVaultFactory {
     address public immutable policyRegistry;
     address public immutable strategyVerifier;
     address public immutable executionRouter;
+    address public immutable eligibilityRegistry;
 
     address[] private _vaults;
     mapping(address owner => address[] vaults) private _ownerVaults;
@@ -30,18 +31,21 @@ contract AliveVaultFactory {
         address assetRegistry_,
         address policyRegistry_,
         address strategyVerifier_,
-        address executionRouter_
+        address executionRouter_,
+        address eligibilityRegistry_
     ) {
         if (cashAssetId_ == bytes32(0)) revert InvalidConfiguration(address(0));
         _requireContract(assetRegistry_);
         _requireContract(policyRegistry_);
         _requireContract(strategyVerifier_);
         _requireContract(executionRouter_);
+        _requireContract(eligibilityRegistry_);
         cashAssetId = cashAssetId_;
         assetRegistry = assetRegistry_;
         policyRegistry = policyRegistry_;
         strategyVerifier = strategyVerifier_;
         executionRouter = executionRouter_;
+        eligibilityRegistry = eligibilityRegistry_;
     }
 
     function createVault() external returns (address vault) {
@@ -52,7 +56,8 @@ contract AliveVaultFactory {
                 assetRegistry,
                 policyRegistry,
                 strategyVerifier,
-                executionRouter
+                executionRouter,
+                eligibilityRegistry
             )
         );
         uint256 index = _vaults.length;

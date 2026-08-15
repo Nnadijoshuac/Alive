@@ -73,6 +73,20 @@ async function main(): Promise<void> {
     );
   }
 
+  const localEligibilitySigner = signers[2];
+  const configuredEligibilitySigner =
+    process.env.RWA_ELIGIBILITY_SIGNER?.trim();
+  const eligibilitySignerAddress =
+    configuredEligibilitySigner || localEligibilitySigner?.address;
+  if (
+    !eligibilitySignerAddress ||
+    !ethers.isAddress(eligibilitySignerAddress)
+  ) {
+    throw new Error(
+      "Set RWA_ELIGIBILITY_SIGNER to the public address ALIVE's intelligence service signs eligibility verdicts with.",
+    );
+  }
+
   const demoPolicyFixture = JSON.parse(
     await readFile(
       path.resolve(__dirname, "../../../data/fixtures/killer-demo-policy.json"),
@@ -222,6 +236,16 @@ async function main(): Promise<void> {
   );
   await policyRegistry.waitForDeployment();
 
+  const EligibilityRegistry = await ethers.getContractFactory(
+    "AliveEligibilityRegistry",
+  );
+  const eligibilityRegistry: any = await EligibilityRegistry.deploy(
+    await assetRegistry.getAddress(),
+    eligibilitySignerAddress,
+    deployer.address,
+  );
+  await eligibilityRegistry.waitForDeployment();
+
   const VaultFactory = await ethers.getContractFactory("AliveVaultFactory");
   const vaultFactory: any = await VaultFactory.deploy(
     assetIds.tusdc,
@@ -229,6 +253,7 @@ async function main(): Promise<void> {
     await policyRegistry.getAddress(),
     await verifier.getAddress(),
     await router.getAddress(),
+    await eligibilityRegistry.getAddress(),
   );
   await vaultFactory.waitForDeployment();
 
@@ -240,8 +265,63 @@ async function main(): Promise<void> {
     await policyRegistry.getAddress(),
     await verifier.getAddress(),
     await router.getAddress(),
+    await eligibilityRegistry.getAddress(),
   );
   await vault.waitForDeployment();
+
+  if (isLocal && localEligibilitySigner) {
+    console.log(
+      "Publishing local demo eligibility verdicts (ELIGIBLE, 1h validity) for every demo asset...",
+    );
+    const eligibilityRegistryAddress = await eligibilityRegistry.getAddress();
+    const eligibilityDomain = {
+      name: "ALIVE Eligibility Gateway",
+      version: "1",
+      chainId: chain.chainId,
+      verifyingContract: eligibilityRegistryAddress,
+    };
+    const eligibilityTypes = {
+      EligibilityAttestation: [
+        { name: "assetIdHash", type: "bytes32" },
+        { name: "eligible", type: "bool" },
+        { name: "reasonHash", type: "bytes32" },
+        { name: "passportHash", type: "bytes32" },
+        { name: "marketSnapshotHash", type: "bytes32" },
+        { name: "policyHash", type: "bytes32" },
+        { name: "issuedAt", type: "uint64" },
+        { name: "validUntil", type: "uint64" },
+        { name: "nonce", type: "bytes32" },
+      ],
+    };
+    const nowSeconds = Math.floor(Date.now() / 1_000);
+    let nonceCounter = 0;
+    for (const [key] of tokenDefinitions) {
+      nonceCounter += 1;
+      const attestation = {
+        assetIdHash: assetIds[key]!,
+        eligible: true,
+        reasonHash: hashLabel(`demo-eligible:${key}`),
+        passportHash: hashLabel(`demo-passport:${key}`),
+        marketSnapshotHash: hashLabel(`demo-snapshot:${key}`),
+        policyHash: hashLabel("demo-eligibility-policy-v1"),
+        issuedAt: nowSeconds,
+        validUntil: nowSeconds + 3_600,
+        nonce: hashLabel(`demo-eligibility-nonce:${key}:${nonceCounter}`),
+      };
+      const signature = await localEligibilitySigner.signTypedData(
+        eligibilityDomain,
+        eligibilityTypes,
+        attestation,
+      );
+      await (
+        await eligibilityRegistry.publishEligibility(attestation, signature)
+      ).wait();
+    }
+  } else {
+    console.log(
+      "Skipping automatic eligibility publication (not local): every demo asset starts NOT ELIGIBLE until ALIVE's intelligence service publishes a signed verdict for it.",
+    );
+  }
 
   const classLimits = demoPolicyFixture.policy.assetClassLimits
     .map((limit) => ({
@@ -276,6 +356,7 @@ async function main(): Promise<void> {
     AliveRwaAssetRegistry: await deploymentEntry(assetRegistry),
     AlivePolicyRegistry: await deploymentEntry(policyRegistry),
     AliveStrategyVerifier: await deploymentEntry(verifier),
+    AliveEligibilityRegistry: await deploymentEntry(eligibilityRegistry),
     AliveVaultFactory: await deploymentEntry(vaultFactory),
     AliveVault: await deploymentEntry(vault),
     MockRwaRouter: await deploymentEntry(router),
@@ -293,6 +374,7 @@ async function main(): Promise<void> {
     deployedAt: new Date().toISOString(),
     deployer: deployer.address,
     strategySigner,
+    eligibilitySigner: eligibilitySignerAddress,
     activePolicyVersion: 1,
     canonicalPolicyHash,
     assetIds,

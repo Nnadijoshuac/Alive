@@ -47,6 +47,32 @@ type AssetIds = {
   tNOPE: string;
 };
 
+type EligibilityAttestation = {
+  assetIdHash: string;
+  eligible: boolean;
+  reasonHash: string;
+  passportHash: string;
+  marketSnapshotHash: string;
+  policyHash: string;
+  issuedAt: number;
+  validUntil: number;
+  nonce: string;
+};
+
+const ELIGIBILITY_TYPES = {
+  EligibilityAttestation: [
+    { name: "assetIdHash", type: "bytes32" },
+    { name: "eligible", type: "bool" },
+    { name: "reasonHash", type: "bytes32" },
+    { name: "passportHash", type: "bytes32" },
+    { name: "marketSnapshotHash", type: "bytes32" },
+    { name: "policyHash", type: "bytes32" },
+    { name: "issuedAt", type: "uint64" },
+    { name: "validUntil", type: "uint64" },
+    { name: "nonce", type: "bytes32" },
+  ],
+};
+
 const STRATEGY_TYPES = {
   Strategy: [
     { name: "vault", type: "address" },
@@ -80,6 +106,46 @@ const CLASSES = {
 
 const POLICY_HASH = hashLabel("alive-canonical-policy-v1");
 
+let eligibilityNonceSequence = 0;
+
+/** Publishes a currently-eligible verdict for assetIdHash, signed by
+ * eligibilitySigner, so existing portfolio/strategy tests can hold the
+ * asset without themselves being about eligibility. */
+async function publishEligible(
+  eligibilityRegistry: any,
+  eligibilitySigner: { signTypedData: (...args: any[]) => Promise<string> },
+  registryAddress: string,
+  assetIdHash: string,
+  overrides: Partial<EligibilityAttestation> = {},
+): Promise<void> {
+  eligibilityNonceSequence += 1;
+  const now = await time.latest();
+  const attestation: EligibilityAttestation = {
+    assetIdHash,
+    eligible: true,
+    reasonHash: hashLabel("reasons:ok"),
+    passportHash: hashLabel(`passport:${assetIdHash}`),
+    marketSnapshotHash: hashLabel(`snapshot:${assetIdHash}`),
+    policyHash: hashLabel("eligibility-policy-v1"),
+    issuedAt: now,
+    validUntil: now + 3_600,
+    nonce: hashLabel(`eligibility-nonce-${eligibilityNonceSequence}`),
+    ...overrides,
+  };
+  const network = await ethers.provider.getNetwork();
+  const signature = await eligibilitySigner.signTypedData(
+    {
+      name: "ALIVE Eligibility Gateway",
+      version: "1",
+      chainId: network.chainId,
+      verifyingContract: registryAddress,
+    },
+    ELIGIBILITY_TYPES,
+    attestation,
+  );
+  await eligibilityRegistry.publishEligibility(attestation, signature);
+}
+
 async function deployRwaFixture() {
   const signers = await ethers.getSigners();
   const deployer = signers[0]!;
@@ -88,6 +154,7 @@ async function deployRwaFixture() {
   const automation = signers[3]!;
   const attacker = signers[4]!;
   const wrongSigner = signers[5]!;
+  const eligibilitySigner = signers[6]!;
 
   const Cash = await ethers.getContractFactory("MockUSDT");
   const cash: any = await Cash.deploy(deployer.address);
@@ -180,6 +247,26 @@ async function deployRwaFixture() {
   );
   await policyRegistry.waitForDeployment();
 
+  const EligibilityRegistry = await ethers.getContractFactory(
+    "AliveEligibilityRegistry",
+  );
+  const eligibilityRegistry: any = await EligibilityRegistry.deploy(
+    await assetRegistry.getAddress(),
+    eligibilitySigner.address,
+    deployer.address,
+  );
+  await eligibilityRegistry.waitForDeployment();
+  const eligibilityRegistryAddress = await eligibilityRegistry.getAddress();
+  for (const [, symbol] of tokenSpecs) {
+    if (symbol === "tNOPE") continue; // stays deliberately ineligible
+    await publishEligible(
+      eligibilityRegistry,
+      eligibilitySigner,
+      eligibilityRegistryAddress,
+      assetIds[symbol],
+    );
+  }
+
   const Vault = await ethers.getContractFactory("AliveVault");
   const vault: any = await Vault.deploy(
     user.address,
@@ -188,6 +275,7 @@ async function deployRwaFixture() {
     await policyRegistry.getAddress(),
     await verifier.getAddress(),
     await router.getAddress(),
+    eligibilityRegistryAddress,
   );
   await vault.waitForDeployment();
 
@@ -239,6 +327,7 @@ async function deployRwaFixture() {
     automation,
     attacker,
     wrongSigner,
+    eligibilitySigner,
     cash,
     tokens,
     assetIds,
@@ -246,6 +335,7 @@ async function deployRwaFixture() {
     policyRegistry,
     verifier,
     router,
+    eligibilityRegistry,
     vault,
     classLimits,
     allowedAssets,
@@ -571,6 +661,7 @@ describe("AliveVaultFactory", function () {
       await fixture.policyRegistry.getAddress(),
       await fixture.verifier.getAddress(),
       await fixture.router.getAddress(),
+      await fixture.eligibilityRegistry.getAddress(),
     );
     await factory.waitForDeployment();
 
@@ -721,6 +812,108 @@ describe("AliveVault onchain enforcement", function () {
         strategy.strategyNonce,
       ),
     ).to.equal(true);
+  });
+
+  it("rejects a strategy into an asset ALIVE has marked RESTRICTED, then accepts it once ELIGIBLE again", async function () {
+    const fixture = await loadFixture(deployRwaFixture);
+    const ids = fixture.assetIds;
+    const registryAddress = await fixture.eligibilityRegistry.getAddress();
+
+    // ALIVE detects a rule violation (e.g. stale NAV) for tGOLD and
+    // publishes a RESTRICTED verdict superseding the fixture's default
+    // ELIGIBLE one.
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      ids.tGOLD,
+      { eligible: false, reasonHash: hashLabel("reasons:nav-stale") },
+    );
+
+    // A fully diversified, otherwise-compliant allocation (the same one
+    // "allocates a funded vault into a compliant RWA portfolio" proves
+    // succeeds on its own) that happens to include tGOLD.
+    const plan = await compliantInitialPlan(fixture);
+    const restricted = await makeSignedStrategy(fixture, plan);
+    await expect(
+      fixture.vault
+        .connect(fixture.user)
+        .executeStrategy(plan, restricted.strategy, restricted.signature),
+    )
+      .to.be.revertedWithCustomError(fixture.vault, "AssetNotEligible")
+      .withArgs(ids.tGOLD);
+    expect(
+      await fixture.tokens.tGOLD.balanceOf(await fixture.vault.getAddress()),
+    ).to.equal(0n);
+    expect(
+      await fixture.verifier.isNonceConsumed(
+        await fixture.vault.getAddress(),
+        restricted.strategy.strategyNonce,
+      ),
+    ).to.equal(false);
+
+    // ALIVE re-evaluates, NAV data is fresh again, publishes ELIGIBLE. The
+    // vault's balances never changed (the prior call reverted), so the
+    // exact same plan can be resubmitted with a freshly signed strategy.
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      ids.tGOLD,
+    );
+    const recovered = await makeSignedStrategy(fixture, plan);
+    await expect(
+      fixture.vault
+        .connect(fixture.user)
+        .executeStrategy(plan, recovered.strategy, recovered.signature),
+    ).to.emit(fixture.vault, "StrategyExecuted");
+    expect(
+      await fixture.tokens.tGOLD.balanceOf(await fixture.vault.getAddress()),
+    ).to.equal(amount(1_500));
+  });
+
+  it("lets the owner always exit a position in an asset that has become RESTRICTED", async function () {
+    // tNVDA (EQUITY, class minimum 0 bps) so a full exit doesn't also trip
+    // an unrelated class-minimum violation -- this test is specifically
+    // about the eligibility gate exempting full-exit trades, not about
+    // policy class-limit interactions.
+    const fixture = await loadFixture(deployRwaFixture);
+    const ids = fixture.assetIds;
+    const plan = await compliantInitialPlan(fixture);
+    const { strategy, signature } = await makeSignedStrategy(fixture, plan);
+    await fixture.vault
+      .connect(fixture.user)
+      .executeStrategy(plan, strategy, signature);
+    expect(
+      await fixture.tokens.tNVDA.balanceOf(await fixture.vault.getAddress()),
+    ).to.equal(amount(500));
+
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      await fixture.eligibilityRegistry.getAddress(),
+      ids.tNVDA,
+      { eligible: false, reasonHash: hashLabel("reasons:issuer-flagged") },
+    );
+
+    const exitBalances = compliantBalances(fixture);
+    delete exitBalances[ids.tNVDA];
+    exitBalances[ids.cash] = (exitBalances[ids.cash] ?? 0n) + amount(500);
+    const exitPlan = await buildPlan(
+      fixture,
+      compliantBalances(fixture),
+      exitBalances,
+      [[ids.tNVDA, ids.cash, amount(500)]],
+    );
+    const exit = await makeSignedStrategy(fixture, exitPlan);
+    await expect(
+      fixture.vault
+        .connect(fixture.user)
+        .executeStrategy(exitPlan, exit.strategy, exit.signature),
+    ).to.emit(fixture.vault, "StrategyExecuted");
+    expect(
+      await fixture.tokens.tNVDA.balanceOf(await fixture.vault.getAddress()),
+    ).to.equal(0n);
   });
 
   it("rejects the killer-demo 100% NVDA strategy onchain and rolls every effect back", async function () {
@@ -956,6 +1149,7 @@ describe("AliveVault onchain enforcement", function () {
       await fixture.policyRegistry.getAddress(),
       await fixture.verifier.getAddress(),
       await fixture.router.getAddress(),
+      await fixture.eligibilityRegistry.getAddress(),
     );
     await otherVault.waitForDeployment();
     const wrongVault = await makeSignedStrategy(fixture, refreshedPlan, {
@@ -1137,6 +1331,15 @@ async function deployAdversarialCashVault(tokenName: string) {
     deployer.address,
   );
   await policies.waitForDeployment();
+  const EligibilityRegistry = await ethers.getContractFactory(
+    "AliveEligibilityRegistry",
+  );
+  const eligibility: any = await EligibilityRegistry.deploy(
+    await assets.getAddress(),
+    signer.address,
+    deployer.address,
+  );
+  await eligibility.waitForDeployment();
   const Vault = await ethers.getContractFactory("AliveVault");
   const vault: any = await Vault.deploy(
     user.address,
@@ -1145,6 +1348,7 @@ async function deployAdversarialCashVault(tokenName: string) {
     await policies.getAddress(),
     await verifier.getAddress(),
     await router.getAddress(),
+    await eligibility.getAddress(),
   );
   await vault.waitForDeployment();
   await token.mint(user.address, amount(100));

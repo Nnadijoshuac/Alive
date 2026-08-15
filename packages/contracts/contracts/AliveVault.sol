@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IAliveEligibilityRegistry} from "./interfaces/IAliveEligibilityRegistry.sol";
 import {IAlivePolicyRegistry} from "./interfaces/IAlivePolicyRegistry.sol";
 import {IAliveRwaAssetRegistry} from "./interfaces/IAliveRwaAssetRegistry.sol";
 import {IAliveStrategyVerifier} from "./interfaces/IAliveStrategyVerifier.sol";
@@ -56,6 +57,7 @@ contract AliveVault is Ownable, ReentrancyGuard {
         uint16 maximumBps
     );
     error AssetNotAllowed(bytes32 assetId);
+    error AssetNotEligible(bytes32 assetId);
     error AssetNotEnabled(bytes32 assetId);
     error ActivePolicyHashMismatch(bytes32 expected, bytes32 actual);
     error CashFloorNotMet(
@@ -156,6 +158,7 @@ contract AliveVault is Ownable, ReentrancyGuard {
     IAlivePolicyRegistry public immutable policyRegistry;
     IAliveStrategyVerifier public immutable strategyVerifier;
     IRwaExecutionRouter public immutable executionRouter;
+    IAliveEligibilityRegistry public immutable eligibilityRegistry;
     bytes32 public immutable cashAssetId;
     IERC20 public immutable cashToken;
 
@@ -169,18 +172,21 @@ contract AliveVault is Ownable, ReentrancyGuard {
         address assetRegistry_,
         address policyRegistry_,
         address strategyVerifier_,
-        address executionRouter_
+        address executionRouter_,
+        address eligibilityRegistry_
     ) Ownable(initialOwner) {
         if (initialOwner == address(0)) revert InvalidAddress(initialOwner);
         _requireContract(assetRegistry_);
         _requireContract(policyRegistry_);
         _requireContract(strategyVerifier_);
         _requireContract(executionRouter_);
+        _requireContract(eligibilityRegistry_);
 
         assetRegistry = IAliveRwaAssetRegistry(assetRegistry_);
         policyRegistry = IAlivePolicyRegistry(policyRegistry_);
         strategyVerifier = IAliveStrategyVerifier(strategyVerifier_);
         executionRouter = IRwaExecutionRouter(executionRouter_);
+        eligibilityRegistry = IAliveEligibilityRegistry(eligibilityRegistry_);
         IAliveRwaAssetRegistry.RwaAsset memory cashAsset = IAliveRwaAssetRegistry(
                 assetRegistry_
             ).getAsset(cashAssetId_);
@@ -608,6 +614,17 @@ contract AliveVault is Ownable, ReentrancyGuard {
             IAliveRwaAssetRegistry.RwaAsset memory asset = assetRegistry
                 .getAsset(position.assetId);
             if (!asset.enabled) revert AssetNotEnabled(position.assetId);
+            // ALIVE's AI-derived eligibility gate. Cash is the vault's own
+            // numeraire, not an externally-verified RWA, so it is exempt --
+            // every other asset the vault ends this strategy holding must
+            // have a currently-eligible, unexpired signed verdict.
+            if (
+                position.balance > 0 &&
+                position.assetId != cashAssetId &&
+                !eligibilityRegistry.isEligible(position.assetId)
+            ) {
+                revert AssetNotEligible(position.assetId);
+            }
             if (
                 !policyRegistry.isAssetAllowed(
                     address(this),
