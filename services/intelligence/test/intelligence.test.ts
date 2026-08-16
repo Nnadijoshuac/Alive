@@ -37,6 +37,7 @@ const config: IntelligenceConfig = {
   llm: { provider: "disabled", timeoutMs: 1_000 },
   eligibilitySigner: { ttlSeconds: 900 },
   demoMode: false,
+  marketMonitorIntervalSeconds: 300,
 };
 
 /** Same config with the DEMO_MODE-gated /api/demo/* controls registered. */

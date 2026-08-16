@@ -22,17 +22,25 @@ by calling `description()` on the contract:
 
 | ALIVE asset | Feed | Product | Value read | Unit | Chain |
 | --- | --- | --- | --- | --- | --- |
-| `ttbill-a` | Superstate **USTB NAV per Share** | NAVLink | `11.177748` | USD/share | Ethereum |
-| `ttbill-b` | Anemoy **JTRSY NAV** | NAVLink | `1.11289` | USD/share | Ethereum |
+| `ttbill-b` | Superstate **USTB NAV per Share** | NAVLink | `11.177748` | USD/share | Ethereum |
 | `ttbill-c` | OpenEden **TBILL NAV** | NAVLink | `1.15333588` | USD/share | Ethereum |
 | `tsp500` | Apollo **ACRED NAV** | NAVLink | `1109.74245` | USD/share | Ethereum |
 | `tgold` | Kinesis **KAU Reserves** | Proof of Reserve | `2567133.466` | reserve units | Ethereum |
 | `tusdc` | Cap **cUSD AUM** | SmartAUM | `60325117.38590438` | USD AUM | Ethereum |
+| _(unassigned)_ | Anemoy **JTRSY NAV** | NAVLink | `1.11289` | USD/share | Ethereum |
 
 Addresses live in `packages/market-data/src/chainlink-feeds.ts`. The primary
 reference is **Superstate USTB**, `0x289B5036cd942e619E1Ee48670F98d214E745AAC`
 — a real tokenized US Treasury fund, and the direct real-world analogue of
 ALIVE's demo tokenized-Treasury asset.
+
+**`ttbill-a` is deliberately left demo-backed** and is the asset the Attack
+Lab degrades. ALIVE refuses to modify real oracle data to manufacture a
+failure, so the break-the-NAV scenario needs an asset whose data ALIVE owns.
+Keeping `ttbill-a` on demo also preserves the already-proven X Layer testnet
+run and its recorded transaction hashes. A test asserts `ttbill-a` has no
+Chainlink feed, because mapping one to it later would silently leave the
+killer demo with no asset to run against.
 
 Reproduce any of it:
 
@@ -134,6 +142,65 @@ Two modes, and they cannot contaminate each other.
 Chainlink-backed asset. Real oracle data is never modified to manufacture a
 demo failure, and that guarantee is structural rather than a convention a
 future change could quietly break.
+
+## Continuous monitoring
+
+`MarketMonitor` (`services/intelligence/src/monitoring/`) re-reads each
+asset, records an observation, re-runs eligibility, and decides whether the
+onchain verdict must change.
+
+It decides but does not broadcast. It returns a decision and the caller owns
+the key and the transaction, which keeps the loop testable without a chain
+and keeps signing authority in one place.
+
+**Publish rule**, so polling never spams the chain:
+
+| Transition | Onchain transaction |
+| --- | --- |
+| `ELIGIBLE` → `ELIGIBLE` | **None** |
+| `ELIGIBLE` → `RESTRICTED` | Publish |
+| `RESTRICTED` → `ELIGIBLE` | Publish |
+| Nothing published yet | Publish |
+| Verdict near expiry | Republish, so an asset never lapses |
+
+A steady asset produces zero transactions however often it is polled; a test
+polls five times and asserts zero publish decisions while still writing five
+observations.
+
+Interval is `MARKET_MONITOR_INTERVAL_SECONDS` (default 300). Configurable
+rather than fixed because the right cadence depends on the source: a NAV feed
+with a 26.5h heartbeat changes on a daily business cycle, so a few minutes
+already catches every change that can occur.
+
+Each observation persists the feed, source chain, value, source timestamp,
+retrieval timestamp, block, and status. **A failed read is stored as its own
+`DATA_UNAVAILABLE` observation with no value and no verdict** — the previous
+value is never carried forward, because that is exactly how a stale number
+comes to be treated as fresh.
+
+## What AI does and does not do here
+
+Worth being precise, because the sloppy version of this claim is easy to make
+and wrong.
+
+Market and NAV monitoring is **entirely deterministic**. No model is involved
+in reading a feed, scaling it, judging its freshness, or deciding
+eligibility. The numeric value and its timestamp are source facts, and AI
+never adjusts, corrects, or overrides either.
+
+AI's job is the **unstructured** side: reading issuer documentation and
+turning prose into candidate structured facts, every one of which must cite a
+supplied source and survive schema validation before it reaches a passport.
+
+So the accurate claim is:
+
+> ALIVE continuously monitors live RWA data, while AI interprets the
+> information behind the asset.
+
+Not "AI continuously checks live markets," which would misdescribe the
+system. The document-change detection loop (re-extract on hash change,
+diff against the prior passport, re-evaluate) is **not yet built**; only the
+market-data half of continuous monitoring exists today.
 
 ## Data Streams: not needed
 

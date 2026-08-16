@@ -37,6 +37,14 @@ export type IntelligenceConfig = {
    * mutating routes cannot be reached in a normal deployment.
    */
   demoMode: boolean;
+  /**
+   * How often the market monitor re-reads each asset. Configurable because
+   * the right cadence depends on the source: a NAV feed with a 26.5h
+   * heartbeat changes on a daily business cycle, so a few minutes already
+   * catches every change that can occur, and polling per second would add
+   * load while finding nothing.
+   */
+  marketMonitorIntervalSeconds: number;
 };
 
 function positiveInteger(
@@ -140,6 +148,11 @@ export function loadIntelligenceConfig(
     },
     eligibilitySigner: eligibilitySignerConfig(environment),
     demoMode: environment.DEMO_MODE?.trim().toLowerCase() === "true",
+    marketMonitorIntervalSeconds: positiveInteger(
+      environment.MARKET_MONITOR_INTERVAL_SECONDS,
+      300,
+      "MARKET_MONITOR_INTERVAL_SECONDS",
+    ),
   };
 }
 
