@@ -6,6 +6,14 @@ import type { HardhatUserConfig } from "hardhat/config";
 const deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY;
 const accounts = deployerPrivateKey ? [deployerPrivateKey] : [];
 
+// Mainnet deliberately does not fall back to DEPLOYER_PRIVATE_KEY. A testnet
+// key that has been used for demo deployments must not silently become the
+// key controlling mainnet contracts; mainnet requires its own.
+const mainnetDeployerPrivateKey = process.env.MAINNET_DEPLOYER_PRIVATE_KEY;
+const mainnetAccounts = mainnetDeployerPrivateKey
+  ? [mainnetDeployerPrivateKey]
+  : [];
+
 const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.24",
@@ -36,7 +44,7 @@ const config: HardhatUserConfig = {
     xlayerMainnet: {
       url: process.env.X_LAYER_MAINNET_RPC_URL ?? "https://rpc.xlayer.tech",
       chainId: 196,
-      accounts,
+      accounts: mainnetAccounts,
     },
   },
   paths: {
