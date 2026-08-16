@@ -5,6 +5,8 @@ import { ethers, network } from "hardhat";
 type DeploymentEntry = {
   address: string;
   transactionHash: string;
+  blockNumber: number;
+  runtimeBytecodePresent: boolean;
 };
 
 type DeployedContract = {
@@ -12,14 +14,44 @@ type DeployedContract = {
   deploymentTransaction(): { hash: string } | null;
 };
 
+/**
+ * Records a deployment only after proving it onchain: the receipt must exist
+ * and report success, and the address must actually hold runtime bytecode.
+ * A deployment record is evidence, so it is never written from an optimistic
+ * assumption that a broadcast succeeded.
+ */
 async function deploymentEntry(
+  label: string,
   contract: DeployedContract,
 ): Promise<DeploymentEntry> {
   const transaction = contract.deploymentTransaction();
-  if (!transaction) throw new Error("Deployment transaction was unavailable");
+  if (!transaction) {
+    throw new Error(`${label}: deployment transaction was unavailable`);
+  }
+  const address = await contract.getAddress();
+  const receipt = await ethers.provider.getTransactionReceipt(transaction.hash);
+  if (!receipt) {
+    throw new Error(`${label}: no receipt found for ${transaction.hash}`);
+  }
+  if (receipt.status !== 1) {
+    throw new Error(
+      `${label}: deployment transaction ${transaction.hash} reverted (status ${receipt.status})`,
+    );
+  }
+  const runtimeCode = await ethers.provider.getCode(address);
+  if (!runtimeCode || runtimeCode === "0x") {
+    throw new Error(
+      `${label}: no runtime bytecode at ${address} after deployment`,
+    );
+  }
+  process.stdout.write(
+    `  ${label.padEnd(28)} ${address}  block ${receipt.blockNumber}  ${(runtimeCode.length - 2) / 2} bytes\n`,
+  );
   return {
-    address: await contract.getAddress(),
+    address,
     transactionHash: transaction.hash,
+    blockNumber: receipt.blockNumber,
+    runtimeBytecodePresent: true,
   };
 }
 
@@ -352,18 +384,36 @@ async function main(): Promise<void> {
   await policyTransaction.wait();
   await (await vault.activatePolicy(1)).wait();
 
+  process.stdout.write("\nVerifying deployed bytecode and receipts...\n");
   const contracts: Record<string, DeploymentEntry> = {
-    AliveRwaAssetRegistry: await deploymentEntry(assetRegistry),
-    AlivePolicyRegistry: await deploymentEntry(policyRegistry),
-    AliveStrategyVerifier: await deploymentEntry(verifier),
-    AliveEligibilityRegistry: await deploymentEntry(eligibilityRegistry),
-    AliveVaultFactory: await deploymentEntry(vaultFactory),
-    AliveVault: await deploymentEntry(vault),
-    MockRwaRouter: await deploymentEntry(router),
-    DemoRwaFaucet: await deploymentEntry(faucet),
+    AliveRwaAssetRegistry: await deploymentEntry(
+      "AliveRwaAssetRegistry",
+      assetRegistry,
+    ),
+    AlivePolicyRegistry: await deploymentEntry(
+      "AlivePolicyRegistry",
+      policyRegistry,
+    ),
+    AliveStrategyVerifier: await deploymentEntry(
+      "AliveStrategyVerifier",
+      verifier,
+    ),
+    AliveEligibilityRegistry: await deploymentEntry(
+      "AliveEligibilityRegistry",
+      eligibilityRegistry,
+    ),
+    AliveVaultFactory: await deploymentEntry("AliveVaultFactory", vaultFactory),
+    AliveVault: await deploymentEntry("AliveVault", vault),
+  };
+  const demoOnlyContracts: Record<string, DeploymentEntry> = {
+    MockRwaRouter: await deploymentEntry("MockRwaRouter", router),
+    DemoRwaFaucet: await deploymentEntry("DemoRwaFaucet", faucet),
   };
   for (const [key, token] of Object.entries(tokens)) {
-    contracts[`MockRwaToken:${key}`] = await deploymentEntry(token);
+    demoOnlyContracts[`MockRwaToken:${key}`] = await deploymentEntry(
+      `MockRwaToken:${key}`,
+      token,
+    );
   }
 
   const exportData = {
@@ -379,6 +429,7 @@ async function main(): Promise<void> {
     canonicalPolicyHash,
     assetIds,
     contracts,
+    demoOnlyContracts,
   };
   const outputDirectory = path.resolve(__dirname, "../deployments");
   const outputPath = path.join(

@@ -15,7 +15,10 @@
     "deploy:testnet": "hardhat run scripts/deploy.ts --network xlayerTestnet",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network xlayerMainnet",
     "deploy:rwa:local": "hardhat run scripts/deploy-rwa.ts --network localhost",
-    "deploy:rwa:testnet": "hardhat run scripts/deploy-rwa.ts --network xlayerTestnet"
+    "deploy:rwa:testnet": "hardhat run scripts/deploy-rwa.ts --network xlayerTestnet",
+    "init:deployer": "tsx scripts/init-deployer.ts",
+    "check:xlayer:testnet": "tsx scripts/check-xlayer.ts testnet",
+    "check:xlayer:mainnet": "tsx scripts/check-xlayer.ts mainnet"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0"
@@ -33,6 +36,8 @@
     "hardhat": "^2.26.3",
     "solidity-coverage": "^0.8.16",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "viem": "^2.37.6"
   }
 }
