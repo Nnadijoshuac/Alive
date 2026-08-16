@@ -431,7 +431,6 @@ export async function buildIntelligenceApp(
     const passport = dependencies.repository.getAsset(assetId);
     if (!passport) return undefined;
 
-    const capturedAt = now().toISOString();
     let quote;
     try {
       quote = await dependencies.marketData.getQuote(assetId);
@@ -439,6 +438,13 @@ export async function buildIntelligenceApp(
       if (!(error instanceof MarketDataError)) throw error;
       quote = undefined;
     }
+    // A snapshot cannot predate the quote it contains. The provider samples
+    // its own clock, so ordering alone is not enough -- any skew between it
+    // and this service would produce an invalid snapshot. Take the later of
+    // the two instants explicitly.
+    const sampledAt = now().getTime();
+    const quotedAt = quote ? Date.parse(quote.timestamp) : sampledAt;
+    const capturedAt = new Date(Math.max(sampledAt, quotedAt)).toISOString();
 
     let marketSnapshotHash: `0x${string}` | undefined;
     if (quote) {

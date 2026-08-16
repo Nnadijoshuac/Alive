@@ -16,6 +16,7 @@
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network xlayerMainnet",
     "deploy:rwa:local": "hardhat run scripts/deploy-rwa.ts --network localhost",
     "deploy:rwa:testnet": "hardhat run scripts/deploy-rwa.ts --network xlayerTestnet",
+    "prove:flow": "tsx scripts/prove-gateway-flow.ts",
     "init:deployer": "tsx scripts/init-deployer.ts",
     "sync:web-env": "tsx scripts/sync-web-env.ts",
     "check:xlayer:testnet": "tsx scripts/check-xlayer.ts testnet",

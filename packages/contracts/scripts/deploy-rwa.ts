@@ -301,7 +301,21 @@ async function main(): Promise<void> {
   );
   await vault.waitForDeployment();
 
-  if (isLocal && localEligibilitySigner) {
+  // Only seed verdicts when this script actually controls the key the
+  // registry trusts. If an external RWA_ELIGIBILITY_SIGNER was configured
+  // (the normal case -- ALIVE's intelligence service holds that key), the
+  // deployer cannot produce a valid signature and must not try: assets
+  // correctly start ineligible until the service publishes a real verdict.
+  const controlsEligibilitySigner =
+    localEligibilitySigner !== undefined &&
+    eligibilitySignerAddress.toLowerCase() ===
+      localEligibilitySigner.address.toLowerCase();
+  if (isLocal && !controlsEligibilitySigner) {
+    console.log(
+      `Skipping automatic eligibility publication: the registry trusts ${eligibilitySignerAddress}, whose key this deployer does not hold. Assets start NOT ELIGIBLE until ALIVE's intelligence service publishes a signed verdict.`,
+    );
+  }
+  if (isLocal && controlsEligibilitySigner && localEligibilitySigner) {
     console.log(
       "Publishing local demo eligibility verdicts (ELIGIBLE, 1h validity) for every demo asset...",
     );
@@ -349,7 +363,7 @@ async function main(): Promise<void> {
         await eligibilityRegistry.publishEligibility(attestation, signature)
       ).wait();
     }
-  } else {
+  } else if (!isLocal) {
     console.log(
       "Skipping automatic eligibility publication (not local): every demo asset starts NOT ELIGIBLE until ALIVE's intelligence service publishes a signed verdict for it.",
     );

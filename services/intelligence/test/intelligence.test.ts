@@ -596,3 +596,39 @@ describe("demo NAV controls (DEMO_MODE gated)", () => {
     await app.close();
   }, 20_000);
 });
+
+describe("market snapshot clock skew", () => {
+  it("still evaluates eligibility when the provider's clock runs ahead of the service", async () => {
+    // Regression: capturedAt was sampled independently of the quote, so a
+    // provider clock even slightly ahead produced a snapshot that predated
+    // its own quote and failed MarketSnapshotSchema. Real wall-clock runs
+    // hit this intermittently; a frozen test clock never did.
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const aheadBy = 5_000;
+    const app = await buildIntelligenceApp(config, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new ControllableDemoMarketDataProvider(
+        undefined,
+        () => new Date(NOW.getTime() + aheadBy),
+      ),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/assets/ttbill-a/eligibility",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(
+      (response.json() as { verdict: { marketSnapshotHash?: string } }).verdict
+        .marketSnapshotHash,
+    ).toMatch(/^0x[0-9a-f]{64}$/);
+
+    await app.close();
+  });
+});
