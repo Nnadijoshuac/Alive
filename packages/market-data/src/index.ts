@@ -21,4 +21,5 @@ export {
   ControllableDemoMarketDataProvider,
   type DemoAssetOverride,
 } from "./demo-controls.js";
+export { CompositeMarketDataProvider } from "./composite.js";
 export * from "./provider.js";

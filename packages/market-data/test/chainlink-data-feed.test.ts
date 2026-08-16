@@ -7,6 +7,8 @@ import {
   type ChainlinkReader,
 } from "../src/chainlink-data-feed.js";
 import { CHAINLINK_FEEDS, feedForAsset } from "../src/chainlink-feeds.js";
+import { CompositeMarketDataProvider } from "../src/composite.js";
+import { ControllableDemoMarketDataProvider } from "../src/demo-controls.js";
 import { MarketDataError } from "../src/provider.js";
 
 const NOW = new Date("2026-08-16T19:00:00.000Z");
@@ -219,5 +221,54 @@ describe("feed registry", () => {
     expect(feedForAsset("ttbill-a")?.key).toBe("ustb-nav");
     expect(feedForAsset("tgold")?.product).toBe("Proof of Reserve");
     expect(feedForAsset("nope")).toBeUndefined();
+  });
+});
+
+describe("CompositeMarketDataProvider", () => {
+  function composite() {
+    const chainlink = new ChainlinkDataFeedProvider(reader(), () => NOW);
+    const demo = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    return new CompositeMarketDataProvider(chainlink, demo);
+  }
+
+  it("routes Chainlink-backed assets live and others to the demo provider", async () => {
+    const provider = composite();
+    expect(provider.isLive("ttbill-a")).toBe(true);
+    expect(provider.isLive("tnvda")).toBe(false);
+
+    const live = await provider.getQuote("ttbill-a");
+    expect(live.dataMode).toBe("LIVE");
+    expect(live.provider).toBe("CHAINLINK");
+    expect(live.onchainSource?.chainId).toBe(1);
+
+    const demo = await provider.getQuote("tnvda");
+    expect(demo.dataMode).toBe("DEMO");
+    expect(demo.onchainSource).toBeUndefined();
+  });
+
+  it("refuses to degrade a Chainlink-backed asset", () => {
+    // The Attack Lab must never doctor real oracle data to fake a failure.
+    const provider = composite();
+    expect(() => provider.degrade("ttbill-a", 31 * 3_600)).toThrow(
+      MarketDataError,
+    );
+    expect(() => provider.degrade("ttbill-a", 31 * 3_600)).toThrow(
+      /does not modify real oracle data/i,
+    );
+  });
+
+  it("still degrades demo-backed assets so the Attack Lab keeps working", async () => {
+    const provider = composite();
+    provider.degrade("tnvda", 31 * 3_600);
+    const degraded = await provider.getQuote("tnvda");
+    const ageHours =
+      (NOW.getTime() - Date.parse(degraded.timestamp)) / 3_600_000;
+    expect(ageHours).toBeCloseTo(31, 5);
+    expect(degraded.dataMode).toBe("DEMO");
+
+    provider.clearDegradations();
+    expect((await provider.getQuote("tnvda")).timestamp).toBe(
+      NOW.toISOString(),
+    );
   });
 });
