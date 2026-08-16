@@ -1,6 +1,9 @@
 import { fileURLToPath } from "node:url";
 
-import { DemoMarketDataProvider } from "@alive/market-data";
+import {
+  ControllableDemoMarketDataProvider,
+  DemoMarketDataProvider,
+} from "@alive/market-data";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -33,7 +36,11 @@ const config: IntelligenceConfig = {
   allowedOrigins: ["http://localhost:3000"],
   llm: { provider: "disabled", timeoutMs: 1_000 },
   eligibilitySigner: { ttlSeconds: 900 },
+  demoMode: false,
 };
+
+/** Same config with the DEMO_MODE-gated /api/demo/* controls registered. */
+const demoModeConfig: IntelligenceConfig = { ...config, demoMode: true };
 
 const mandate =
   "Protect my capital. Keep at least half in Treasuries. Give me some gold but not more than 20%. Equities can be at most 20%. Never put more than 25% with one issuer. Keep 10% liquid. Never put more than 20% in one asset.";
@@ -467,4 +474,125 @@ describe("intelligence API", () => {
     expect(body.signed.signer.toLowerCase()).toMatch(/^0x[0-9a-f]{40}$/);
     await signedApp.close();
   });
+});
+
+describe("demo NAV controls (DEMO_MODE gated)", () => {
+  async function buildDemoApp() {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const marketData = new ControllableDemoMarketDataProvider(
+      undefined,
+      () => NOW,
+    );
+    const app = await buildIntelligenceApp(demoModeConfig, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData,
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+    return { app, repository, marketData };
+  }
+
+  it("does not register the demo routes unless DEMO_MODE is on", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const app = await buildIntelligenceApp(config, {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new ControllableDemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/demo/assets/ttbill-a/nav-age",
+      payload: { ageSeconds: 111_600 },
+    });
+    expect(blocked.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("drives the full killer-demo sequence offchain: ELIGIBLE, NAV stale -> RESTRICTED, restore -> ELIGIBLE", async () => {
+    const { app } = await buildDemoApp();
+
+    // Ingest + extract so the passport carries a documented redemption fact.
+    await app.inject({
+      method: "POST",
+      url: "/api/assets/ttbill-a/ingest",
+      payload: {
+        sourceId: "demo-doc-ttbill-a",
+        sourceType: "DEMO_FIXTURE",
+        input: {
+          kind: "fixture",
+          fixtureId: "ttbill-a",
+          title: "tTBILL-A fact sheet",
+        },
+      },
+    });
+    await app.inject({ method: "POST", url: "/api/assets/ttbill-a/extract" });
+
+    // 1. Healthy asset is ELIGIBLE.
+    const before = await app.inject({
+      method: "GET",
+      url: "/api/assets/ttbill-a/eligibility",
+    });
+    expect(before.json()).toMatchObject({
+      verdict: { status: "ELIGIBLE", eligible: true },
+    });
+
+    // 2. Break the NAV: 31 hours old against a 24-hour policy bound.
+    const broke = await app.inject({
+      method: "POST",
+      url: "/api/assets/ttbill-a/nav-age",
+      payload: { ageSeconds: 31 * 3_600 },
+    });
+    expect(broke.statusCode).toBe(404); // wrong path guard: route is /api/demo/...
+
+    const applied = await app.inject({
+      method: "POST",
+      url: "/api/demo/assets/ttbill-a/nav-age",
+      payload: { ageSeconds: 31 * 3_600 },
+    });
+    expect(applied.statusCode).toBe(200);
+
+    const restricted = await app.inject({
+      method: "GET",
+      url: "/api/assets/ttbill-a/eligibility",
+    });
+    expect(restricted.json()).toMatchObject({
+      verdict: { status: "RESTRICTED", eligible: false },
+    });
+    const codes = (
+      restricted.json() as { verdict: { reasons: { code: string }[] } }
+    ).verdict.reasons.map((reason) => reason.code);
+    expect(codes).toContain("NAV_STALE");
+
+    // Another asset is untouched -- the degradation is scoped to one asset.
+    const untouched = await app.inject({
+      method: "GET",
+      url: "/api/assets/tgold/eligibility",
+    });
+    expect(
+      (untouched.json() as { verdict: { reasons: { code: string }[] } }).verdict
+        .reasons.map((r) => r.code),
+    ).not.toContain("NAV_STALE");
+
+    // 3. Restore the data and confirm recovery.
+    const reset = await app.inject({ method: "POST", url: "/api/demo/reset" });
+    expect(reset.statusCode).toBe(200);
+    const recovered = await app.inject({
+      method: "GET",
+      url: "/api/assets/ttbill-a/eligibility",
+    });
+    expect(recovered.json()).toMatchObject({
+      verdict: { status: "ELIGIBLE", eligible: true },
+    });
+
+    await app.close();
+  }, 20_000);
 });

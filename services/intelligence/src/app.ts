@@ -13,7 +13,11 @@ import {
   type RwaCatalog,
   type RwaExtractionMetadata,
 } from "@alive/shared";
-import { MarketDataError, type MarketDataProvider } from "@alive/market-data";
+import {
+  ControllableDemoMarketDataProvider,
+  MarketDataError,
+  type MarketDataProvider,
+} from "@alive/market-data";
 import {
   detectPolicyDrift,
   optimizePortfolio,
@@ -66,6 +70,12 @@ const PolicyReferenceSchema = z
     },
   );
 const OptimizeBodySchema = PolicyReferenceSchema;
+const DemoNavAgeBodySchema = z
+  .object({
+    // 0 clears the override and restores fresh demo data.
+    ageSeconds: z.number().int().min(0).max(365 * 24 * 3_600),
+  })
+  .strict();
 const IngestBodySchema = z
   .object({
     sourceId: z.string().trim().min(1).max(128),
@@ -634,6 +644,85 @@ export async function buildIntelligenceApp(
       disclaimer: dependencies.catalog.disclaimer,
     };
   });
+
+  // Demo-only controls. These deliberately degrade DEMO market data so the
+  // gateway demo and Attack Lab can show ALIVE reacting to a real rule
+  // violation. They are registered only when DEMO_MODE=true, and they can
+  // only ever make demo data worse -- there is no path here that fabricates
+  // or improves a quote, and nothing here touches a live provider.
+  if (config.demoMode) {
+    const controllable =
+      dependencies.marketData instanceof ControllableDemoMarketDataProvider
+        ? dependencies.marketData
+        : undefined;
+
+    function requireControllable(reply: {
+      status: (code: number) => unknown;
+    }): ControllableDemoMarketDataProvider | undefined {
+      if (controllable) return controllable;
+      reply.status(409);
+      return undefined;
+    }
+
+    app.post<{ Params: { assetId: string } }>(
+      "/api/demo/assets/:assetId/nav-age",
+      async (request, reply) => {
+        const provider = requireControllable(reply);
+        if (!provider) {
+          return {
+            error: {
+              code: "DEMO_CONTROLS_UNAVAILABLE",
+              message:
+                "The active market-data provider is not the controllable demo provider.",
+            },
+          };
+        }
+        const body = DemoNavAgeBodySchema.parse(request.body);
+        if (body.ageSeconds === 0) {
+          provider.clearOverride(request.params.assetId);
+        } else {
+          provider.setOverride(request.params.assetId, {
+            ageSeconds: body.ageSeconds,
+          });
+        }
+        return {
+          assetId: request.params.assetId,
+          ageSeconds: body.ageSeconds,
+          dataMode: "DEMO",
+          overrides: provider.listOverrides(),
+        };
+      },
+    );
+
+    app.post("/api/demo/reset", async (_request, reply) => {
+      const provider = requireControllable(reply);
+      if (!provider) {
+        return {
+          error: {
+            code: "DEMO_CONTROLS_UNAVAILABLE",
+            message:
+              "The active market-data provider is not the controllable demo provider.",
+          },
+        };
+      }
+      provider.clearAllOverrides();
+      return { reset: true, overrides: provider.listOverrides() };
+    });
+
+    app.get("/api/demo/state", async (_request, reply) => {
+      const provider = requireControllable(reply);
+      if (!provider) {
+        return {
+          error: {
+            code: "DEMO_CONTROLS_UNAVAILABLE",
+            message:
+              "The active market-data provider is not the controllable demo provider.",
+          },
+        };
+      }
+      return { demoMode: true, overrides: provider.listOverrides() };
+    });
+  }
 
   app.addHook("onClose", async () => {
     dependencies.repository.close();

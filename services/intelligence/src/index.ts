@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   ChainlinkDataStreamsProvider,
+  ControllableDemoMarketDataProvider,
   DemoMarketDataProvider,
   chainlinkConfigFromEnvironment,
   createOfficialChainlinkClientFactory,
@@ -66,7 +67,14 @@ function recordEnvironmentJson(
 async function marketDataFromEnvironment(): Promise<MarketDataProvider> {
   const selected =
     process.env.MARKET_DATA_PROVIDER?.trim().toLowerCase() ?? "demo";
-  if (selected === "demo") return new DemoMarketDataProvider();
+  if (selected === "demo") {
+    // In DEMO_MODE the provider must be the controllable variant so the
+    // Attack Lab can degrade a single asset's freshness on purpose. Outside
+    // demo mode the plain provider is used and no override path exists.
+    return process.env.DEMO_MODE?.trim().toLowerCase() === "true"
+      ? new ControllableDemoMarketDataProvider()
+      : new DemoMarketDataProvider();
+  }
   if (selected !== "chainlink") {
     throw new Error("MARKET_DATA_PROVIDER must be demo or chainlink");
   }

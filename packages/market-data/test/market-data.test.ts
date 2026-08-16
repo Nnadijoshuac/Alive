@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   ChainlinkDataStreamsProvider,
+  ControllableDemoMarketDataProvider,
   DemoMarketDataProvider,
   MarketDataError,
   chainlinkConfigFromEnvironment,
@@ -190,5 +191,60 @@ describe("DemoMarketDataProvider", () => {
       dataMode: "DEMO",
       message: expect.stringContaining("not live market data"),
     });
+  });
+});
+
+describe("ControllableDemoMarketDataProvider", () => {
+  const NOW = new Date("2026-08-16T12:00:00.000Z");
+
+  it("returns normal fresh demo quotes when no override is set", async () => {
+    const provider = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    const quote = await provider.getQuote("ttbill-a");
+    expect(quote.timestamp).toBe(NOW.toISOString());
+    expect(quote.dataMode).toBe("DEMO");
+  });
+
+  it("backdates only the overridden asset, leaving others fresh", async () => {
+    const provider = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    provider.setOverride("ttbill-a", { ageSeconds: 31 * 3_600 });
+
+    const stale = await provider.getQuote("ttbill-a");
+    const fresh = await provider.getQuote("tgold");
+
+    const staleAgeHours =
+      (NOW.getTime() - Date.parse(stale.timestamp)) / 3_600_000;
+    expect(staleAgeHours).toBeCloseTo(31, 5);
+    expect(fresh.timestamp).toBe(NOW.toISOString());
+    // A degraded quote is still unmistakably demo data.
+    expect(stale.dataMode).toBe("DEMO");
+  });
+
+  it("restores freshness when the override is cleared", async () => {
+    const provider = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    provider.setOverride("ttbill-a", { ageSeconds: 31 * 3_600 });
+    provider.clearOverride("ttbill-a");
+    expect((await provider.getQuote("ttbill-a")).timestamp).toBe(
+      NOW.toISOString(),
+    );
+  });
+
+  it("can force a market status such as HALTED", async () => {
+    const provider = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    provider.setOverride("tgold", { status: "HALTED" });
+    expect((await provider.getQuote("tgold")).status).toBe("HALTED");
+  });
+
+  it("rejects a negative age and reports degradation in health", async () => {
+    const provider = new ControllableDemoMarketDataProvider(undefined, () => NOW);
+    expect(() => provider.setOverride("tgold", { ageSeconds: -1 })).toThrow();
+
+    expect((await provider.health()).status).toBe("HEALTHY");
+    provider.setOverride("tgold", { ageSeconds: 10 });
+    const degraded = await provider.health();
+    expect(degraded.status).toBe("DEGRADED");
+    expect(degraded.dataMode).toBe("DEMO");
+
+    provider.clearAllOverrides();
+    expect((await provider.health()).status).toBe("HEALTHY");
   });
 });

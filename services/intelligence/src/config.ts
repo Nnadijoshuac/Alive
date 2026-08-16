@@ -31,6 +31,12 @@ export type IntelligenceConfig = {
     verifyingContract?: `0x${string}`;
     ttlSeconds: number;
   };
+  /**
+   * Enables the /api/demo/* controls that deliberately degrade demo market
+   * data (the Attack Lab's "break NAV"). Off unless DEMO_MODE=true, so these
+   * mutating routes cannot be reached in a normal deployment.
+   */
+  demoMode: boolean;
 };
 
 function positiveInteger(
@@ -133,6 +139,7 @@ export function loadIntelligenceConfig(
       ),
     },
     eligibilitySigner: eligibilitySignerConfig(environment),
+    demoMode: environment.DEMO_MODE?.trim().toLowerCase() === "true",
   };
 }
 
