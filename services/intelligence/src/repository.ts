@@ -178,6 +178,32 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS extraction_runs_asset ON extraction_runs(asset_id, started_at DESC);
     `,
   },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE IF NOT EXISTS market_observations (
+        id TEXT PRIMARY KEY,
+        asset_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        data_mode TEXT NOT NULL,
+        -- Null when the observation failed: a failed read is recorded as an
+        -- observation with status DATA_UNAVAILABLE and no value, never as a
+        -- silent reuse of the previous value.
+        value TEXT,
+        source_chain_id INTEGER,
+        source_address TEXT,
+        source_updated_at TEXT,
+        block_number INTEGER,
+        observed_at TEXT NOT NULL,
+        age_seconds INTEGER,
+        status TEXT NOT NULL,
+        eligibility_status TEXT,
+        reason_codes_json TEXT
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS market_observations_asset
+        ON market_observations(asset_id, observed_at DESC);
+    `,
+  },
 ] as const;
 
 export type PolicyRecord = CompiledPolicy & {
@@ -314,6 +340,70 @@ function rowToExtractionRun(row: ExtractionRunRow): ExtractionRunRecord {
       : {}),
     startedAt: row.started_at,
     ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+  };
+}
+
+export type MarketObservationRecord = {
+  id: string;
+  assetId: string;
+  provider: string;
+  dataMode: string;
+  /** Absent when the read failed. Never carried over from a previous read. */
+  value?: string;
+  sourceChainId?: number;
+  sourceAddress?: string;
+  sourceUpdatedAt?: string;
+  blockNumber?: number;
+  observedAt: string;
+  ageSeconds?: number;
+  status: "OK" | "STALE" | "DATA_UNAVAILABLE";
+  eligibilityStatus?: string;
+  reasonCodes?: string[];
+};
+
+type MarketObservationRow = {
+  id: string;
+  asset_id: string;
+  provider: string;
+  data_mode: string;
+  value: string | null;
+  source_chain_id: number | null;
+  source_address: string | null;
+  source_updated_at: string | null;
+  block_number: number | null;
+  observed_at: string;
+  age_seconds: number | null;
+  status: string;
+  eligibility_status: string | null;
+  reason_codes_json: string | null;
+};
+
+function rowToObservation(row: MarketObservationRow): MarketObservationRecord {
+  return {
+    id: row.id,
+    assetId: row.asset_id,
+    provider: row.provider,
+    dataMode: row.data_mode,
+    ...(row.value !== null ? { value: row.value } : {}),
+    ...(row.source_chain_id !== null
+      ? { sourceChainId: row.source_chain_id }
+      : {}),
+    ...(row.source_address !== null
+      ? { sourceAddress: row.source_address }
+      : {}),
+    ...(row.source_updated_at !== null
+      ? { sourceUpdatedAt: row.source_updated_at }
+      : {}),
+    ...(row.block_number !== null ? { blockNumber: row.block_number } : {}),
+    observedAt: row.observed_at,
+    ...(row.age_seconds !== null ? { ageSeconds: row.age_seconds } : {}),
+    status: row.status as MarketObservationRecord["status"],
+    ...(row.eligibility_status !== null
+      ? { eligibilityStatus: row.eligibility_status }
+      : {}),
+    ...(row.reason_codes_json !== null
+      ? { reasonCodes: JSON.parse(row.reason_codes_json) as string[] }
+      : {}),
   };
 }
 
@@ -868,6 +958,64 @@ export class IntelligenceRepository {
       )
       .get(assetId) as ExtractionRunRow | undefined;
     return row ? rowToExtractionRun(row) : undefined;
+  }
+
+  saveMarketObservation(observation: MarketObservationRecord): void {
+    this.#database
+      .prepare(
+        `
+        INSERT INTO market_observations (
+          id, asset_id, provider, data_mode, value, source_chain_id,
+          source_address, source_updated_at, block_number, observed_at,
+          age_seconds, status, eligibility_status, reason_codes_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      )
+      .run(
+        observation.id,
+        observation.assetId,
+        observation.provider,
+        observation.dataMode,
+        observation.value ?? null,
+        observation.sourceChainId ?? null,
+        observation.sourceAddress ?? null,
+        observation.sourceUpdatedAt ?? null,
+        observation.blockNumber ?? null,
+        observation.observedAt,
+        observation.ageSeconds ?? null,
+        observation.status,
+        observation.eligibilityStatus ?? null,
+        observation.reasonCodes ? JSON.stringify(observation.reasonCodes) : null,
+      );
+  }
+
+  latestMarketObservation(assetId: string): MarketObservationRecord | undefined {
+    const row = this.#database
+      .prepare(
+        `
+        SELECT id, asset_id, provider, data_mode, value, source_chain_id,
+          source_address, source_updated_at, block_number, observed_at,
+          age_seconds, status, eligibility_status, reason_codes_json
+        FROM market_observations
+        WHERE asset_id = ?
+        -- rowid breaks ties: two observations can share a timestamp when
+        -- polling is fast, and "latest" must still mean most recently
+        -- written, not an arbitrary pick.
+        ORDER BY observed_at DESC, rowid DESC
+        LIMIT 1
+      `,
+      )
+      .get(assetId) as MarketObservationRow | undefined;
+    return row ? rowToObservation(row) : undefined;
+  }
+
+  countMarketObservations(assetId: string): number {
+    const row = this.#database
+      .prepare(
+        "SELECT COUNT(*) AS total FROM market_observations WHERE asset_id = ?",
+      )
+      .get(assetId) as { total: number };
+    return row.total;
   }
 
   tableNames(): string[] {

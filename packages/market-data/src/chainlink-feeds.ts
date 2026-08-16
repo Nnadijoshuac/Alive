@@ -155,7 +155,13 @@ export const CHAINLINK_FEEDS = {
    * fund's own net asset value rather than a market quote.
    */
   "ustb-nav": {
-    assetId: "ttbill-a",
+    // Mapped to ttbill-b, not ttbill-a, on purpose. ttbill-a is deliberately
+    // left demo-backed so the Attack Lab has a tokenized-Treasury asset it is
+    // allowed to degrade -- ALIVE never doctors real oracle data to
+    // manufacture a failure. Keeping ttbill-a on demo also preserves the
+    // already-proven X Layer testnet run and its recorded transaction
+    // hashes, which used ttbill-a.
+    assetId: "ttbill-b",
     label: "Superstate USTB - NAV per Share",
     expectedDescription: "USTB NAV per Share",
     product: "NAVLink",
@@ -173,9 +179,13 @@ export const CHAINLINK_FEEDS = {
     unit: "USD per share",
     issuer: "Superstate",
   },
-  /** Anemoy/Centrifuge tokenized US Treasury fund NAV. */
+  /**
+   * Anemoy/Centrifuge tokenized US Treasury fund NAV. Not wired to an ALIVE
+   * asset: ttbill-a is reserved as the Attack Lab's demo-backed asset, so
+   * this feed is kept configured and probeable but unassigned.
+   */
   "jtrsy-nav": {
-    assetId: "ttbill-b",
+    assetId: "__unassigned:jtrsy",
     label: "Anemoy JTRSY - NAV",
     expectedDescription: "JTRSY NAV",
     product: "NAVLink",

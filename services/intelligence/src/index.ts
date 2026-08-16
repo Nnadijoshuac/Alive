@@ -25,6 +25,15 @@ export {
   EligibilitySigner,
   EligibilitySignerError,
 } from "./attestations/eligibility-signer.js";
+export {
+  MarketMonitor,
+  runMonitorLoop,
+  type MarketMonitorOptions,
+  type MonitorDecision,
+  type MonitorLoopOptions,
+  type OnchainVerdictState,
+  type PublishReason,
+} from "./monitoring/market-monitor.js";
 export { loadRwaCatalog } from "./catalog.js";
 export {
   compileMandate,

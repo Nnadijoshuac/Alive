@@ -62,7 +62,7 @@ describe("scaleAnswer", () => {
 describe("ChainlinkDataFeedProvider", () => {
   it("produces a schema-valid LIVE quote carrying full source provenance", async () => {
     const provider = new ChainlinkDataFeedProvider(reader(), () => NOW);
-    const quote = await provider.getQuote("ttbill-a");
+    const quote = await provider.getQuote("ttbill-b");
 
     // The canonical schema is the real contract, so parse rather than eyeball.
     const parsed = MarketQuoteSchema.parse(quote);
@@ -91,7 +91,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ decimals: 6, answer: 11_177_748n }),
       () => NOW,
     );
-    expect((await provider.getQuote("ttbill-a")).price).toBe("11.177748");
+    expect((await provider.getQuote("ttbill-b")).price).toBe("11.177748");
 
     const eightDp = new ChainlinkDataFeedProvider(
       reader({ decimals: 8, description: "TBILL NAV", answer: 115_333_588n }),
@@ -108,7 +108,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ updatedAt: staleSeconds }),
       () => NOW,
     );
-    expect((await nav.getQuote("ttbill-a")).status).toBe("OPEN");
+    expect((await nav.getQuote("ttbill-b")).status).toBe("OPEN");
 
     const reserves = new ChainlinkDataFeedProvider(
       reader({
@@ -128,7 +128,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ description: "ETH / USD" }),
       () => NOW,
     );
-    await expect(provider.getQuote("ttbill-a")).rejects.toMatchObject({
+    await expect(provider.getQuote("ttbill-b")).rejects.toMatchObject({
       code: "REPORT_INVALID",
     });
   });
@@ -138,7 +138,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ updatedAt: 0n }),
       () => NOW,
     );
-    await expect(incomplete.getQuote("ttbill-a")).rejects.toMatchObject({
+    await expect(incomplete.getQuote("ttbill-b")).rejects.toMatchObject({
       code: "REPORT_INVALID",
     });
 
@@ -146,7 +146,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ answer: 0n }),
       () => NOW,
     );
-    await expect(zero.getQuote("ttbill-a")).rejects.toMatchObject({
+    await expect(zero.getQuote("ttbill-b")).rejects.toMatchObject({
       code: "REPORT_INVALID",
     });
 
@@ -154,7 +154,7 @@ describe("ChainlinkDataFeedProvider", () => {
       reader({ updatedAt: BigInt(nowSeconds + 600) }),
       () => NOW,
     );
-    await expect(future.getQuote("ttbill-a")).rejects.toMatchObject({
+    await expect(future.getQuote("ttbill-b")).rejects.toMatchObject({
       code: "REPORT_INVALID",
     });
   });
@@ -165,7 +165,7 @@ describe("ChainlinkDataFeedProvider", () => {
       () => NOW,
     );
     // The critical property: failure must not resolve to a quote at all.
-    await expect(provider.getQuote("ttbill-a")).rejects.toMatchObject({
+    await expect(provider.getQuote("ttbill-b")).rejects.toMatchObject({
       code: "PROVIDER_UNAVAILABLE",
     });
 
@@ -183,9 +183,9 @@ describe("ChainlinkDataFeedProvider", () => {
 
   it("omits assets it cannot serve from a bulk read rather than faking them", async () => {
     const provider = new ChainlinkDataFeedProvider(reader(), () => NOW);
-    const quotes = await provider.getQuotes(["ttbill-a", "not-a-real-asset"]);
+    const quotes = await provider.getQuotes(["ttbill-b", "not-a-real-asset"]);
     expect(quotes).toHaveLength(1);
-    expect(quotes[0]?.assetId).toBe("ttbill-a");
+    expect(quotes[0]?.assetId).toBe("ttbill-b");
   });
 
   it("reports DEGRADED health when reachable but the primary feed is stale", async () => {
@@ -218,7 +218,7 @@ describe("feed registry", () => {
   });
 
   it("maps ALIVE demo assets to feeds and back", () => {
-    expect(feedForAsset("ttbill-a")?.key).toBe("ustb-nav");
+    expect(feedForAsset("ttbill-b")?.key).toBe("ustb-nav");
     expect(feedForAsset("tgold")?.product).toBe("Proof of Reserve");
     expect(feedForAsset("nope")).toBeUndefined();
   });
@@ -233,10 +233,10 @@ describe("CompositeMarketDataProvider", () => {
 
   it("routes Chainlink-backed assets live and others to the demo provider", async () => {
     const provider = composite();
-    expect(provider.isLive("ttbill-a")).toBe(true);
+    expect(provider.isLive("ttbill-b")).toBe(true);
     expect(provider.isLive("tnvda")).toBe(false);
 
-    const live = await provider.getQuote("ttbill-a");
+    const live = await provider.getQuote("ttbill-b");
     expect(live.dataMode).toBe("LIVE");
     expect(live.provider).toBe("CHAINLINK");
     expect(live.onchainSource?.chainId).toBe(1);
@@ -249,10 +249,10 @@ describe("CompositeMarketDataProvider", () => {
   it("refuses to degrade a Chainlink-backed asset", () => {
     // The Attack Lab must never doctor real oracle data to fake a failure.
     const provider = composite();
-    expect(() => provider.degrade("ttbill-a", 31 * 3_600)).toThrow(
+    expect(() => provider.degrade("ttbill-b", 31 * 3_600)).toThrow(
       MarketDataError,
     );
-    expect(() => provider.degrade("ttbill-a", 31 * 3_600)).toThrow(
+    expect(() => provider.degrade("ttbill-b", 31 * 3_600)).toThrow(
       /does not modify real oracle data/i,
     );
   });
@@ -269,6 +269,32 @@ describe("CompositeMarketDataProvider", () => {
     provider.clearDegradations();
     expect((await provider.getQuote("tnvda")).timestamp).toBe(
       NOW.toISOString(),
+    );
+  });
+});
+
+describe("Attack Lab asset reservation", () => {
+  it("keeps ttbill-a demo-backed so the Attack Lab has a Treasury it may degrade", () => {
+    // If a future change maps ttbill-a to a Chainlink feed, the killer demo
+    // silently breaks: degrade() would start throwing and the NAV-stale
+    // scenario would have no asset to run against.
+    expect(feedForAsset("ttbill-a")).toBeUndefined();
+  });
+
+  it("still showcases a real tokenized-Treasury NAV on a live asset", () => {
+    const live = feedForAsset("ttbill-b");
+    expect(live?.key).toBe("ustb-nav");
+    expect(live?.valueKind).toBe("NAV_PER_SHARE");
+  });
+
+  it("lets the Attack Lab degrade ttbill-a while refusing the live asset", () => {
+    const provider = new CompositeMarketDataProvider(
+      new ChainlinkDataFeedProvider(reader(), () => NOW),
+      new ControllableDemoMarketDataProvider(undefined, () => NOW),
+    );
+    expect(() => provider.degrade("ttbill-a", 31 * 3_600)).not.toThrow();
+    expect(() => provider.degrade("ttbill-b", 31 * 3_600)).toThrow(
+      /does not modify real oracle data/i,
     );
   });
 });
