@@ -1,243 +1,165 @@
-# ALIVE demo runbook
+# ALIVE demo runbook — verification gateway on X Layer Testnet
 
-> **Historical V1 reference.** This runbook demonstrates the archived
-> physical-state product. The V2 RWA mandate/policy/vault demo has not replaced
-> it yet; do not use this script to present the current product thesis.
+> The archived physical-state runbook is preserved at
+> [DEMO-v1-physical-state.md](DEMO-v1-physical-state.md). It describes a
+> product ALIVE no longer ships.
 
-## Presenter objective
+## What the audience must understand
 
-Show one causal chain in two to three minutes:
+One causal chain, in under two minutes:
 
 ```text
-camera -> real visual comparison -> signed attestation -> contract checks -> test-token outcome
+RWA token
+  -> ALIVE reads the information behind it
+  -> AI structures it into an Asset Passport
+  -> deterministic rules evaluate it
+  -> a signed verdict goes onchain
+  -> X Layer permits or refuses the financial action
 ```
 
-The audience should understand two things without source-code narration:
-
-1. a blockchain cannot see the physical object by itself;
-2. ALIVE makes a bounded AI observation consequential without putting private media onchain.
+The point is the refusal. Anyone can show a transaction succeeding. ALIVE is
+interesting because when the information behind an asset degrades, **the smart
+contract stops the transaction**, and no amount of frontend intent can push it
+through.
 
 ## Hard rule
 
-Never substitute a seeded score, hardcoded hash, fake explorer link, or prerecorded success screen for a live result. If a camera, verifier, wallet, or chain step fails, show the failure honestly and use the recovery section.
+Never substitute a seeded verdict, hardcoded hash, fake explorer link, or
+prerecorded screen for a live result. If the chain, service, or wallet fails,
+show the failure and use the recovery section. The demo is only worth
+presenting because it is real.
 
-## Recommended physical setup
+## Prerequisites
 
-- one visually distinctive laptop, camera, console, or equipment case as the genuine asset;
-- one different object, preferably in the same broad category, for substitution;
-- one phone or second screen capable of displaying a registration photo;
-- diffuse front lighting and a plain background;
-- buyer and seller as separate disposable wallets;
-- the local Hardhat network for rehearsal, or X Layer Testnet only after a recorded smoke test;
-- enough labelled `tUSDT` in the buyer wallet and native gas in both wallets.
-
-Stable scratches, stickers, ports, and readable labels make the instance-matching concept easier to demonstrate. Do not add identifying marks after registration.
-
-## Technical preflight
-
-1. Install with a normal `pnpm install`; do not omit optional/native dependencies.
-2. Run `pnpm check` and `pnpm smoke:local` from the repository root.
-3. Load the edited root environment into the current shell as described in the README.
-4. Start the chain with `pnpm chain`.
-5. Deploy with `pnpm deploy:local`, copy addresses into environment, and reload it.
-6. Ensure `ALIVE_VERIFIER_PRIVATE_KEY` is the key for the address authorized during deployment.
-7. Start web and verifier with `pnpm dev`.
-8. Check `http://127.0.0.1:4100/api/health`:
-   - `status` is `ok`;
-   - `signingConfigured` is `true`;
-   - `verifierAddress` equals the deployed registry's authorized verifier;
-   - `walletAuthorization` and `hashedResourceCapabilities` are `true`;
-   - OCR and neural capability flags match the intended demo.
-9. Open `http://localhost:3000/demo` and connect the buyer wallet to chain `31337`.
-10. Grant camera permission and confirm the intended camera device.
-11. Make a short rehearsal capture to confirm focus, exposure, API reachability, and transaction confirmation.
-
-For the hackathon AI demonstration, enable both optional local capabilities before starting the verifier:
-
-```dotenv
-ALIVE_ENABLE_OCR=true
-ALIVE_ENABLE_NEURAL_EMBEDDING=true
-ALIVE_NEURAL_MODEL=Xenova/clip-vit-base-patch32
-```
-
-Warm the model before the timed presentation because its first run may download and initialize model files. If neural loading fails, do not imply it ran; the health response and result diagnostics show the active capability.
-
-## Reset procedure
-
-The reset controls remove remembered browser presentation state. For a complete verifier reset with `DEMO_MODE=true`, call:
-
-```powershell
-$headers = @{ "x-alive-demo-token" = $env:DEMO_RESET_TOKEN }
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4100/api/demo/reset -Headers $headers
-```
-
-or:
+- X Layer Testnet (chain `1952`) contracts deployed and recorded in
+  `packages/contracts/deployments/rwa-1952.json`.
+- A deployer/demo wallet holding testnet OKB for gas.
+- The intelligence service running with `DEMO_MODE=true` and an eligibility
+  signer whose address matches the deployed registry's `authorizedSigner`.
 
 ```bash
-curl -X POST -H "x-alive-demo-token: $DEMO_RESET_TOKEN" http://127.0.0.1:4100/api/demo/reset
+pnpm --filter @alive/contracts check:xlayer:testnet
 ```
 
-The verifier refuses destructive reset unless `DEMO_RESET_TOKEN` is configured and the request supplies the same secret. Its evidence adapter also refuses to delete a root outside the dedicated workspace `storage` boundary. This removes local demo records and evidence. It cannot revert chain state or clear the browser's ephemeral local signer. Close the tab or clear the app's `sessionStorage` if a new local-mode identity is required.
+That prints the chain ID the RPC actually reports, the block height, and the
+deployer balance. If it says `DEPLOYER IS UNFUNDED`, stop and fund the wallet
+before presenting.
 
-There is no demo seed endpoint. A new asset always needs a wallet or local ephemeral signature and real registration captures. To reset the chain, restart the Hardhat node, redeploy, archive the stale `packages/contracts/deployments/31337.json` first because deployment refuses to overwrite it, and replace all browser and signer addresses before restarting the app.
+## Running the whole proof headlessly
 
-## Timed presentation
+If you have 60 seconds and want the sequence to speak for itself:
 
-### 00:00 to 00:20: Frame the problem
+```bash
+pnpm --filter @alive/contracts prove:flow 1952
+```
 
-Open `/` with the scanner visible.
+This drives the real service and real contracts, prints every transaction
+hash, and writes `deployments/gateway-proof-1952.json` from verified receipts.
+It is the same sequence the UI walks through, without the narration.
 
-Say:
+## The live walkthrough
 
-> A blockchain can track a token perfectly while knowing absolutely nothing about the object behind it. ALIVE gives smart contracts eyes.
+### 1. Verify the asset
 
-Follow the visual path from physical asset to AI inspection, signed proof, X Layer, and programmable value.
+Open `/verify`, select **tTBILL — Demo Tokenized Treasury**, and run it. The
+stages correspond to real backend work: the issuer document is ingested and
+hashed, facts are extracted and each one must cite a supplied source, market
+data is checked for freshness, redemption status is read, and the
+deterministic rules run.
 
-### 00:20 to 00:55: Register a physical baseline
-
-Open `/assets/register` with the seller wallet. Enter a short name and category, then capture front, left, right, back, distinctive detail, and identifier views.
-
-Narrate only the causal facts:
-
-- unusable blur or exposure is rejected;
-- the seller signs a short-lived authorization for the exact owner-and-nonce-derived asset ID and metadata;
-- raw frames remain in local verifier storage;
-- the verifier extracts real image features and identifier evidence;
-- a deterministic fingerprint commitment is returned;
-- the seller submits that commitment to the asset registry.
-
-Show the asset ID, commitment, and confirmed transaction. Do not say the object is guaranteed authentic. Registration establishes a baseline supplied by this operator.
-
-### 00:55 to 01:20: Lock payment
-
-Switch to the buyer wallet and say:
-
-> I'm going to lock money inside this smart contract and tell it not to pay until it knows I'm holding the right physical object.
-
-Open `/escrow/create`. Select or paste the asset ID, seller, labelled test token, amount, 8,500 identity threshold, 8,000 liveness threshold, and a short expiry. Create escrow, then approve and fund it from `/escrow/[escrowId]`.
-
-Point to contract-derived `AWAITING VERIFICATION`, the exact seller, the score policy, and the escrow context.
-
-### 01:20 to 01:50: Attempt an attack
-
-Open `/attack-lab`, select `Static photo replay`, and present the phone or screen. Follow the returned challenges as far as the presentation allows.
-
-Show the actual reason codes and signal values. A useful expected failure is motion, replay, multi-view, identity, or liveness below policy. The exact code depends on the evidence; do not promise one in advance.
-
-If time allows, run `Object substitution` with the second object. Then return to escrow and show that its status and token balance did not change. A rejected offchain result does not itself submit a reverting settlement transaction.
-
-### 01:50 to 02:35: Genuine verification and settlement
-
-Open the funded escrow with the seller wallet. Start its context-bound verification and complete each randomized instruction with the registered object.
-
-The verifier requires the same authenticated offchain owner that registered the asset. The seller first signs the exact session ID, asset, wallet, and escrow context. Each challenge then records a three-frame burst; the server checks every frame and derives intra-burst motion rather than trusting a client-supplied liveness score.
-
-Keep the technical result visible:
-
-- spatial and local match;
-- identifier result when available;
-- multi-view consistency;
-- intra-burst and cross-challenge motion, freshness, replay risk, and image quality;
-- identity, liveness, and visual-integrity basis points;
-- evidence hash;
-- EIP-712 digest, signer, issue time, and expiry.
-
-If accepted, submit `settleWithAttestation`. The contract requires the signed fingerprint commitment to equal the registered one and the proof to have been issued no earlier than the escrow's `fundedAt`. Show the sequence:
+Result:
 
 ```text
-SIGNED -> TRANSACTION PENDING -> CONFIRMED -> PAYMENT RELEASED
+ALIVE STATUS
+ELIGIBLE
 ```
 
-Open the explorer only for a real public-network transaction. For local rehearsal, show the confirmed local receipt and contract-derived `Released` state without calling it an X Layer Testnet transaction.
+Open the Asset Passport and show that every fact names the source it came
+from, and that the demo document and demo market data are both labelled as
+such. Say plainly: *this is a synthetic asset with a fictional issuer.*
 
-Close with:
+### 2. Move capital
 
-> AI verified reality. The contract moved the money.
+Use the asset on X Layer. The vault checks
+`AliveEligibilityRegistry.isEligible` before accepting the deposit.
 
-Use `X Layer moved the money` only during a real X Layer Testnet run.
+```text
+STATUS     CONFIRMED
+TX         0x547033d6...
+```
 
-## Attack Lab modes
+### 3. Break the data
 
-| Mode                | Presenter action                | Signals expected to matter                            |
-| ------------------- | ------------------------------- | ----------------------------------------------------- |
-| Static photo replay | Show paper or a screen image    | motion, ordered views, exact/near replay risk         |
-| Object substitution | Present a different object      | spatial match, local features, identifier, multi-view |
-| Expired capability  | Wait past the returned deadline | session validity and capture freshness                |
-| Genuine control     | Present the registered object   | all configured signals                                |
+In the Attack Lab, run **MAKE NAV STALE** — 31 hours against a 24-hour policy
+bound. ALIVE re-evaluates:
 
-The mode label is local presentation guidance and is not sent to the verifier. The verifier therefore cannot predetermine the result from the selected experiment.
+```text
+ALIVE STATUS
+RESTRICTED
 
-Onchain signed-session replay is exercised by contract tests rather than a browser mode: submitting the same session twice must revert at the attestation registry.
+REASON
+NAV_DATA_STALE
+```
+
+Publish that verdict. The registry now reports `isEligible = false`.
+
+### 4. Try the same transaction anyway
+
+This is the moment that matters. Attempt the identical deposit:
+
+```text
+BLOCKED ON X LAYER
+CONTRACT RESULT   AssetNotEligible
+```
+
+Make the distinction explicit: **ALIVE's verdict** is the offchain judgement,
+**the contract result** is the enforcement. The frontend is not refusing this;
+the vault is.
+
+### 5. Restore and retry
+
+Restore valid NAV data, re-evaluate, publish, and deposit again:
+
+```text
+ALIVE STATUS   ELIGIBLE
+STATUS         CONFIRMED
+TX             0x9e2a1a39...
+```
+
+## Honest framing to use out loud
+
+- "These are demo RWA assets with fictional issuers, not real tokenized
+  securities."
+- "Market data is a labelled demo provider. A Chainlink Data Streams adapter
+  exists but is not driving this."
+- "The eligibility signer is a single key today. That is a real
+  centralization assumption and it is deliberate for this stage."
+- "The contracts are unaudited. Nothing here should custody value."
+
+What you can claim without hedging: the contracts are deployed on X Layer
+Testnet, the enforcement is genuine contract logic, and the rejection is not
+simulated.
+
+## Two things that will bite you live
+
+**Verdicts expire.** The demo policy issues verdicts valid for 15 minutes. If
+you set the demo up and then talk for twenty minutes, the asset will read as
+ineligible before you start. Re-run the verification immediately before
+presenting, or let step 1 do it live.
+
+**The rejected step has no mined transaction.** The client simulates before
+broadcasting, so a guaranteed revert is caught as contract truth rather than
+burning gas on a transaction that cannot succeed. If a judge asks for the
+failed transaction hash, the correct answer is that there deliberately is not
+one — then show `isEligible` returning `false` onchain, plus the contract test
+that exercises the same revert. Do not invent a hash.
 
 ## Recovery
 
-### Camera denied or unavailable
-
-- reopen browser site settings and allow camera;
-- select another camera in the capture control;
-- retry the current step without restarting the whole wizard;
-- use `localhost` or HTTPS because browser camera access requires a secure context, with localhost treated specially.
-
-### Low-quality frame
-
-- add diffuse light;
-- avoid bright windows or reflective glare;
-- hold the object steady and fill the reticle;
-- retry only that view. Rejected frames are not submitted.
-
-### Session expired
-
-Start a new verification session. Never alter timestamps or reuse the old nonce.
-
-### Authorization or capability rejected
-
-- sign only the typed data returned by the current verifier challenge;
-- confirm the wallet is the authenticated offchain asset owner;
-- confirm `ALIVE_AUTH_AUDIENCE` and `ALIVE_AUTH_CHAIN_ID` match the client expectation;
-- request a new challenge after authorization expiry;
-- restart the registration or verification flow if its in-memory bearer capability was lost;
-- never recover a capability from logs or put it into a URL.
-
-### Verifier unavailable
-
-Check `/api/health`, the port, and `VERIFIER_ALLOWED_ORIGINS`. Verify that the SQLite and evidence paths are writable.
-
-### Signer not configured
-
-Confirm the private key, chain ID, and attestation-registry address are in the verifier process. Compare the health response address with `authorizedVerifier()` on the deployed registry.
-
-### Wallet wrong network or rejected request
-
-Use the in-app network switch, confirm the configured RPC and chain ID, and retry the transaction. Do not rerun visual analysis if the stored attestation is still unexpired; the signing endpoint returns the same stored proof on retry.
-
-### Contract revert
-
-Read the actual custom error. Common causes include wrong seller, asset ownership changed, escrow not funded, proof issued before funding, expired escrow or proof, fingerprint mismatch, below-threshold scores, wrong context, wrong signer domain, unsupported token balance behavior, or already consumed session.
-
-## Recording checklist
-
-- 16:9 browser window with zoom at 100%;
-- large result values and status visible;
-- no seed phrase, private key, local file path, or personal serial exposed;
-- notification popups disabled;
-- optional launch render generated from `videos/alive-launch` but not committed;
-- a backup recording of a genuine flow clearly labelled as backup, never silently substituted for the live demo.
-
-## Honest judging language
-
-Use:
-
-- AI-estimated visual match confidence;
-- active verification;
-- visual integrity or observable change;
-- signed Proof-of-Physical-State attestation;
-- simple replay resistance.
-
-Avoid:
-
-- guaranteed authentic;
-- impossible to spoof;
-- bank-grade liveness;
-- certified condition;
-- legally verified;
-- 100% fraud-proof.
+| Failure                   | Response                                                                  |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Asset already ineligible  | Re-run `/verify`; it publishes a fresh verdict.                            |
+| Publish reverts           | Verdicts must be strictly newer than the stored one; wait a second, retry. |
+| RPC read looks stale      | A load-balanced node may lag a block. Re-read; do not assume failure.      |
+| Service offline           | Show the honest `INTELLIGENCE OFFLINE` state; do not fake a passport.      |
+| Wallet on the wrong chain | Switch to chain 1952. The UI states which network it is bound to.          |
