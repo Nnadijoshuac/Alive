@@ -234,6 +234,16 @@ async function main(): Promise<void> {
   });
   log(`Registry authorizedSigner ${onchainSigner}`);
 
+  /** Blocks until the node currently serving reads has caught up to `target`. */
+  async function waitForBlock(target: number): Promise<void> {
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const head = await publicClient.getBlockNumber();
+      if (Number(head) >= target) return;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error(`RPC did not reach block ${target} in time`);
+  }
+
   async function send(
     label: string,
     to: Address,
@@ -292,6 +302,11 @@ async function main(): Promise<void> {
     });
     lastIssuedAt = Number(attestation.issuedAt);
     const tx = await send(`publish ${status} verdict`, eligibilityRegistry, data);
+    // A public RPC load-balances across nodes, so a read issued immediately
+    // after the receipt can land on one that has not indexed that block yet
+    // and return pre-publish state. Wait for the node serving us to reach the
+    // receipt's block before trusting what it reports.
+    await waitForBlock(tx.blockNumber);
     const onchain = await publicClient.readContract({
       address: eligibilityRegistry,
       abi: ELIGIBILITY_ABI,
