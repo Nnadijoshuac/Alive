@@ -8,16 +8,28 @@ function address(value: string | undefined): Address | undefined {
 
 export const rwaContractAddresses = {
   assetRegistry: address(process.env.NEXT_PUBLIC_RWA_ASSET_REGISTRY_ADDRESS),
+  eligibilityRegistry: address(
+    process.env.NEXT_PUBLIC_ELIGIBILITY_REGISTRY_ADDRESS,
+  ),
   policyRegistry: address(process.env.NEXT_PUBLIC_POLICY_REGISTRY_ADDRESS),
   strategyVerifier: address(process.env.NEXT_PUBLIC_STRATEGY_VERIFIER_ADDRESS),
   vaultFactory: address(process.env.NEXT_PUBLIC_RWA_VAULT_FACTORY_ADDRESS),
+  vault: address(process.env.NEXT_PUBLIC_RWA_VAULT_ADDRESS),
   executionRouter: address(process.env.NEXT_PUBLIC_RWA_ROUTER_ADDRESS),
   cashToken: address(process.env.NEXT_PUBLIC_RWA_CASH_TOKEN_ADDRESS),
   faucet: address(process.env.NEXT_PUBLIC_RWA_FAUCET_ADDRESS),
+  demoAssetToken: address(
+    process.env.NEXT_PUBLIC_DEMO_ASSET_TOKEN_ADDRESS,
+  ),
 } as const;
+
+/** The demo asset the verification gateway walkthrough uses by default. */
+export const demoAssetId =
+  process.env.NEXT_PUBLIC_DEMO_ASSET_ID?.trim() || "ttbill-a";
 
 const requiredRwaAddresses = [
   rwaContractAddresses.assetRegistry,
+  rwaContractAddresses.eligibilityRegistry,
   rwaContractAddresses.policyRegistry,
   rwaContractAddresses.strategyVerifier,
   rwaContractAddresses.vaultFactory,
@@ -48,6 +60,33 @@ export const rwaVaultAbi = [
   { type: "function", name: "executionRouter", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
   { type: "function", name: "activatePolicy", stateMutability: "nonpayable", inputs: [{ name: "version", type: "uint32" }], outputs: [] },
   { type: "function", name: "depositCash", stateMutability: "nonpayable", inputs: [{ name: "amount", type: "uint256" }], outputs: [] },
+  { type: "function", name: "eligibilityRegistry", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  {
+    type: "function",
+    name: "depositEligibleAsset",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "assetId", type: "bytes32" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "event",
+    name: "EligibleAssetDeposited",
+    inputs: [
+      { name: "sender", type: "address", indexed: true },
+      { name: "assetId", type: "bytes32", indexed: true },
+      { name: "token", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  // Surfaced so the UI can name the exact contract-level refusal rather than
+  // paraphrasing it. This is the revert the gateway demo turns on.
+  { type: "error", name: "AssetNotEligible", inputs: [{ name: "assetId", type: "bytes32" }] },
+  { type: "error", name: "AssetNotEnabled", inputs: [{ name: "assetId", type: "bytes32" }] },
+  { type: "error", name: "AssetNotRegistered", inputs: [{ name: "assetId", type: "bytes32" }] },
+  { type: "error", name: "AssetNotAllowed", inputs: [{ name: "assetId", type: "bytes32" }] },
 ] as const;
 
 export const rwaVaultFactoryAbi = [
@@ -64,6 +103,72 @@ export const demoRwaFaucetAbi = [
   { type: "function", name: "hasClaimed", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "claimAmount", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "token", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+] as const;
+
+export const aliveEligibilityRegistryAbi = [
+  {
+    type: "function",
+    name: "isEligible",
+    stateMutability: "view",
+    inputs: [{ name: "assetId", type: "bytes32" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getRecord",
+    stateMutability: "view",
+    inputs: [{ name: "assetId", type: "bytes32" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "eligible", type: "bool" },
+          { name: "reasonHash", type: "bytes32" },
+          { name: "passportHash", type: "bytes32" },
+          { name: "marketSnapshotHash", type: "bytes32" },
+          { name: "policyHash", type: "bytes32" },
+          { name: "issuedAt", type: "uint64" },
+          { name: "validUntil", type: "uint64" },
+          { name: "version", type: "uint64" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "publishEligibility",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "attestation",
+        type: "tuple",
+        components: [
+          { name: "assetIdHash", type: "bytes32" },
+          { name: "eligible", type: "bool" },
+          { name: "reasonHash", type: "bytes32" },
+          { name: "passportHash", type: "bytes32" },
+          { name: "marketSnapshotHash", type: "bytes32" },
+          { name: "policyHash", type: "bytes32" },
+          { name: "issuedAt", type: "uint64" },
+          { name: "validUntil", type: "uint64" },
+          { name: "nonce", type: "bytes32" },
+        ],
+      },
+      { name: "signature", type: "bytes" },
+    ],
+    outputs: [{ name: "digest", type: "bytes32" }],
+  },
+  {
+    type: "event",
+    name: "EligibilityUpdated",
+    inputs: [
+      { name: "assetId", type: "bytes32", indexed: true },
+      { name: "eligible", type: "bool", indexed: false },
+      { name: "reasonHash", type: "bytes32", indexed: false },
+      { name: "validUntil", type: "uint64", indexed: false },
+      { name: "version", type: "uint64", indexed: false },
+    ],
+  },
 ] as const;
 
 export const rwaCashTokenAbi = [
@@ -208,5 +313,69 @@ export async function readRwaVault(candidate: string): Promise<RwaVaultRead> {
     };
   } catch {
     return { ...base, interfaceReadable: false };
+  }
+}
+
+export type OnchainEligibility = {
+  configured: boolean;
+  /** True only when the registry itself says the asset may be used now. */
+  eligible: boolean;
+  /** version 0 means no verdict has ever been published for this asset. */
+  version: number;
+  issuedAt?: number;
+  validUntil?: number;
+  expired?: boolean;
+  passportHash?: Hex;
+  policyHash?: Hex;
+  marketSnapshotHash?: Hex;
+};
+
+/**
+ * Reads the asset's live eligibility state straight from
+ * AliveEligibilityRegistry, so the UI reports what the chain enforces
+ * rather than restating an offchain verdict it happens to be holding.
+ */
+export async function readOnchainEligibility(
+  assetId: string,
+): Promise<OnchainEligibility> {
+  const registry = rwaContractAddresses.eligibilityRegistry;
+  if (!registry) return { configured: false, eligible: false, version: 0 };
+
+  const assetIdHash = keccak256(toBytes(assetId));
+  const client = createPublicClient({
+    chain: activeChain,
+    transport: http(activeChain.rpcUrls.default.http[0]),
+  });
+
+  try {
+    const [eligible, record] = await Promise.all([
+      client.readContract({
+        address: registry,
+        abi: aliveEligibilityRegistryAbi,
+        functionName: "isEligible",
+        args: [assetIdHash],
+      }),
+      client.readContract({
+        address: registry,
+        abi: aliveEligibilityRegistryAbi,
+        functionName: "getRecord",
+        args: [assetIdHash],
+      }),
+    ]);
+    const issuedAt = Number(record.issuedAt);
+    const validUntil = Number(record.validUntil);
+    return {
+      configured: true,
+      eligible,
+      version: Number(record.version),
+      issuedAt,
+      validUntil,
+      expired: validUntil > 0 && Date.now() / 1_000 >= validUntil,
+      passportHash: record.passportHash,
+      policyHash: record.policyHash,
+      marketSnapshotHash: record.marketSnapshotHash,
+    };
+  } catch {
+    return { configured: true, eligible: false, version: 0 };
   }
 }
