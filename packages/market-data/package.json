@@ -18,15 +18,18 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "probe:chainlink": "tsx scripts/chainlink-probe.ts"
   },
   "dependencies": {
     "@alive/shared": "workspace:*",
     "@chainlink/data-streams-sdk": "^1.2.1",
+    "viem": "^2.37.6",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
     "vitest": "^3.2.4"
   }
 }

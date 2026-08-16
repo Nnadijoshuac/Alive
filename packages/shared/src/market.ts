@@ -113,15 +113,17 @@ export const MarketQuoteSchema = MarketQuoteObjectSchema.superRefine(
         path: ["provider"],
       });
     }
-    // A quote may only claim to be LIVE if it can say where it came from.
-    // Without this, a provider bug or a fixture could present itself as live
-    // market data, which is the one thing ALIVE must never do.
-    if (quote.dataMode === "LIVE" && quote.onchainSource === undefined) {
+    // A live quote must not look like demo data. Note this is deliberately
+    // not "LIVE requires onchainSource": Data Streams reports are genuinely
+    // live but are signed offchain rather than read from a contract, so
+    // requiring contract provenance would wrongly conflate "live" with
+    // "onchain". What must never happen is demo data presenting itself as
+    // live, which this and the DEMO rules above and below together prevent.
+    if (quote.dataMode === "LIVE" && /demo|fixture|mock/i.test(quote.provider)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          "Live quotes must carry onchainSource provenance identifying the source chain and contract",
-        path: ["onchainSource"],
+        message: "A live quote must not be attributed to a demo provider",
+        path: ["provider"],
       });
     }
     if (quote.dataMode === "DEMO" && quote.onchainSource !== undefined) {

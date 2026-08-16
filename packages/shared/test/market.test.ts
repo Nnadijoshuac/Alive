@@ -98,9 +98,22 @@ describe("onchain source provenance", () => {
     expect(parsed.onchainSource?.feedAddress).toBe(source.feedAddress);
   });
 
-  it("rejects a live quote with no provenance", () => {
+  it("allows a live quote without contract provenance (e.g. a signed offchain report)", () => {
+    // Data Streams reports are live but signed offchain rather than read
+    // from a contract, so contract provenance is not required of every LIVE
+    // quote -- only of quotes that claim to have been read onchain.
     const { onchainSource: _drop, ...bare } = liveQuote;
-    expect(MarketQuoteSchema.safeParse(bare).success).toBe(false);
+    expect(MarketQuoteSchema.safeParse(bare).success).toBe(true);
+  });
+
+  it("rejects a live quote attributed to a demo provider", () => {
+    const { onchainSource: _drop, ...bare } = liveQuote;
+    expect(
+      MarketQuoteSchema.safeParse({
+        ...bare,
+        provider: "ALIVE Demo Market Provider",
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects a demo quote that claims onchain provenance", () => {

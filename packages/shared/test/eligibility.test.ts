@@ -1,4 +1,5 @@
 import { privateKeyToAccount } from "viem/accounts";
+
 import { describe, expect, it } from "vitest";
 import {
   ALIVE_ELIGIBILITY_DOMAIN_NAME,
