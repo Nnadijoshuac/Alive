@@ -1405,3 +1405,166 @@ describe("AliveVault token safety", function () {
     ).to.equal(amount(10));
   });
 });
+
+describe("AliveVault.depositEligibleAsset (ALIVE eligibility gateway)", function () {
+  it("runs the full killer demo: ELIGIBLE deposits, RESTRICTED reverts, restored verdict deposits again", async function () {
+    const fixture = await loadFixture(deployRwaFixture);
+    const vaultAddress = await fixture.vault.getAddress();
+    const registryAddress = await fixture.eligibilityRegistry.getAddress();
+    const assetId = fixture.assetIds.tTB1;
+    const token = fixture.tokens.tTB1;
+
+    await token.mint(fixture.user.address, amount(1_000));
+    await token.connect(fixture.user).approve(vaultAddress, amount(1_000));
+
+    // --- GOOD PATH: ALIVE publishes an ELIGIBLE verdict, capital moves.
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      assetId,
+    );
+    expect(await fixture.eligibilityRegistry.isEligible(assetId)).to.equal(true);
+
+    await expect(
+      fixture.vault.connect(fixture.user).depositEligibleAsset(assetId, amount(100)),
+    )
+      .to.emit(fixture.vault, "EligibleAssetDeposited")
+      .withArgs(
+        fixture.user.address,
+        assetId,
+        await token.getAddress(),
+        amount(100),
+      );
+    expect(await token.balanceOf(vaultAddress)).to.equal(amount(100));
+
+    // --- BAD PATH: the asset's condition degrades, ALIVE restricts it.
+    // A newer RESTRICTED verdict supersedes the eligible one onchain.
+    eligibilityNonceSequence += 1;
+    const restrictedAt = (await time.latest()) + 10;
+    const restricted: EligibilityAttestation = {
+      assetIdHash: assetId,
+      eligible: false,
+      reasonHash: hashLabel("reasons:NAV_STALE"),
+      passportHash: hashLabel(`passport:${assetId}`),
+      marketSnapshotHash: hashLabel(`snapshot:stale:${assetId}`),
+      policyHash: hashLabel("eligibility-policy-v1"),
+      issuedAt: restrictedAt,
+      validUntil: restrictedAt + 3_600,
+      nonce: hashLabel(`eligibility-nonce-${eligibilityNonceSequence}`),
+    };
+    const chain = await ethers.provider.getNetwork();
+    const restrictedSignature = await fixture.eligibilitySigner.signTypedData(
+      {
+        name: "ALIVE Eligibility Gateway",
+        version: "1",
+        chainId: chain.chainId,
+        verifyingContract: registryAddress,
+      },
+      ELIGIBILITY_TYPES,
+      restricted,
+    );
+    await time.increaseTo(restrictedAt + 1);
+    await fixture.eligibilityRegistry.publishEligibility(
+      restricted,
+      restrictedSignature,
+    );
+    expect(await fixture.eligibilityRegistry.isEligible(assetId)).to.equal(false);
+
+    // The SAME financial action is now refused by contract logic, not the UI.
+    await expect(
+      fixture.vault.connect(fixture.user).depositEligibleAsset(assetId, amount(100)),
+    )
+      .to.be.revertedWithCustomError(fixture.vault, "AssetNotEligible")
+      .withArgs(assetId);
+    // No capital moved.
+    expect(await token.balanceOf(vaultAddress)).to.equal(amount(100));
+
+    // --- RECOVERY: valid data restored, ALIVE clears the asset again.
+    // Advance first so the new verdict is not issued in the future.
+    await time.increaseTo(restrictedAt + 20);
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      assetId,
+    );
+    expect(await fixture.eligibilityRegistry.isEligible(assetId)).to.equal(true);
+
+    await fixture.vault
+      .connect(fixture.user)
+      .depositEligibleAsset(assetId, amount(50));
+    expect(await token.balanceOf(vaultAddress)).to.equal(amount(150));
+  });
+
+  it("refuses an asset that never received any verdict", async function () {
+    const fixture = await loadFixture(deployRwaFixture);
+    const vaultAddress = await fixture.vault.getAddress();
+    // tNOPE is the fixture's deliberately-unverdicted asset.
+    const assetId = fixture.assetIds.tNOPE;
+    await fixture.tokens.tNOPE.mint(fixture.user.address, amount(100));
+    await fixture.tokens.tNOPE
+      .connect(fixture.user)
+      .approve(vaultAddress, amount(100));
+
+    await expect(
+      fixture.vault.connect(fixture.user).depositEligibleAsset(assetId, amount(10)),
+    ).to.be.revertedWithCustomError(fixture.vault, "AssetNotEligible");
+  });
+
+  it("refuses an expired verdict even though it was once eligible", async function () {
+    const fixture = await loadFixture(deployRwaFixture);
+    const vaultAddress = await fixture.vault.getAddress();
+    const registryAddress = await fixture.eligibilityRegistry.getAddress();
+    const assetId = fixture.assetIds.tTB2;
+    await fixture.tokens.tTB2.mint(fixture.user.address, amount(100));
+    await fixture.tokens.tTB2
+      .connect(fixture.user)
+      .approve(vaultAddress, amount(100));
+
+    const now = await time.latest();
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      assetId,
+      { issuedAt: now, validUntil: now + 120 },
+    );
+    expect(await fixture.eligibilityRegistry.isEligible(assetId)).to.equal(true);
+
+    await time.increase(121);
+    expect(await fixture.eligibilityRegistry.isEligible(assetId)).to.equal(false);
+    await expect(
+      fixture.vault.connect(fixture.user).depositEligibleAsset(assetId, amount(10)),
+    ).to.be.revertedWithCustomError(fixture.vault, "AssetNotEligible");
+  });
+
+  it("refuses the cash numeraire and a disabled asset through this path", async function () {
+    const fixture = await loadFixture(deployRwaFixture);
+    const vaultAddress = await fixture.vault.getAddress();
+    const registryAddress = await fixture.eligibilityRegistry.getAddress();
+
+    await expect(
+      fixture.vault
+        .connect(fixture.user)
+        .depositEligibleAsset(fixture.assetIds.cash, amount(10)),
+    ).to.be.revertedWithCustomError(fixture.vault, "AssetNotAllowed");
+
+    const assetId = fixture.assetIds.tTB3;
+    await publishEligible(
+      fixture.eligibilityRegistry,
+      fixture.eligibilitySigner,
+      registryAddress,
+      assetId,
+    );
+    await fixture.tokens.tTB3.mint(fixture.user.address, amount(100));
+    await fixture.tokens.tTB3
+      .connect(fixture.user)
+      .approve(vaultAddress, amount(100));
+    await fixture.assetRegistry.setAssetEnabled(assetId, false);
+
+    await expect(
+      fixture.vault.connect(fixture.user).depositEligibleAsset(assetId, amount(10)),
+    ).to.be.revertedWithCustomError(fixture.vault, "AssetNotEnabled");
+  });
+});

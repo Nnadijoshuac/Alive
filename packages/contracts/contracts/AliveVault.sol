@@ -59,6 +59,7 @@ contract AliveVault is Ownable, ReentrancyGuard {
     error AssetNotAllowed(bytes32 assetId);
     error AssetNotEligible(bytes32 assetId);
     error AssetNotEnabled(bytes32 assetId);
+    error AssetNotRegistered(bytes32 assetId);
     error ActivePolicyHashMismatch(bytes32 expected, bytes32 actual);
     error CashFloorNotMet(
         uint256 cashValue,
@@ -131,6 +132,12 @@ contract AliveVault is Ownable, ReentrancyGuard {
     error UnsupportedTokenTransfer(address token, uint256 expected, uint256 actual);
 
     event CashDeposited(address indexed sender, uint256 amount);
+    event EligibleAssetDeposited(
+        address indexed sender,
+        bytes32 indexed assetId,
+        address indexed token,
+        uint256 amount
+    );
     event GuardedExecutorUpdated(
         address indexed previousExecutor,
         address indexed newExecutor
@@ -236,6 +243,42 @@ contract AliveVault is Ownable, ReentrancyGuard {
             );
         }
         emit CashDeposited(msg.sender, amount);
+    }
+
+    /// @notice Deposit a verified RWA into the vault, gated on ALIVE's signed
+    /// eligibility verdict for that asset.
+    /// @dev This is the narrow, directly-gated entry point the ALIVE gateway
+    /// demonstrates: capital only enters the vault while the asset currently
+    /// holds an eligible, unexpired verdict in AliveEligibilityRegistry. It is
+    /// deliberately additive and does not alter depositCash or executeStrategy
+    /// semantics; executeStrategy still independently re-checks eligibility for
+    /// every resulting non-cash position, so this method widens no existing
+    /// authority. Cash is intentionally excluded: it is the vault's numeraire,
+    /// not an externally-verified RWA, and has its own depositCash path.
+    function depositEligibleAsset(
+        bytes32 assetId,
+        uint256 amount
+    ) external nonReentrant {
+        if (amount == 0) revert InvalidAmount();
+        if (assetId == cashAssetId) revert AssetNotAllowed(assetId);
+
+        IAliveRwaAssetRegistry.RwaAsset memory asset = assetRegistry.getAsset(
+            assetId
+        );
+        if (asset.token == address(0)) revert AssetNotRegistered(assetId);
+        if (!asset.enabled) revert AssetNotEnabled(assetId);
+        if (!eligibilityRegistry.isEligible(assetId)) {
+            revert AssetNotEligible(assetId);
+        }
+
+        IERC20 token = IERC20(asset.token);
+        uint256 balanceBefore = token.balanceOf(address(this));
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 received = token.balanceOf(address(this)) - balanceBefore;
+        if (received != amount) {
+            revert UnsupportedTokenTransfer(asset.token, amount, received);
+        }
+        emit EligibleAssetDeposited(msg.sender, assetId, asset.token, amount);
     }
 
     /// @notice The user always retains an owner-only exit. Policy constrains AI
