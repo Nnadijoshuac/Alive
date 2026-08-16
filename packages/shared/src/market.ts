@@ -7,7 +7,7 @@ import {
 } from "viem";
 import { z } from "zod";
 import { AssetIdSchema, DataModeSchema } from "./rwa.js";
-import { IsoDateSchema } from "./schemas.js";
+import { AddressSchema, IsoDateSchema } from "./schemas.js";
 
 function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -55,10 +55,44 @@ export function compareFixedDecimals(left: string, right: string): number {
   return scaledLeft < scaledRight ? -1 : scaledLeft > scaledRight ? 1 : 0;
 }
 
+/**
+ * Provenance for a quote read directly from an onchain oracle contract.
+ *
+ * ALIVE reads some sources from a chain other than the one it publishes
+ * verdicts to, so the source chain is recorded explicitly and is never
+ * implied to be the verdict chain. `sourceUpdatedAt` is the oracle's own
+ * "this answer was written at" timestamp; `observedAt` is when ALIVE read
+ * it. Those are different facts and both are kept: a value can be fetched
+ * a second ago and still be a day old at the source.
+ */
+export const OnchainSourceSchema = z
+  .object({
+    network: z.string().trim().min(1).max(120),
+    chainId: z.number().int().positive(),
+    feedAddress: AddressSchema,
+    description: z.string().trim().min(1).max(200).optional(),
+    decimals: z.number().int().min(0).max(38),
+    roundId: z.string().trim().min(1).max(80),
+    answeredInRound: z.string().trim().min(1).max(80).optional(),
+    /** When the oracle last wrote this answer onchain. */
+    sourceUpdatedAt: IsoDateSchema,
+    /** When ALIVE read it. */
+    observedAt: IsoDateSchema,
+    blockNumber: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type OnchainSource = z.infer<typeof OnchainSourceSchema>;
+
 const MarketQuoteObjectSchema = z
   .object({
     assetId: AssetIdSchema,
     price: FixedDecimalStringSchema,
+    /**
+     * The instant this value became true at its source. For an onchain feed
+     * this is the oracle's `updatedAt`, not the time ALIVE fetched it, so
+     * every downstream freshness check measures staleness at the source.
+     */
     timestamp: IsoDateSchema,
     provider: z.string().trim().min(1).max(120),
     status: MarketStatusSchema,
@@ -66,6 +100,7 @@ const MarketQuoteObjectSchema = z
     bid: FixedDecimalStringSchema.optional(),
     ask: FixedDecimalStringSchema.optional(),
     mid: FixedDecimalStringSchema.optional(),
+    onchainSource: OnchainSourceSchema.optional(),
   })
   .strict();
 
@@ -77,6 +112,46 @@ export const MarketQuoteSchema = MarketQuoteObjectSchema.superRefine(
         message: "Demo quotes must identify a demo provider",
         path: ["provider"],
       });
+    }
+    // A quote may only claim to be LIVE if it can say where it came from.
+    // Without this, a provider bug or a fixture could present itself as live
+    // market data, which is the one thing ALIVE must never do.
+    if (quote.dataMode === "LIVE" && quote.onchainSource === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Live quotes must carry onchainSource provenance identifying the source chain and contract",
+        path: ["onchainSource"],
+      });
+    }
+    if (quote.dataMode === "DEMO" && quote.onchainSource !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Demo quotes must not claim onchain source provenance",
+        path: ["onchainSource"],
+      });
+    }
+    if (quote.onchainSource !== undefined) {
+      // The quote's timestamp is the source's own update time. Allowing them
+      // to disagree would let a stale answer be presented as fresh.
+      if (quote.onchainSource.sourceUpdatedAt !== quote.timestamp) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Quote timestamp must equal onchainSource.sourceUpdatedAt; a quote is only as fresh as its source",
+          path: ["timestamp"],
+        });
+      }
+      if (
+        Date.parse(quote.onchainSource.observedAt) <
+        Date.parse(quote.onchainSource.sourceUpdatedAt)
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A quote cannot be observed before its source wrote it",
+          path: ["onchainSource", "observedAt"],
+        });
+      }
     }
     if (
       quote.bid !== undefined &&

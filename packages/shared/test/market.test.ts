@@ -69,3 +69,80 @@ describe("market schemas", () => {
     expect(MarketSnapshotSchema.safeParse(snapshot).success).toBe(false);
   });
 });
+
+describe("onchain source provenance", () => {
+  const source = {
+    network: "Ethereum",
+    chainId: 1,
+    feedAddress: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as const,
+    description: "ETH / USD",
+    decimals: 8,
+    roundId: "129127208515966893834",
+    sourceUpdatedAt: "2026-08-16T12:00:00.000Z",
+    observedAt: "2026-08-16T12:05:00.000Z",
+    blockNumber: 25769584,
+  };
+  const liveQuote = {
+    assetId: "tgold",
+    price: "4377.24",
+    timestamp: "2026-08-16T12:00:00.000Z",
+    provider: "CHAINLINK",
+    status: "OPEN" as const,
+    dataMode: "LIVE" as const,
+    onchainSource: source,
+  };
+
+  it("accepts a live quote carrying full provenance", () => {
+    const parsed = MarketQuoteSchema.parse(liveQuote);
+    expect(parsed.onchainSource?.chainId).toBe(1);
+    expect(parsed.onchainSource?.feedAddress).toBe(source.feedAddress);
+  });
+
+  it("rejects a live quote with no provenance", () => {
+    const { onchainSource: _drop, ...bare } = liveQuote;
+    expect(MarketQuoteSchema.safeParse(bare).success).toBe(false);
+  });
+
+  it("rejects a demo quote that claims onchain provenance", () => {
+    expect(
+      MarketQuoteSchema.safeParse({
+        ...liveQuote,
+        dataMode: "DEMO",
+        provider: "ALIVE Demo Market Provider",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a quote whose timestamp disagrees with its source update time", () => {
+    // Presenting a day-old answer under a fresh timestamp is the exact
+    // failure this invariant exists to prevent.
+    expect(
+      MarketQuoteSchema.safeParse({
+        ...liveQuote,
+        timestamp: "2026-08-16T12:04:00.000Z",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an observation recorded before the source wrote the answer", () => {
+    expect(
+      MarketQuoteSchema.safeParse({
+        ...liveQuote,
+        onchainSource: { ...source, observedAt: "2026-08-16T11:59:00.000Z" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps existing demo quotes valid without provenance", () => {
+    expect(
+      MarketQuoteSchema.safeParse({
+        assetId: "tgold",
+        price: "2450.5",
+        timestamp: "2026-08-16T12:00:00.000Z",
+        provider: "ALIVE Demo Market Provider",
+        status: "OPEN",
+        dataMode: "DEMO",
+      }).success,
+    ).toBe(true);
+  });
+});
