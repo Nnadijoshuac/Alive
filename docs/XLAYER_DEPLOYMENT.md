@@ -1,16 +1,77 @@
 # X Layer deployment guide
 
-> **Historical V1 reference.** This guide deploys the physical asset registry,
-> attestation registry, and escrow. It is not a deployment guide for the V2 RWA
-> policy contracts. No V2 X Layer deployment is currently recorded.
-
 ## Current deployment state
 
-X Layer Testnet is partially deployed. `AliveAssetRegistry` is confirmed at `0x036caD7F90A8A7ecf9B918dc214659aCb3D07Ab9` in transaction `0xcf102772641d7a061709295a3679676cf24c90ad2917e6541ebc9accb5574883`. Direct RPC readback found 2,123 runtime bytes and an exact match with the compiled artifact.
+### ALIVE verification gateway — X Layer Testnet (chain 1952) — LIVE
 
-`AliveAttestationRegistry`, `AliveEscrow`, `MockUSDT`, and consumer authorization are not confirmed. The OKX Agentic Wallet accepted those calls but left them pending without transaction hashes; later writes failed before broadcast with `may_be_out_of_gas`. The public export therefore records `deploymentState: "PARTIAL"`, and this state must not be tagged or described as a complete testnet deployment.
+Deployed 2026-08-16 by `0x9f6813f3534f1C01a271482D8d8EAdbEA146F092`.
+Authoritative record: [`packages/contracts/deployments/rwa-1952.json`](../packages/contracts/deployments/rwa-1952.json).
+Every entry below was written only after its receipt reported success and
+`eth_getCode` confirmed runtime bytecode at the address.
 
-Only update [BUILD_STATUS.md](BUILD_STATUS.md), the root README, or a release tag after the exact commit has completed the public-network smoke test below.
+| Contract                   | Address                                      | Block      |
+| -------------------------- | -------------------------------------------- | ---------- |
+| `AliveRwaAssetRegistry`    | `0xE4B4F15D7d484c14128260d29b9d4D7739677Ce3` | 38,432,498 |
+| `AlivePolicyRegistry`      | `0x531E8b545c92C4Ab616a943B41b2Ae817F342E3b` | 38,432,595 |
+| `AliveStrategyVerifier`    | `0xD3B71c5cde87e6cA750920dD4DB7eD8Cf7AE2221` | 38,432,592 |
+| `AliveEligibilityRegistry` | `0x5E3584d61710f8FD6076d93a0bDbE96784a4f98d` | 38,432,600 |
+| `AliveVaultFactory`        | `0xd2c06F2978De1CF7e589b3e054373C871E594fBc` | 38,432,604 |
+| `AliveVault`               | `0xd998a66A76501a32557B57A21F33c84396490ae0` | 38,432,610 |
+
+Eligibility signer (offchain EIP-712, holds no funds): `0x2E8b26D0664Eeb71ae58f144c53a597E61dD09ad`.
+
+**Demo-only infrastructure.** `MockRwaRouter`, `DemoRwaFaucet`, and eight
+`MockRwaToken`s are deployed alongside the protocol and recorded in a separate
+`demoOnlyContracts` section of the same file. They are synthetic test
+instruments and a deterministic price fixture. They are not a DEX, not an
+oracle, and not real tokenized securities, and must never be presented as any
+of those.
+
+### Proven gateway sequence on X Layer Testnet
+
+Recorded in [`gateway-proof-1952.json`](../packages/contracts/deployments/gateway-proof-1952.json),
+generated from verified receipts by `pnpm --filter @alive/contracts prove:flow 1952`.
+Asset: `ttbill-a` (`0xC12D77E4F92B122277E804c24DA12BE51940c261`).
+
+| Step                     | ALIVE verdict          | Onchain result                        | Transaction                                                          |
+| ------------------------ | ---------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| Publish eligible verdict | `ELIGIBLE`             | `isEligible = true`                   | `0x378b12c22f19afd7c0c47969397bd49183700e3abc33cd0da31151ee7d9a5750` |
+| Gated deposit            | —                      | **CONFIRMED** (block 38,433,124)      | `0x547033d641f40038911584793090df700b3f3fb7d501885334a98a87d20a8f78` |
+| NAV ages to 31h          | `RESTRICTED NAV_STALE` | `isEligible = false`                  | `0x8eaae09fd443efe9b3efd4b787d83706a3a0b37aabe3fc4a32f26e00c5e9298a` |
+| Same gated deposit       | —                      | **REJECTED** — `AssetNotEligible`     | not broadcast (see note)                                             |
+| Restore NAV              | `ELIGIBLE`             | `isEligible = true`                   | `0xdcf75906651df3b2648b67782516da794f1d83bc22427172041aa76523b2580d` |
+| Gated deposit again      | —                      | **CONFIRMED** (block 38,433,141)      | `0x9e2a1a39efe2e462b3da25dff6016805767d8d4ac591996f2dca879e81206ab8` |
+
+The vault holds 200 tTBILL: two deposits succeeded and the rejected one moved
+nothing.
+
+**On the rejected step.** The refusal is real contract logic — the vault's own
+`AssetNotEligible` custom error, decoded from an `eth_call` against the
+deployed contract at that moment. It is deliberately *not* broadcast as a
+mined failed transaction: the client simulates first, so a guaranteed revert
+surfaces as contract truth instead of burning gas on a transaction that cannot
+succeed. There is therefore no mined reverted-transaction hash for that step,
+and none is claimed. The onchain restriction is independently verifiable from
+`AliveEligibilityRegistry.isEligible` returning `false` at that block, and the
+same revert is covered by contract tests in
+`packages/contracts/test/AliveRwaProtocol.test.ts`.
+
+### Historical V1 physical-state stack
+
+The earlier physical-state deployment remains partially live and is retained
+for history only. `AliveAssetRegistry` (V1) is confirmed at
+`0x036caD7F90A8A7ecf9B918dc214659aCb3D07Ab9` in transaction
+`0xcf102772641d7a061709295a3679676cf24c90ad2917e6541ebc9accb5574883`.
+`AliveAttestationRegistry`, `AliveEscrow`, and `MockUSDT` were never
+confirmed; that export records `deploymentState: "PARTIAL"`. It is not part of
+the shipping product.
+
+### X Layer Mainnet (chain 196)
+
+Not deployed. Configuration exists and the RPC was verified to report chain
+`196`, but no ALIVE contract has been broadcast to mainnet. Mainnet deployment
+is gated behind an explicit `ALLOW_MAINNET_DEPLOY=true` acknowledgement and a
+separate deployer key.
 
 ## Networks
 

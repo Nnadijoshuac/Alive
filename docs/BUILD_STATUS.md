@@ -372,6 +372,47 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     `verify-workspace.tsx` in this pass (the live-browser verification
     above stands in for it) — a real gap worth closing before relying on
     this screen unattended.
+- **2026-08-16 — Milestone 8 (X Layer Testnet deployment + gateway proof):**
+  ALIVE is live on X Layer Testnet (chain 1952) and the verification gateway
+  is proven with real transactions. Full addresses, blocks, and transaction
+  hashes: [X Layer deployment](XLAYER_DEPLOYMENT.md).
+  - **Chain configuration verified against the live chain**, not assumed: the
+    testnet RPC reports `1952` and mainnet reports `196`, matching
+    `hardhat.config.ts` and `packages/shared/src/chains.ts`. This closes the
+    earlier audit's CLAIMED-BUT-UNVERIFIED note that testnet might really be
+    `195`.
+  - Six core contracts deployed, each recorded only after its receipt
+    reported success and `eth_getCode` confirmed runtime bytecode. Demo-only
+    infrastructure (router, faucet, 8 demo tokens) is written to a separate
+    `demoOnlyContracts` section so it cannot be read as production RWA
+    infrastructure.
+  - Proven sequence on testnet: `ELIGIBLE` -> gated deposit **CONFIRMED**;
+    NAV aged to 31h against the 24h bound -> `RESTRICTED (NAV_STALE)` and
+    `isEligible = false` -> the same deposit **REJECTED** by the contract's
+    own `AssetNotEligible` error; NAV restored -> `ELIGIBLE` -> deposit
+    **CONFIRMED** again. The vault holds 200 tTBILL; the rejected deposit
+    moved nothing.
+  - **Honest limitation on the rejected step:** the client simulates before
+    broadcasting, so a guaranteed revert is surfaced as contract truth rather
+    than burning gas. There is no mined reverted-transaction hash for it and
+    none is claimed. The restriction is independently verifiable from
+    `isEligible` returning `false` at that block, and the same revert is
+    covered by contract tests.
+  - New tooling: `check-xlayer.ts` (live preflight), `init-deployer.ts`
+    (generates keys into the gitignored `.env`; never prints or commits
+    them), `sync-web-env.ts` (generates the frontend env from a deployment
+    record, refusing to emit blanks), and `prove-gateway-flow.ts` (drives and
+    records the proof).
+  - Bugs found by actually deploying, all fixed: `deploy-rwa.ts` tried to
+    sign seed verdicts with a key it does not hold whenever an external
+    eligibility signer was configured (**this failed the first testnet
+    attempt**); a market snapshot could predate its own quote under clock
+    skew (invisible to tests, which all used a frozen clock); and a read
+    issued immediately after a receipt could be served by a load-balanced
+    public RPC node that had not yet indexed that block, returning
+    pre-publish state.
+  - 274 tests passing repo-wide, `pnpm -r typecheck` clean across all 10
+    buildable workspaces.
 
 ## Pivot status
 

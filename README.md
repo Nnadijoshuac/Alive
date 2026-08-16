@@ -1,40 +1,83 @@
 # ALIVE
 
-## Tell ALIVE what you want your money to do.
+**AI-powered RWA verification infrastructure on X Layer.**
 
-ALIVE is an AI-native intelligence and policy layer for tokenized real-world
-assets. It is being designed to translate a natural-language financial mandate
-into a strict policy, evaluate eligible RWAs using sourced data, construct a
-deterministic compliant portfolio, and let a user-owned smart-contract vault
-enforce the approved rules.
+Tokenization can put an asset onchain. That does not automatically tell another
+smart contract whether the information behind that asset is current, or whether
+it still meets the rules required for use.
 
-> AI interprets. Code calculates. Smart contracts enforce.
+ALIVE ingests RWA information, uses AI to structure the underlying facts,
+validates those facts against deterministic eligibility rules, and publishes an
+enforceable verdict that ALIVE smart contracts check before capital moves.
 
-ALIVE is not a generic investment chatbot. The model may explain and propose,
-but it may not choose arbitrary transaction calldata, bypass portfolio limits,
-use unapproved assets, ignore stale data, or take unrestricted custody.
+```text
+AI UNDERSTANDS
+   ↓
+ALIVE VERIFIES
+   ↓
+X LAYER ENFORCES
+   ↓
+CAPITAL MOVES
+```
+
+The AI never decides whether capital may move. It proposes candidate facts,
+every one of which must cite a supplied source; deterministic code evaluates
+those facts against the policy; and the smart contract enforces the result.
+
+## Live on X Layer Testnet
+
+The core protocol is deployed on X Layer Testnet (chain `1952`) and the gateway
+is proven with real transactions.
+
+| Contract                   | Address                                      |
+| -------------------------- | -------------------------------------------- |
+| `AliveRwaAssetRegistry`    | `0xE4B4F15D7d484c14128260d29b9d4D7739677Ce3` |
+| `AliveEligibilityRegistry` | `0x5E3584d61710f8FD6076d93a0bDbE96784a4f98d` |
+| `AlivePolicyRegistry`      | `0x531E8b545c92C4Ab616a943B41b2Ae817F342E3b` |
+| `AliveStrategyVerifier`    | `0xD3B71c5cde87e6cA750920dD4DB7eD8Cf7AE2221` |
+| `AliveVaultFactory`        | `0xd2c06F2978De1CF7e589b3e054373C871E594fBc` |
+| `AliveVault`               | `0xd998a66A76501a32557B57A21F33c84396490ae0` |
+
+The proven sequence, each step a real testnet transaction:
+
+```text
+ELIGIBLE                → gated deposit CONFIRMED   0x547033d6…
+NAV goes stale (31h)    → RESTRICTED: NAV_STALE
+                        → same deposit REJECTED     AssetNotEligible
+NAV restored            → ELIGIBLE
+                        → gated deposit CONFIRMED   0x9e2a1a39…
+```
+
+Addresses, blocks, transaction hashes, and the exact limits of that proof are
+in [docs/X Layer deployment](docs/XLAYER_DEPLOYMENT.md), generated from
+verified receipts rather than written by hand.
+
+## What is real, and what is demo
+
+Being precise about this matters more than sounding impressive.
+
+| Component                       | Status                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Core contracts on X Layer       | **Real.** Deployed, receipt- and bytecode-verified on chain 1952.                                        |
+| Eligibility enforcement         | **Real.** The vault reverts `AssetNotEligible` from its own logic, not the frontend.                     |
+| Ingestion, extraction, rules    | **Real.** Documents are hashed and cited; every extracted fact must reference a supplied source.         |
+| AI extraction                   | **Real integration, off by default.** With no model configured it runs a labelled deterministic reader.  |
+| RWA assets (tTBILL, tGOLD, …)   | **Demo.** Synthetic tokens under fictional issuers. Not real tokenized securities.                       |
+| Market data                     | **Demo by default.** A Chainlink Data Streams adapter exists and is disabled unless configured.          |
+| `MockRwaRouter`, `DemoRwaFaucet`| **Demo.** A deterministic price fixture and a test faucet. Not a DEX and not an oracle.                  |
+| X Layer Mainnet                 | **Not deployed.** Configuration only; gated behind an explicit acknowledgement.                          |
+
+ALIVE never presents demo data as live. Degraded or synthetic quotes stay
+labelled `DEMO` end to end.
 
 ## Current status
 
-This repository is in a **strategic V2 pivot**, not a finished RWA release.
-
-| Product line                          | Status                    | Honest boundary                                                                                                                                         |
-| ------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| V2: RWA intelligence and policy vault | IN PROGRESS               | Shared intelligence foundations and locally tested policy-vault contracts now exist. The complete mandate-to-vault application flow is not working yet. |
-| V1: Proof of Physical State           | ARCHIVED, WORKING LOCALLY | The camera/verifier/attestation/physical-escrow MVP passed its documented local generated-media flow. It is no longer the primary product.              |
+| Product line                    | Status                    | Boundary                                                                                                     |
+| ------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| V2: RWA verification gateway    | **LIVE ON TESTNET**       | Deployed and proven on chain 1952 with demo RWA assets. Not audited; do not custody value.                    |
+| V1: Proof of Physical State     | ARCHIVED, WORKING LOCALLY | The camera/verifier/attestation/escrow MVP passed its local flow. It is no longer the product.                |
 
 The V1 checkpoint is tag `v0.8.1-physical-state-archive` at commit `bf449f6`.
-The active rebuild branch is `feat/rwa-intelligence-pivot`.
-
-There is currently:
-
-- no complete V2 AI policy compiler;
-- no accepted V2 frontend flow;
-- no complete local V2 mandate-to-execution-to-rebalance proof;
-- no V2 deployment on X Layer Testnet;
-- no V2 contract address or transaction hash to publish;
-- no basis for calling the pivot hackathon-ready.
-
 Track exact evidence in [docs/BUILD_STATUS.md](docs/BUILD_STATUS.md) and the
 product decision in [docs/PIVOT.md](docs/PIVOT.md).
 
