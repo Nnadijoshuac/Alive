@@ -258,11 +258,18 @@ export const CHAINLINK_FEEDS = {
     issuer: "Cap",
   },
   /**
-   * Apollo Diversified Credit fund NAV -- a tokenized private-credit fund,
-   * kept as a second asset class alongside Treasuries.
+   * Apollo Diversified Credit fund NAV -- a tokenized private-credit fund.
+   * Deliberately left unassigned: ALIVE's catalog has no asset representing
+   * ACRED, and the only free slot at authoring time (tsp500, "Test Broad
+   * Equity Index") is a demo EQUITY identity with no relationship to a
+   * private-credit fund. Wiring a real feed to an unrelated demo identity
+   * would present ACRED's live NAV as if it were S&P 500 data -- exactly
+   * the kind of identity/feed mismatch ALIVE's provenance model exists to
+   * prevent. Kept configured and probeable, like jtrsy-nav below, until a
+   * genuine ACRED asset identity exists in the catalog.
    */
   "acred-nav": {
-    assetId: "tsp500",
+    assetId: "__unassigned:acred",
     label: "Apollo ACRED - NAV",
     expectedDescription: "ACRED NAV",
     product: "NAVLink",

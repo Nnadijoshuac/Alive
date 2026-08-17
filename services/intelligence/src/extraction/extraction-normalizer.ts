@@ -183,3 +183,55 @@ export function mergeExtractedFactsIntoPassport(params: {
 
   return RwaAssetSchema.parse(candidate);
 }
+
+const REAL_EXTERNAL_SOURCE_TYPES = new Set([
+  "ISSUER_DOCUMENTATION",
+  "OFFICIAL_TOKEN_DOCUMENTATION",
+  "OFFICIAL_PROTOCOL_API",
+  "CHAINLINK",
+  "ONCHAIN",
+  "REGULATORY_FILING",
+]);
+
+/**
+ * A catalog-seeded DEMO asset is promoted out of demo mode only once it
+ * has genuinely been analyzed from a real, external, non-demo document by
+ * a real AI extraction run -- not merely because Groq returned HTTP 200.
+ * Assets that never receive real official sources (ttbill-a, kept
+ * deliberately demo-backed for the Attack Lab) can never satisfy this,
+ * since officialSourcesForAsset only registers documents for assets ALIVE
+ * has actually verified -- there is nothing to special-case per asset ID.
+ */
+export function promoteAssetIfGenuinelyLive(
+  passport: RwaAsset,
+  extraction: RwaExtractionMetadata,
+): RwaAsset {
+  if (passport.dataMode !== "DEMO") return passport;
+  if (extraction.mode !== "AI") return passport;
+
+  const hasRealExternalSource = passport.sources.some((source) =>
+    REAL_EXTERNAL_SOURCE_TYPES.has(source.sourceType),
+  );
+  if (!hasRealExternalSource) return passport;
+
+  const sources = passport.sources.map((source) => {
+    if (source.sourceType !== "DEMO_FIXTURE") return source;
+    // Retire the demo placeholder for a genuinely-analyzed asset, but keep
+    // supporting whatever fields only it still supports -- ALIVE's own
+    // computed risk/liquidity/yield figures, which document extraction
+    // never claims -- so the schema's provenance requirement stays
+    // satisfied honestly rather than by deleting a required source.
+    return {
+      id: source.id,
+      title: "ALIVE risk & liquidity methodology",
+      sourceType: "ALIVE_METHODOLOGY" as const,
+      methodology: "ALIVE_DEMO_RISK_V1",
+      retrievedAt: source.retrievedAt,
+      supportedFields: source.supportedFields,
+      disclaimer:
+        "ALIVE's own computed risk, liquidity, and yield-estimate methodology output -- not a claim from any third-party document.",
+    };
+  });
+
+  return RwaAssetSchema.parse({ ...passport, dataMode: "LIVE", sources });
+}

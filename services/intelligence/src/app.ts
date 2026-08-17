@@ -39,8 +39,12 @@ import {
   type EligibilitySigner,
 } from "./attestations/eligibility-signer.js";
 import { extractPassportFacts } from "./extraction/passport-extractor.js";
+import { PASSPORT_EXTRACTION_PROMPT_VERSION } from "./extraction/passport-prompt.js";
 import { summarizeExtractedFacts } from "./extraction/extraction-validator.js";
-import { mergeExtractedFactsIntoPassport } from "./extraction/extraction-normalizer.js";
+import {
+  mergeExtractedFactsIntoPassport,
+  promoteAssetIfGenuinelyLive,
+} from "./extraction/extraction-normalizer.js";
 import type { DocumentInput } from "./ingestion/document-loader.js";
 import {
   INGESTION_SOURCE_TYPES,
@@ -407,9 +411,13 @@ export async function buildIntelligenceApp(
 
       // Avoid burning rate-limited AI calls re-extracting content ALIVE has
       // already validated: if the most recent successful AI run cited
-      // exactly the source hashes on file now, its stored passport is
-      // reused verbatim rather than calling the model again. Any source
-      // change (a new hash) invalidates the cache.
+      // exactly the source hashes on file now, AND used the extraction
+      // logic version still running today, its stored passport is reused
+      // verbatim rather than calling the model again. Either the source
+      // content or the extraction logic changing invalidates the cache --
+      // a prompt/schema/normalization fix must not keep serving a result
+      // produced under the old, possibly-buggy logic just because the
+      // underlying document didn't change.
       const previousRun = dependencies.repository.getLatestExtractionRun(assetId);
       const currentHashes = new Set<string>(
         sourceDocuments.map((document) => document.textHash),
@@ -419,7 +427,9 @@ export async function buildIntelligenceApp(
         previousRun.mode === "AI" &&
         previousRun.passport !== undefined &&
         previousRun.sourceHashes.length === currentHashes.size &&
-        previousRun.sourceHashes.every((hash) => currentHashes.has(hash));
+        previousRun.sourceHashes.every((hash) => currentHashes.has(hash)) &&
+        previousRun.promptVersion === PASSPORT_EXTRACTION_PROMPT_VERSION &&
+        previousRun.pipelineVersion === PASSPORT_EXTRACTION_PROMPT_VERSION;
       if (cacheHit && previousRun) {
         reply.status(200);
         return {
@@ -447,13 +457,14 @@ export async function buildIntelligenceApp(
         ...meta,
         extractedAt: now().toISOString(),
       };
-      const passport = mergeExtractedFactsIntoPassport({
+      const merged = mergeExtractedFactsIntoPassport({
         existing,
         facts,
         sourceDocuments,
         extraction,
         lastUpdatedAt: now().toISOString(),
       });
+      const passport = promoteAssetIfGenuinelyLive(merged, extraction);
       const summary = summarizeExtractedFacts(facts);
       dependencies.repository.replaceCatalog([passport]);
       dependencies.repository.saveExtractionRun({

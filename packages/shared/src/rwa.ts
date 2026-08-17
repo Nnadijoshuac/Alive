@@ -156,9 +156,38 @@ const DemoAssetSourceSchema = z
   })
   .strict();
 
+/**
+ * ALIVE's own computed fields (risk score, liquidity score, yield estimate)
+ * are never claimed by document extraction -- no issuer document states
+ * "risk score: 16/100," ALIVE's own scoring methodology produces that
+ * number. This source type exists so a genuinely LIVE/real asset (real
+ * documents, real AI extraction, real market data) can still legally carry
+ * those first-party computed fields without being forced to keep a
+ * DEMO_FIXTURE source (which asserts "not live," which would be false)
+ * just to satisfy the provenance requirement on fields nothing else
+ * claims.
+ */
+const AliveMethodologySourceSchema = z
+  .object({
+    ...AssetSourceBaseShape,
+    sourceType: z.literal("ALIVE_METHODOLOGY"),
+    methodology: knownText(120),
+    disclaimer: z
+      .string()
+      .trim()
+      .min(1)
+      .max(500)
+      .refine((value) => /alive/i.test(value), {
+        message:
+          "ALIVE_METHODOLOGY source disclaimer must identify this as ALIVE's own computed output",
+      }),
+  })
+  .strict();
+
 export const AssetSourceSchema = z.discriminatedUnion("sourceType", [
   ExternalAssetSourceSchema,
   DemoAssetSourceSchema,
+  AliveMethodologySourceSchema,
 ]);
 
 export const RwaYieldSchema = z

@@ -27,12 +27,36 @@ function reason(code: EligibilityReasonCode, message: string): EligibilityReason
   return { code, message };
 }
 
+/**
+ * Real, external issuer documentation is strictly stronger evidence than
+ * the synthetic DEMO_FIXTURE placeholder -- an asset that has genuinely
+ * been analyzed from real sources has satisfied the *intent* of a
+ * DEMO_FIXTURE requirement (some documentation exists) even though the
+ * fixture itself was legitimately retired once real documents replaced
+ * it. Every other required type still demands its own literal presence:
+ * this substitution is deliberately narrow, not a general "any documented
+ * type satisfies any required type" rule.
+ */
+const EXTERNAL_DOCUMENTATION_TYPES = new Set([
+  "ISSUER_DOCUMENTATION",
+  "OFFICIAL_TOKEN_DOCUMENTATION",
+  "OFFICIAL_PROTOCOL_API",
+  "REGULATORY_FILING",
+]);
+
 function documentationGaps(
   passport: RwaAsset,
   policy: EligibilityPolicy,
 ): string[] {
   const present = new Set(passport.sources.map((source) => source.sourceType));
-  return policy.requiredSourceTypes.filter((required) => !present.has(required));
+  const hasExternalDocumentation = passport.sources.some((source) =>
+    EXTERNAL_DOCUMENTATION_TYPES.has(source.sourceType),
+  );
+  return policy.requiredSourceTypes.filter((required) => {
+    if (present.has(required)) return false;
+    if (required === "DEMO_FIXTURE" && hasExternalDocumentation) return false;
+    return true;
+  });
 }
 
 function spreadBps(quote: MarketQuote): number | undefined {

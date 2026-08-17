@@ -468,12 +468,14 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
               </span>
               <h3>{sourceRecord.title}</h3>
               <p>Retrieved {formatTimestamp(sourceRecord.retrievedAt)}</p>
-              {sourceRecord.sourceType === "DEMO_FIXTURE" ? <p>{sourceRecord.disclaimer}</p> : null}
-              {sourceRecord.sourceType !== "DEMO_FIXTURE" ? (
+              {sourceRecord.sourceType === "DEMO_FIXTURE" ||
+              sourceRecord.sourceType === "ALIVE_METHODOLOGY" ? (
+                <p>{sourceRecord.disclaimer}</p>
+              ) : (
                 <a href={sourceRecord.sourceUrl} target="_blank" rel="noreferrer">
                   Open primary source <ArrowSquareOutIcon size={12} />
                 </a>
-              ) : null}
+              )}
             </article>
           ))}
         </div>

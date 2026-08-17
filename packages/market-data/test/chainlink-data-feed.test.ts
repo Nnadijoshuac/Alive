@@ -222,6 +222,19 @@ describe("feed registry", () => {
     expect(feedForAsset("tgold")?.product).toBe("Proof of Reserve");
     expect(feedForAsset("nope")).toBeUndefined();
   });
+
+  // Regression: the ACRED feed (a private-credit fund NAV) was briefly
+  // wired to tsp500, a catalog identity presented as "Test Broad Equity
+  // Index" -- a materially unrelated financial product. A live feed must
+  // never be presented under an unrelated demo identity's name.
+  it("never maps a feed onto tsp500 -- its demo identity does not match any wired live feed", () => {
+    expect(feedForAsset("tsp500")).toBeUndefined();
+  });
+
+  it("keeps the ACRED feed documented and probeable without an asset assignment", () => {
+    const acred = CHAINLINK_FEEDS["acred-nav"];
+    expect(acred.assetId.startsWith("__unassigned:")).toBe(true);
+  });
 });
 
 describe("CompositeMarketDataProvider", () => {
