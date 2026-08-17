@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { RwaRedemptionSchema } from "@alive/shared";
+import {
+  AssetClassSchema,
+  IsoDateSchema,
+  RwaFeesSchema,
+  RwaMarketHoursSchema,
+  RwaRedemptionSchema,
+} from "@alive/shared";
 
 export class ExtractionValidationError extends Error {
   constructor(
@@ -18,20 +24,63 @@ const CitationsSchema = z.record(
 
 const ExtractedFactsSchema = z
   .object({
+    productName: z.string().trim().min(1).max(200).optional(),
+    assetClass: AssetClassSchema.optional(),
     issuerName: z.string().trim().min(1).max(200).optional(),
     underlying: z.string().trim().min(1).max(500).optional(),
     redemption: RwaRedemptionSchema.optional(),
+    fees: RwaFeesSchema.optional(),
+    marketHours: RwaMarketHoursSchema.optional(),
+    restrictions: z.array(z.string().trim().min(1).max(500)).min(1).optional(),
+    jurisdiction: z.string().trim().min(1).max(120).optional(),
+    eligibleInvestors: z.string().trim().min(1).max(300).optional(),
+    custody: z.string().trim().min(1).max(300).optional(),
+    documentEffectiveDate: IsoDateSchema.optional(),
     citations: CitationsSchema,
   })
   .strict();
 
 export type ExtractedFacts = z.infer<typeof ExtractedFactsSchema>;
 
-const FACT_FIELDS = ["issuerName", "underlying", "redemption"] as const;
+const FACT_FIELDS = [
+  "productName",
+  "assetClass",
+  "issuerName",
+  "underlying",
+  "redemption",
+  "fees",
+  "marketHours",
+  "restrictions",
+  "jurisdiction",
+  "eligibleInvestors",
+  "custody",
+  "documentEffectiveDate",
+] as const;
 type FactField = (typeof FACT_FIELDS)[number];
 
 function isFactField(value: string): value is FactField {
   return (FACT_FIELDS as readonly string[]).includes(value);
+}
+
+/**
+ * Counts, for the API-facing extraction summary. `cited` always equals
+ * `extracted` for a value that passed `validateExtractedFacts` -- every
+ * populated field is required to carry a citation to get this far -- kept
+ * as a separate number anyway so the API contract states that explicitly
+ * rather than assuming it.
+ */
+export function summarizeExtractedFacts(facts: ExtractedFacts): {
+  extracted: number;
+  cited: number;
+  unknown: number;
+} {
+  const extracted = FACT_FIELDS.filter(
+    (field) => facts[field] !== undefined,
+  ).length;
+  const cited = FACT_FIELDS.filter(
+    (field) => facts[field] !== undefined && (facts.citations[field]?.length ?? 0) > 0,
+  ).length;
+  return { extracted, cited, unknown: FACT_FIELDS.length - extracted };
 }
 
 /**

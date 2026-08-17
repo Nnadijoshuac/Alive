@@ -12,11 +12,18 @@ import {
   validateExtractedFacts,
   type ExtractedFacts,
 } from "./extraction-validator.js";
+import {
+  PASSPORT_EXTRACTION_SCHEMA_NAME,
+  buildStrictExtractionJsonSchema,
+  strictResponseToCandidate,
+} from "./strict-schema.js";
 
 export type ExtractionResult = {
   facts: ExtractedFacts;
   meta: Omit<RwaExtractionMetadata, "extractedAt">;
   warnings: string[];
+  /** AI attempts that failed schema/citation validation before this result. */
+  rejectedAttempts: number;
 };
 
 const KEY_FACT_LINE = /^-\s*([A-Za-z][A-Za-z ]*):\s*(.+)$/u;
@@ -123,6 +130,7 @@ export async function extractPassportFacts(params: {
       facts: deterministicExtract(sourceDocuments),
       meta: deterministicMeta(sourceDocuments, "no-ai-configured"),
       warnings: [],
+      rejectedAttempts: 0,
     };
   }
 
@@ -134,13 +142,31 @@ export async function extractPassportFacts(params: {
     })),
   );
 
+  // Groq's and Ollama's constrained-decoding structured-output modes both
+  // accept a JSON schema and improve compliance; other providers get the
+  // same instructions purely through the prompt. Either way,
+  // validateExtractedFacts is the actual trust boundary, not the provider's
+  // own schema compliance.
+  const usesStrictSchema = llm.name === "groq" || llm.name === "ollama";
+
   async function attempt(feedback?: string): Promise<ExtractedFacts> {
-    const candidate = await llm.generatePolicyJson({
+    const response = await llm.generatePolicyJson({
       mandate: feedback
         ? `${prompt}\n\nYour previous response was rejected: ${feedback}\nReturn corrected strict JSON only.`
         : prompt,
       systemPrompt: PASSPORT_EXTRACTION_SYSTEM_PROMPT,
+      ...(usesStrictSchema
+        ? {
+            jsonSchema: {
+              name: PASSPORT_EXTRACTION_SCHEMA_NAME,
+              schema: buildStrictExtractionJsonSchema(),
+            },
+          }
+        : {}),
     });
+    const candidate = usesStrictSchema
+      ? strictResponseToCandidate(response)
+      : response;
     return validateExtractedFacts(candidate, availableSourceIds);
   }
 
@@ -152,7 +178,12 @@ export async function extractPassportFacts(params: {
   };
 
   try {
-    return { facts: await attempt(), meta: aiMeta, warnings: [] };
+    return {
+      facts: await attempt(),
+      meta: aiMeta,
+      warnings: [],
+      rejectedAttempts: 0,
+    };
   } catch (firstError) {
     if (
       !(firstError instanceof LlmProviderError) &&
@@ -167,6 +198,7 @@ export async function extractPassportFacts(params: {
         warnings: [
           "AI extraction required one retry after an invalid first response.",
         ],
+        rejectedAttempts: 1,
       };
     } catch (secondError) {
       if (
@@ -181,6 +213,7 @@ export async function extractPassportFacts(params: {
         warnings: [
           `AI extraction failed twice (${secondError.message}); used the deterministic fallback extractor.`,
         ],
+        rejectedAttempts: 2,
       };
     }
   }

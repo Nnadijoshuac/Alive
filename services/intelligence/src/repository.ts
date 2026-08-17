@@ -220,6 +220,18 @@ const MIGRATIONS = [
       ) STRICT;
     `,
   },
+  {
+    version: 6,
+    sql: `
+      -- Counts surfaced by GET /api/assets/:assetId/extraction. Nullable so
+      -- rows written before this migration (and non-AI runs, which have no
+      -- meaningful "rejected attempt" count) remain valid.
+      ALTER TABLE extraction_runs ADD COLUMN facts_extracted_count INTEGER;
+      ALTER TABLE extraction_runs ADD COLUMN facts_cited_count INTEGER;
+      ALTER TABLE extraction_runs ADD COLUMN unknown_fields_count INTEGER;
+      ALTER TABLE extraction_runs ADD COLUMN rejected_attempts_count INTEGER;
+    `,
+  },
 ] as const;
 
 export type PolicyRecord = CompiledPolicy & {
@@ -319,6 +331,18 @@ export type ExtractionRunRecord = {
   validationErrors?: string[];
   startedAt: string;
   completedAt?: string;
+  /** Populated fact fields in the validated result. */
+  factsExtractedCount?: number;
+  /** Always equal to factsExtractedCount today: every populated field must
+   * carry a citation to survive validateExtractedFacts, so there is no
+   * "extracted but uncited" state by construction. Tracked as its own
+   * column anyway so the API contract doesn't silently assume that. */
+  factsCitedCount?: number;
+  /** Extractable fact slots that came back UNKNOWN/absent. */
+  unknownFieldsCount?: number;
+  /** AI attempts (0, 1, or 2) that failed schema/citation validation before
+   * this run's final result -- 0 for a first-try success. */
+  rejectedAttemptsCount?: number;
 };
 
 type ExtractionRunRow = {
@@ -335,6 +359,10 @@ type ExtractionRunRow = {
   validation_errors_json: string | null;
   started_at: string;
   completed_at: string | null;
+  facts_extracted_count: number | null;
+  facts_cited_count: number | null;
+  unknown_fields_count: number | null;
+  rejected_attempts_count: number | null;
 };
 
 function rowToExtractionRun(row: ExtractionRunRow): ExtractionRunRecord {
@@ -356,6 +384,18 @@ function rowToExtractionRun(row: ExtractionRunRow): ExtractionRunRecord {
       : {}),
     startedAt: row.started_at,
     ...(row.completed_at ? { completedAt: row.completed_at } : {}),
+    ...(row.facts_extracted_count !== null
+      ? { factsExtractedCount: row.facts_extracted_count }
+      : {}),
+    ...(row.facts_cited_count !== null
+      ? { factsCitedCount: row.facts_cited_count }
+      : {}),
+    ...(row.unknown_fields_count !== null
+      ? { unknownFieldsCount: row.unknown_fields_count }
+      : {}),
+    ...(row.rejected_attempts_count !== null
+      ? { rejectedAttemptsCount: row.rejected_attempts_count }
+      : {}),
   };
 }
 
@@ -969,8 +1009,10 @@ export class IntelligenceRepository {
         INSERT INTO extraction_runs (
           id, asset_id, mode, model, prompt_version, pipeline_version,
           source_ids_json, source_hashes_json, status, passport_json,
-          validation_errors_json, started_at, completed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          validation_errors_json, started_at, completed_at,
+          facts_extracted_count, facts_cited_count, unknown_fields_count,
+          rejected_attempts_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       )
       .run(
@@ -987,6 +1029,10 @@ export class IntelligenceRepository {
         run.validationErrors ? JSON.stringify(run.validationErrors) : null,
         run.startedAt,
         run.completedAt ?? null,
+        run.factsExtractedCount ?? null,
+        run.factsCitedCount ?? null,
+        run.unknownFieldsCount ?? null,
+        run.rejectedAttemptsCount ?? null,
       );
   }
 
@@ -996,7 +1042,9 @@ export class IntelligenceRepository {
         `
         SELECT id, asset_id, mode, model, prompt_version, pipeline_version,
           source_ids_json, source_hashes_json, status, passport_json,
-          validation_errors_json, started_at, completed_at
+          validation_errors_json, started_at, completed_at,
+          facts_extracted_count, facts_cited_count, unknown_fields_count,
+          rejected_attempts_count
         FROM extraction_runs
         WHERE asset_id = ?
         ORDER BY started_at DESC

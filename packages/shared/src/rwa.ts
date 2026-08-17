@@ -82,6 +82,10 @@ export const AssetProvenanceFieldSchema = z.enum([
   "redemption.frequency",
   "redemption.settlementPeriod",
   "redemption.minimum",
+  "jurisdiction",
+  "eligibleInvestors",
+  "custody",
+  "documentEffectiveDate",
 ]);
 
 function sortedUniqueArray<T extends z.ZodTypeAny>(
@@ -275,6 +279,10 @@ const RwaAssetObjectSchema = z
       knownText(500),
       "An asset cannot contain duplicate restrictions",
     ).optional(),
+    jurisdiction: knownText(120).optional(),
+    eligibleInvestors: knownText(300).optional(),
+    custody: knownText(300).optional(),
+    documentEffectiveDate: IsoDateSchema.optional(),
     extraction: RwaExtractionMetadataSchema.optional(),
     sources: z
       .array(AssetSourceSchema)
@@ -359,6 +367,11 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
     if (asset.redemption.minimum !== undefined)
       fields.push("redemption.minimum");
   }
+  if (asset.jurisdiction !== undefined) fields.push("jurisdiction");
+  if (asset.eligibleInvestors !== undefined) fields.push("eligibleInvestors");
+  if (asset.custody !== undefined) fields.push("custody");
+  if (asset.documentEffectiveDate !== undefined)
+    fields.push("documentEffectiveDate");
 
   return fields;
 }

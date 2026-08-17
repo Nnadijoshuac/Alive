@@ -21,16 +21,50 @@ function redemptionProvenanceFields(
   return fields;
 }
 
+function feesProvenanceFields(
+  fees: ExtractedFacts["fees"],
+): AssetProvenanceField[] {
+  if (!fees) return [];
+  const fields: AssetProvenanceField[] = [];
+  if (fees.managementFeeBps !== undefined) fields.push("fees.managementFeeBps");
+  if (fees.redemptionFeeBps !== undefined) fields.push("fees.redemptionFeeBps");
+  return fields;
+}
+
+function marketHoursProvenanceFields(
+  marketHours: ExtractedFacts["marketHours"],
+): AssetProvenanceField[] {
+  if (!marketHours) return [];
+  const fields: AssetProvenanceField[] = ["marketHours.type"];
+  if (marketHours.timezone !== undefined) fields.push("marketHours.timezone");
+  return fields;
+}
+
 function fieldsClaimedBy(
   sourceId: string,
   facts: ExtractedFacts,
 ): AssetProvenanceField[] {
   const fields: AssetProvenanceField[] = [];
+  if (facts.citations.productName?.includes(sourceId)) fields.push("name");
+  if (facts.citations.assetClass?.includes(sourceId)) fields.push("assetClass");
   if (facts.citations.issuerName?.includes(sourceId)) fields.push("issuerName");
   if (facts.citations.underlying?.includes(sourceId)) fields.push("underlying");
   if (facts.citations.redemption?.includes(sourceId)) {
     fields.push(...redemptionProvenanceFields(facts.redemption));
   }
+  if (facts.citations.fees?.includes(sourceId)) {
+    fields.push(...feesProvenanceFields(facts.fees));
+  }
+  if (facts.citations.marketHours?.includes(sourceId)) {
+    fields.push(...marketHoursProvenanceFields(facts.marketHours));
+  }
+  if (facts.citations.restrictions?.includes(sourceId)) fields.push("restrictions");
+  if (facts.citations.jurisdiction?.includes(sourceId)) fields.push("jurisdiction");
+  if (facts.citations.eligibleInvestors?.includes(sourceId))
+    fields.push("eligibleInvestors");
+  if (facts.citations.custody?.includes(sourceId)) fields.push("custody");
+  if (facts.citations.documentEffectiveDate?.includes(sourceId))
+    fields.push("documentEffectiveDate");
   return fields;
 }
 
@@ -84,11 +118,24 @@ export function mergeExtractedFactsIntoPassport(params: {
   );
 
   const claimedFields = new Set<AssetProvenanceField>();
+  if (facts.productName !== undefined) claimedFields.add("name");
+  if (facts.assetClass !== undefined) claimedFields.add("assetClass");
   if (facts.issuerName !== undefined) claimedFields.add("issuerName");
   if (facts.underlying !== undefined) claimedFields.add("underlying");
   for (const field of redemptionProvenanceFields(facts.redemption)) {
     claimedFields.add(field);
   }
+  for (const field of feesProvenanceFields(facts.fees)) claimedFields.add(field);
+  for (const field of marketHoursProvenanceFields(facts.marketHours)) {
+    claimedFields.add(field);
+  }
+  if (facts.restrictions !== undefined) claimedFields.add("restrictions");
+  if (facts.jurisdiction !== undefined) claimedFields.add("jurisdiction");
+  if (facts.eligibleInvestors !== undefined)
+    claimedFields.add("eligibleInvestors");
+  if (facts.custody !== undefined) claimedFields.add("custody");
+  if (facts.documentEffectiveDate !== undefined)
+    claimedFields.add("documentEffectiveDate");
 
   const retainedSources = existing.sources
     .map((source) => ({
@@ -107,9 +154,28 @@ export function mergeExtractedFactsIntoPassport(params: {
 
   const candidate = {
     ...existing,
+    ...(facts.productName !== undefined ? { name: facts.productName } : {}),
+    ...(facts.assetClass !== undefined ? { assetClass: facts.assetClass } : {}),
     ...(facts.issuerName !== undefined ? { issuerName: facts.issuerName } : {}),
     ...(facts.underlying !== undefined ? { underlying: facts.underlying } : {}),
     ...(facts.redemption !== undefined ? { redemption: facts.redemption } : {}),
+    ...(facts.fees !== undefined ? { fees: facts.fees } : {}),
+    ...(facts.marketHours !== undefined
+      ? { marketHours: facts.marketHours }
+      : {}),
+    ...(facts.restrictions !== undefined
+      ? { restrictions: facts.restrictions }
+      : {}),
+    ...(facts.jurisdiction !== undefined
+      ? { jurisdiction: facts.jurisdiction }
+      : {}),
+    ...(facts.eligibleInvestors !== undefined
+      ? { eligibleInvestors: facts.eligibleInvestors }
+      : {}),
+    ...(facts.custody !== undefined ? { custody: facts.custody } : {}),
+    ...(facts.documentEffectiveDate !== undefined
+      ? { documentEffectiveDate: facts.documentEffectiveDate }
+      : {}),
     extraction,
     sources: [...retainedSources, ...newSources],
     lastUpdatedAt,

@@ -177,7 +177,7 @@ describe("AI extraction path", () => {
   it("uses a validated AI response directly", async () => {
     const document = ingestTusdc();
     const llm: LlmJsonProvider = {
-      name: "ollama",
+      name: "openai-compatible",
       model: "test-model",
       async generatePolicyJson() {
         return {
@@ -191,7 +191,7 @@ describe("AI extraction path", () => {
       },
       health() {
         return {
-          provider: "ollama",
+          provider: "openai-compatible",
           configured: true,
           mode: "AI",
           model: "test-model",
@@ -212,7 +212,7 @@ describe("AI extraction path", () => {
     const document = ingestTusdc();
     let calls = 0;
     const llm: LlmJsonProvider = {
-      name: "ollama",
+      name: "openai-compatible",
       model: "test-model",
       async generatePolicyJson() {
         calls += 1;
@@ -226,7 +226,7 @@ describe("AI extraction path", () => {
       },
       health() {
         return {
-          provider: "ollama",
+          provider: "openai-compatible",
           configured: true,
           mode: "AI",
           model: "test-model",
@@ -247,7 +247,7 @@ describe("AI extraction path", () => {
   it("falls back to the deterministic extractor after two invalid AI responses, and never invents a fact", async () => {
     const document = ingestTusdc();
     const llm: LlmJsonProvider = {
-      name: "ollama",
+      name: "openai-compatible",
       model: "test-model",
       async generatePolicyJson() {
         return {
@@ -257,7 +257,7 @@ describe("AI extraction path", () => {
       },
       health() {
         return {
-          provider: "ollama",
+          provider: "openai-compatible",
           configured: true,
           mode: "AI",
           model: "test-model",

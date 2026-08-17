@@ -38,6 +38,7 @@ import {
   type EligibilitySigner,
 } from "./attestations/eligibility-signer.js";
 import { extractPassportFacts } from "./extraction/passport-extractor.js";
+import { summarizeExtractedFacts } from "./extraction/extraction-validator.js";
 import { mergeExtractedFactsIntoPassport } from "./extraction/extraction-normalizer.js";
 import type { DocumentInput } from "./ingestion/document-loader.js";
 import {
@@ -362,8 +363,41 @@ export async function buildIntelligenceApp(
         };
       }
 
+      // Avoid burning rate-limited AI calls re-extracting content ALIVE has
+      // already validated: if the most recent successful AI run cited
+      // exactly the source hashes on file now, its stored passport is
+      // reused verbatim rather than calling the model again. Any source
+      // change (a new hash) invalidates the cache.
+      const previousRun = dependencies.repository.getLatestExtractionRun(assetId);
+      const currentHashes = new Set<string>(
+        sourceDocuments.map((document) => document.textHash),
+      );
+      const cacheHit =
+        previousRun?.status === "SUCCEEDED" &&
+        previousRun.mode === "AI" &&
+        previousRun.passport !== undefined &&
+        previousRun.sourceHashes.length === currentHashes.size &&
+        previousRun.sourceHashes.every((hash) => currentHashes.has(hash));
+      if (cacheHit && previousRun) {
+        reply.status(200);
+        return {
+          passport: previousRun.passport,
+          extraction: {
+            mode: previousRun.mode,
+            ...(previousRun.model ? { model: previousRun.model } : {}),
+            pipelineVersion: previousRun.pipelineVersion,
+            promptVersion: previousRun.promptVersion,
+            extractedAt: previousRun.completedAt ?? previousRun.startedAt,
+          },
+          warnings: [
+            "Reused a prior AI extraction: source document hashes are unchanged.",
+          ],
+          disclaimer: dependencies.catalog.disclaimer,
+        };
+      }
+
       const startedAt = now().toISOString();
-      const { facts, meta, warnings } = await extractPassportFacts({
+      const { facts, meta, warnings, rejectedAttempts } = await extractPassportFacts({
         sourceDocuments,
         llm: dependencies.llm,
       });
@@ -378,6 +412,7 @@ export async function buildIntelligenceApp(
         extraction,
         lastUpdatedAt: now().toISOString(),
       });
+      const summary = summarizeExtractedFacts(facts);
       dependencies.repository.replaceCatalog([passport]);
       dependencies.repository.saveExtractionRun({
         id: randomUUID(),
@@ -392,10 +427,54 @@ export async function buildIntelligenceApp(
         passport,
         startedAt,
         completedAt: now().toISOString(),
+        factsExtractedCount: summary.extracted,
+        factsCitedCount: summary.cited,
+        unknownFieldsCount: summary.unknown,
+        rejectedAttemptsCount: rejectedAttempts,
       });
 
       reply.status(201);
       return { passport, extraction, warnings, disclaimer: dependencies.catalog.disclaimer };
+    },
+  );
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/extraction",
+    async (request, reply) => {
+      const assetId = request.params.assetId;
+      const asset = dependencies.repository.getAsset(assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: { code: "ASSET_NOT_FOUND", message: "Asset was not found." },
+        };
+      }
+      const run = dependencies.repository.getLatestExtractionRun(assetId);
+      if (!run) {
+        reply.status(404);
+        return {
+          error: {
+            code: "NO_EXTRACTION_RUN",
+            message: "This asset has no extraction run yet.",
+          },
+        };
+      }
+      return {
+        extraction: {
+          assetId,
+          mode: run.mode,
+          live: run.mode === "AI",
+          ...(run.model ? { provider: dependencies.llm.name, model: run.model } : {}),
+          sourceCount: run.sourceIds.length,
+          factsExtracted: run.factsExtractedCount ?? 0,
+          factsCited: run.factsCitedCount ?? 0,
+          unknownFields: run.unknownFieldsCount ?? 0,
+          unsupportedClaimsRejected: run.rejectedAttemptsCount ?? 0,
+          schemaValidation: run.status === "SUCCEEDED" ? "PASSED" : "FAILED",
+          sourceValidation: run.status === "SUCCEEDED" ? "PASSED" : "FAILED",
+          completedAt: run.completedAt ?? run.startedAt,
+        },
+      };
     },
   );
 
