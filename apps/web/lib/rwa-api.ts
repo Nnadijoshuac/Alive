@@ -470,6 +470,44 @@ export async function ingestAssetSource(
   };
 }
 
+/**
+ * Ingests ALIVE's own known-good real issuer/product documentation for this
+ * asset (currently just ttbill-b's Superstate/Invesco USTB sources) --
+ * never the legacy filesystem demo-fixture path. Throws RwaApiError with
+ * code ASSET_HAS_NO_OFFICIAL_SOURCES (HTTP 404) for any asset without a
+ * registered official source set; callers should fall back to
+ * ingestAssetSource's DEMO_FIXTURE path in that case.
+ */
+export async function ingestOfficialSources(
+  assetId: string,
+): Promise<IngestedSource[]> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/ingest-official-sources`, {
+      method: "POST",
+    }),
+    "Official source ingestion",
+  );
+  if (!Array.isArray(payload.sources)) {
+    throw new RwaApiError(
+      "INVALID_RESPONSE",
+      "Official source ingestion response is invalid.",
+      502,
+    );
+  }
+  return payload.sources.map((candidate) => {
+    const value = record(candidate, "Official source");
+    return {
+      sourceId: text(value.sourceId, "Source ID"),
+      assetId,
+      sourceType: text(value.sourceType, "Source type"),
+      title: text(value.title, "Source title"),
+      textHash: text(value.textHash, "Source text hash") as `0x${string}`,
+      chunkCount: Number(value.chunkCount),
+      retrievedAt: text(value.retrievedAt, "Retrieved at"),
+    };
+  });
+}
+
 export async function listAssetSources(
   assetId: string,
 ): Promise<AssetSourceSummary[]> {

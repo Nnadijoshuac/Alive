@@ -53,6 +53,11 @@ export {
 } from "./monitoring/service.js";
 export { loadRwaCatalog } from "./catalog.js";
 export {
+  OFFICIAL_SOURCES_BY_ASSET_ID,
+  officialSourcesForAsset,
+  type OfficialSourceSeed,
+} from "./data/official-sources.js";
+export {
   compileMandate,
   explainPolicy,
   type CompiledPolicy,

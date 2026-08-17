@@ -28,6 +28,7 @@ import {
 
 import { compileMandate } from "./compiler.js";
 import type { IntelligenceConfig } from "./config.js";
+import { officialSourcesForAsset } from "./data/official-sources.js";
 import {
   createDemoEligibilityPolicy,
   evaluateEligibility,
@@ -317,6 +318,47 @@ export async function buildIntelligenceApp(
         chunkCount: document.chunks.length,
         retrievedAt: document.retrievedAt,
       };
+    },
+  );
+
+  app.post<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/ingest-official-sources",
+    async (request, reply) => {
+      const seeds = officialSourcesForAsset(request.params.assetId);
+      if (!seeds) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_HAS_NO_OFFICIAL_SOURCES",
+            message:
+              "ALIVE has no known-good official documentation registered for this asset. Ingest a demo fixture or pasted text instead.",
+          },
+        };
+      }
+      const retrievedAt = now().toISOString();
+      const sources = seeds.map((seed) => {
+        const document = ingestDocument(
+          {
+            assetId: request.params.assetId,
+            sourceId: seed.sourceId,
+            sourceType: seed.sourceType,
+            input: { kind: "text", text: seed.text, title: seed.title, uri: seed.uri },
+            retrievedAt,
+          },
+          config.sourceDocumentsPath,
+        );
+        dependencies.repository.saveSourceDocument(document, retrievedAt);
+        return {
+          sourceId: document.sourceId,
+          sourceType: document.sourceType,
+          title: document.title,
+          textHash: document.textHash,
+          chunkCount: document.chunks.length,
+          retrievedAt: document.retrievedAt,
+        };
+      });
+      reply.status(201);
+      return { sources };
     },
   );
 

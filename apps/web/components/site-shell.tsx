@@ -25,7 +25,7 @@ const headerButtonClass =
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: SquaresFourIcon },
-  { href: "/verify", label: "Verify", icon: MagnifyingGlassIcon },
+  { href: "/", label: "Verify", icon: MagnifyingGlassIcon },
   { href: "/create", label: "Create", icon: PlusIcon },
   { href: "/markets", label: "Markets", icon: DatabaseIcon },
   { href: "/rebalance", label: "Rebalance", icon: RepeatIcon },

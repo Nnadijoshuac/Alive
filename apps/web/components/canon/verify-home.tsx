@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRightIcon,
@@ -17,16 +18,16 @@ import {
   extractAssetPassport,
   getAssetEligibility,
   getRwaAsset,
-  ingestAssetSource,
   listAssetSources,
   listRwaAssets,
   type ExtractionResult,
 } from "@/lib/rwa-api";
+import { loadAssetDocumentation, stageErrorMessage, type VerifyStageKey } from "@/lib/verify-flow";
 import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
 import { CanonShell } from "./canon-shell";
 import styles from "./canon.module.css";
 
-type StageKey = "identify" | "read" | "extract" | "sources" | "evaluate";
+type StageKey = VerifyStageKey;
 type StageStatus = "pending" | "active" | "done" | "error";
 
 const STAGES: { key: StageKey; label: string }[] = [
@@ -43,6 +44,8 @@ const DEFAULT_CHIPS = [
   { id: "tusdc", label: "tUSDC" },
   { id: "tsp500", label: "tSP500" },
 ];
+
+type AssetRef = { id: string; symbol: string };
 
 function initialStages(): Record<StageKey, StageStatus> {
   return {
@@ -75,13 +78,15 @@ function verdictSummary(status: EligibilityVerdict["status"]) {
 }
 
 export function VerifyHome() {
+  const router = useRouter();
   const [catalog, setCatalog] = useState<RwaAsset[]>();
   const [query, setQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selected, setSelected] = useState<RwaAsset>();
+  const [selected, setSelected] = useState<AssetRef>();
   const [stages, setStages] = useState<Record<StageKey, StageStatus>>(initialStages());
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [failedStage, setFailedStage] = useState<StageKey>();
   const [extraction, setExtraction] = useState<ExtractionResult>();
   const [sourceCount, setSourceCount] = useState<number>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
@@ -117,12 +122,13 @@ export function VerifyHome() {
       .slice(0, 6);
   }, [catalog, query]);
 
-  async function runVerification(asset: RwaAsset) {
+  async function runVerification(asset: AssetRef) {
     setSelected(asset);
     setQuery(asset.symbol);
     setShowSuggestions(false);
     setRunning(true);
     setError(undefined);
+    setFailedStage(undefined);
     setExtraction(undefined);
     setSourceCount(undefined);
     setVerdict(undefined);
@@ -131,11 +137,11 @@ export function VerifyHome() {
       await getRwaAsset(asset.id);
       setStages((current) => ({ ...current, identify: "done", read: "active" }));
 
-      await ingestAssetSource(asset.id, `demo-doc-${asset.id}`, "DEMO_FIXTURE", {
-        kind: "fixture",
-        fixtureId: asset.id,
-        title: `${asset.symbol} fact sheet`,
-      });
+      // Prefers ALIVE's own real official sources (ttbill-b's Superstate/
+      // Invesco USTB documents); falls back to the demo fixture only for
+      // assets with no official sources registered. Never depends on
+      // data/source-documents/<assetId>.txt existing.
+      await loadAssetDocumentation(asset.id, asset.symbol);
       setStages((current) => ({ ...current, read: "done", extract: "active" }));
 
       const extractionResult = await extractAssetPassport(asset.id);
@@ -149,12 +155,21 @@ export function VerifyHome() {
       const eligibility = await getAssetEligibility(asset.id);
       setVerdict(eligibility.verdict);
       setStages((current) => ({ ...current, evaluate: "done" }));
+
+      // Asset Passport opens automatically -- no extra click. The brief
+      // pause lets the final "done" state actually render before navigating
+      // away from it.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      router.push(`/assets/${asset.id}`);
     } catch (requestError) {
       setError(requestError);
       setStages((current) => {
         const next = { ...current };
         for (const stage of STAGES) {
-          if (next[stage.key] === "active") next[stage.key] = "error";
+          if (next[stage.key] === "active") {
+            next[stage.key] = "error";
+            setFailedStage(stage.key);
+          }
         }
         return next;
       });
@@ -165,12 +180,15 @@ export function VerifyHome() {
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const target =
+    const needle = query.trim().toLowerCase();
+    const chipMatch = DEFAULT_CHIPS.find(
+      (chip) => chip.id === needle || chip.label.toLowerCase() === needle,
+    );
+    const target: AssetRef | undefined =
       selected ??
-      matches.find(
-        (asset) => asset.symbol.toLowerCase() === query.trim().toLowerCase(),
-      ) ??
-      matches[0];
+      matches.find((asset) => asset.symbol.toLowerCase() === needle) ??
+      matches[0] ??
+      (chipMatch ? { id: chipMatch.id, symbol: chipMatch.label } : undefined);
     if (target) void runVerification(target);
   }
 
@@ -223,7 +241,7 @@ export function VerifyHome() {
               ) : null}
             </div>
 
-            <button className={styles.verifyButton} type="submit" disabled={running || !catalog}>
+            <button className={styles.verifyButton} type="submit" disabled={running}>
               {running ? (
                 <>
                   <CircleNotchIcon size={17} className="spin" /> Verifying…
@@ -244,10 +262,7 @@ export function VerifyHome() {
                 className={styles.chip}
                 data-active={selected?.id === chip.id}
                 disabled={running}
-                onClick={() => {
-                  const asset = catalog?.find((candidate) => candidate.id === chip.id);
-                  if (asset) void runVerification(asset);
-                }}
+                onClick={() => void runVerification({ id: chip.id, symbol: chip.label })}
               >
                 {chip.label}
               </button>
@@ -296,7 +311,7 @@ export function VerifyHome() {
 
           {error ? (
             <div className={styles.errorNote}>
-              <strong>The intelligence service did not respond.</strong>
+              <strong>{stageErrorMessage(failedStage)}</strong>
               {error instanceof Error ? error.message : "The request could not be completed."}
               {selected ? (
                 <button
