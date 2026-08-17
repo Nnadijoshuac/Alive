@@ -12,7 +12,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "probe:groq": "tsx scripts/groq-probe.ts"
+    "probe:groq": "tsx scripts/groq-probe.ts",
+    "prove:ai": "tsx scripts/prove-ai-extraction.ts"
   },
   "dependencies": {
     "@alive/eligibility-engine": "workspace:*",
@@ -22,6 +23,7 @@
     "@alive/shared": "workspace:*",
     "@fastify/cors": "^11.1.0",
     "better-sqlite3": "^12.2.0",
+    "dotenv": "^16.6.1",
     "fastify": "^5.6.0",
     "viem": "^2.37.6",
     "zod": "^3.25.76"

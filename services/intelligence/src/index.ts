@@ -1,3 +1,8 @@
+// Must stay the first import: loads the repo-root .env before any other
+// module's top-level code (including config.ts's and chainlink-feeds.ts's
+// env reads) runs. See bootstrap-env.ts for why import order matters here.
+import "./bootstrap-env.js";
+
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 

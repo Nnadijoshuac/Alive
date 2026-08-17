@@ -5,12 +5,15 @@
  * back, independent of the full extraction pipeline -- the same shape of
  * check `packages/market-data`'s chainlink-probe.ts does for Chainlink.
  *
- * Reads GROQ_API_KEY from the environment; never prints it. Prints only the
- * response status, model, extracted content, and token usage.
+ * Reads GROQ_API_KEY from the environment (or the repo-root .env -- see
+ * bootstrap-env.ts); never prints it. Prints only the response status,
+ * model, extracted content, and token usage.
  *
- * Usage:
- *   GROQ_API_KEY=... pnpm --filter @alive/intelligence probe:groq
+ * Usage (PowerShell, cmd, or any POSIX shell -- no manual export needed if
+ * GROQ_API_KEY is set in the repo-root .env):
+ *   pnpm --filter @alive/intelligence probe:groq
  */
+import "../src/bootstrap-env.js";
 
 const apiKey = process.env.GROQ_API_KEY ?? process.env.LLM_API_KEY;
 if (!apiKey) {

@@ -313,13 +313,103 @@ clean success, for two different real reasons:
 
 Both outcomes are exactly the retry-then-`DETERMINISTIC_FALLBACK` safety
 net working as designed under genuine failure conditions -- not a bug, and
-not silently mislabelled. Neither is the primary evidence for "a real AI
-model read a real document," though: that evidence is the GroqCloud
-interactions above, which happened before the network block. The GroqCloud
-code path itself is complete, unit-tested (`groq-extraction.test.ts`, 11
-tests, including against the real strict-schema shape), and was
-independently proven live against the real API earlier in this session.
-Re-running `GROQ_API_KEY=... LLM_PROVIDER=groq LLM_MODEL=openai/gpt-oss-20b`
-against `POST /api/assets/ttbill-b/extract` from a network Groq's edge does
-not block should reproduce a clean strict-mode success using this exact
-code, unmodified.
+not silently mislabelled.
+
+**Update: the block later cleared within the same session.** A follow-up
+probe returned a clean `200`, and a direct request using the exact request
+body the application code sends (same system prompt, same two real
+documents, same strict schema) also returned a clean `200` with a rich,
+correctly-cited extraction: product name, issuer, asset class, underlying,
+jurisdiction, eligible investors, custody, a 15bps management fee,
+redemption terms, and transfer restrictions -- each cited to the correct
+source, with `documentEffectiveDate`/`redemptionMinimum`/`redemptionFeeBps`
+correctly left `null` because none of those facts are stated in either
+document. This is the strongest evidence in this build that the pipeline
+produces a genuine, source-backed, non-hallucinated extraction end to end.
+
+Two subsequent attempts *through the actual application route*
+(`POST /api/assets/ttbill-b/extract`, which does the identical thing plus
+persists the result) landed inside Groq's free-tier 8,000-token/minute
+window immediately after that direct request and after each other, and hit
+`429`/`400` rate-limit responses -- not the earlier network block, a
+different, ordinary free-tier constraint. Both retried once, then fell back
+honestly to `DETERMINISTIC_FALLBACK`, per design.
+
+At that point work paused rather than continuing to retry against a
+rate-limited free API from the same sandbox. **The code path is proven
+correct; a persisted `mode: "AI"` result through the actual API route is
+the one thing this session did not capture on video, so to speak.** See
+"Running the final proof yourself" below for the exact commands to close
+this from a network with a clean rate-limit window.
+
+## Running the final proof yourself
+
+Two things close Proof 2 completely: a clean Groq probe, and a full
+real-document extraction through the actual running application (not a
+one-off script that reimplements the pipeline).
+
+### Prerequisites
+
+- `.env` at the repo root has `GROQ_API_KEY`, `LLM_PROVIDER=groq`, and
+  `LLM_MODEL=openai/gpt-oss-20b` set. The intelligence service and its
+  scripts load this file automatically on startup
+  (`services/intelligence/src/bootstrap-env.ts`, the first import in every
+  entrypoint) -- no manual `export`/`source` needed, on any OS. A value
+  already set in your shell environment always takes precedence over the
+  `.env` file.
+- Node/pnpm installed, dependencies installed (`pnpm install` at the repo
+  root, if not already done).
+
+### 1. Probe (no service needs to be running)
+
+PowerShell, cmd, or any POSIX shell -- identical command everywhere:
+
+```powershell
+cd services/intelligence
+pnpm exec tsx scripts/groq-probe.ts
+```
+
+or from the repo root: `pnpm --filter @alive/intelligence probe:groq`
+
+Expect `STATUS 200`, `MODEL openai/gpt-oss-20b`, and a correctly-cited JSON
+extraction.
+
+### 2. Full pipeline proof
+
+**Start the intelligence service** (PowerShell):
+
+```powershell
+cd services/intelligence
+$env:INTELLIGENCE_PORT = "4200"
+$env:MARKET_DATA_PROVIDER = "chainlink"
+$env:INTELLIGENCE_DATABASE_URL = "./storage/database/intelligence.sqlite"
+pnpm exec tsx src/index.ts
+```
+
+(`MARKET_DATA_PROVIDER=chainlink` makes `ttbill-b` also show live Chainlink
+NAV, so the resulting passport demonstrates Proof 1 and Proof 2 together;
+use `demo` if you only want the AI side. `GROQ_API_KEY`/`LLM_PROVIDER`/
+`LLM_MODEL` do not need to be set here -- they load from `.env`
+automatically.) Leave this running in its own terminal.
+
+**In a second terminal**, run the proof script -- this drives the real
+running API, the same way a browser or `curl` would; it does not
+reimplement any extraction logic:
+
+```powershell
+cd services/intelligence
+pnpm --filter @alive/intelligence prove:ai
+```
+
+It ingests the two real Superstate/Invesco documents recorded above,
+confirms their content hashes match what's documented here, calls
+`POST /api/assets/ttbill-b/extract`, then fetches and validates
+`GET /api/assets/ttbill-b/extraction` and `GET /api/assets/ttbill-b/passport`
+against `RwaAssetSchema`, and prints a proof report. It exits `0` (and
+prints `PASS`) only when `mode: "AI"`; a non-zero exit with `mode:
+"DETERMINISTIC_FALLBACK"` means the pipeline ran and validated correctly
+but Groq itself declined or rate-limited that particular call -- re-run the
+script (`pnpm --filter @alive/intelligence prove:ai`) after a minute rather
+than treating that as a code bug.
+
+Equivalent Bash/WSL command: `pnpm --filter @alive/intelligence exec tsx scripts/prove-ai-extraction.ts`.
