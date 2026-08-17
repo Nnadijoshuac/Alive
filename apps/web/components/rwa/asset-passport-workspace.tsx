@@ -5,8 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowSquareOutIcon,
-  BroadcastIcon,
-  DatabaseIcon,
   ProhibitIcon,
   QuestionIcon,
   ShieldCheckIcon,
@@ -14,9 +12,11 @@ import {
 import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
   getAssetEligibility,
+  getAssetExtraction,
   getAssetMonitor,
   getRwaAsset,
   listRwaMarkets,
+  type AssetExtractionStatus,
   type AssetMonitorStatus,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
@@ -27,7 +27,25 @@ import {
   formatRelativeAgo,
   formatTimestamp,
 } from "@/lib/rwa-format";
-import { ErrorState, LoadingState, ModeBadge, Notice, styles } from "./ui";
+import { CanonShell } from "@/components/canon/canon-shell";
+import styles from "@/components/canon/canon.module.css";
+
+function verdictTone(status: EligibilityVerdict["status"] | undefined) {
+  if (status === "ELIGIBLE") return "positive" as const;
+  if (status === "RESTRICTED") return "negative" as const;
+  return "warning" as const;
+}
+
+function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
+  if (status === "ELIGIBLE") return <ShieldCheckIcon size={16} weight="fill" />;
+  if (status === "RESTRICTED") return <ProhibitIcon size={16} weight="fill" />;
+  return <QuestionIcon size={16} weight="fill" />;
+}
+
+/** Ethereum mainnet only -- the only chain ALIVE reads Chainlink RWA feeds from today. */
+function ethereumExplorerAddressUrl(chainId: number, address: string): string | undefined {
+  return chainId === 1 ? `https://etherscan.io/address/${address}` : undefined;
+}
 
 export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
   const [asset, setAsset] = useState<RwaAsset>();
@@ -35,16 +53,13 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
   const [disclaimer, setDisclaimer] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>();
-  const [quoteError, setQuoteError] = useState<unknown>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
-  const [verdictError, setVerdictError] = useState<unknown>();
   const [monitor, setMonitor] = useState<AssetMonitorStatus>();
+  const [extraction, setExtraction] = useState<AssetExtractionStatus>();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(undefined);
-    setQuoteError(undefined);
-    setVerdictError(undefined);
     try {
       const passport = await getRwaAsset(assetId);
       setAsset(passport.asset);
@@ -52,14 +67,14 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
       try {
         const market = await listRwaMarkets();
         setQuote(market.quotes.find((candidate) => candidate.assetId === passport.asset.id));
-      } catch (marketError) {
-        setQuoteError(marketError);
+      } catch {
+        setQuote(undefined);
       }
       try {
         const eligibility = await getAssetEligibility(passport.asset.id);
         setVerdict(eligibility.verdict);
-      } catch (eligibilityError) {
-        setVerdictError(eligibilityError);
+      } catch {
+        setVerdict(undefined);
       }
       try {
         setMonitor(await getAssetMonitor(passport.asset.id));
@@ -67,6 +82,12 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
         // Monitor status is supplementary -- its absence should not block
         // the rest of the passport from rendering.
         setMonitor(undefined);
+      }
+      try {
+        setExtraction(await getAssetExtraction(passport.asset.id));
+      } catch {
+        // No extraction run yet is a normal state, not an error.
+        setExtraction(undefined);
       }
     } catch (requestError) {
       setError(requestError);
@@ -78,280 +99,318 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
   useEffect(() => void load(), [load]);
 
   if (loading) {
-    return <div className={styles.page}><LoadingState label="Loading sourced asset passport" /></div>;
+    return (
+      <CanonShell>
+        <div className={styles.loadingRoot}>Loading sourced asset passport…</div>
+      </CanonShell>
+    );
   }
+
   if (error || !asset) {
-    return <div className={styles.page}><ErrorState error={error ?? new Error("Asset passport was not found.")} retry={load} /></div>;
+    return (
+      <CanonShell>
+        <div className={styles.emptyRoot}>
+          <div className={styles.errorNote}>
+            <strong>This asset passport could not be loaded.</strong>
+            {error instanceof Error ? error.message : "The asset was not found."}
+            <button className={styles.retryButton} type="button" onClick={() => void load()}>
+              Try again
+            </button>
+          </div>
+        </div>
+      </CanonShell>
+    );
   }
 
-  const riskRows = [
-    ["Overall", asset.risk.score],
-    ["Issuer", asset.risk.issuerRisk],
-    ["Liquidity", asset.risk.liquidityRisk],
-    ["Market", asset.risk.marketRisk],
-    ["Oracle", asset.risk.oracleRisk],
-    ["Redemption", asset.risk.redemptionRisk],
-    ["Complexity", asset.risk.productComplexityRisk],
-  ] as const;
+  const facts: Array<{ label: string; value: string }> = [
+    { label: "Asset ID", value: asset.id },
+    { label: "Issuer", value: `${asset.issuerName} (${asset.issuer})` },
+    { label: "Underlying", value: asset.underlying },
+    { label: "Asset class", value: asset.assetClass },
+    { label: "Last updated", value: formatTimestamp(asset.lastUpdatedAt) },
+  ];
+  if (asset.jurisdiction) facts.push({ label: "Jurisdiction", value: asset.jurisdiction });
+  if (asset.eligibleInvestors)
+    facts.push({ label: "Eligible investors", value: asset.eligibleInvestors });
+  if (asset.custody) facts.push({ label: "Custody", value: asset.custody });
+  if (asset.network) facts.push({ label: "Network", value: asset.network });
+  if (asset.tokenAddress) facts.push({ label: "Token address", value: asset.tokenAddress });
+  if (asset.redemption) {
+    facts.push({
+      label: "Redemption",
+      value:
+        asset.redemption.supported === "unknown"
+          ? "UNKNOWN"
+          : asset.redemption.supported
+            ? ["Active", asset.redemption.frequency, asset.redemption.settlementPeriod]
+                .filter(Boolean)
+                .join(" / ")
+            : "Not supported",
+    });
+  }
+  if (asset.fees?.managementFeeBps !== undefined)
+    facts.push({ label: "Management fee", value: formatBps(asset.fees.managementFeeBps) });
+  if (asset.yield?.estimatedAprBps !== undefined)
+    facts.push({ label: "Estimated APR", value: formatBps(asset.yield.estimatedAprBps) });
+  facts.push({ label: "Liquidity score", value: `${asset.liquidity.score}/100` });
+  facts.push({ label: "Risk score", value: `${asset.risk.score}/100` });
+  if (asset.restrictions?.length)
+    facts.push({ label: "Restrictions", value: asset.restrictions.join("; ") });
+
+  const tone = verdictTone(verdict?.status);
+  const source = quote?.onchainSource;
+  const live = extraction?.mode === "AI";
 
   return (
-    <div className={styles.page}>
-      <Link className={styles.textButton} href="/markets"><ArrowLeftIcon size={15} /> Back to markets</Link>
-      <header className={styles.passportHero}>
-        <div>
-          <div className={styles.passportSymbol}>
-            <h1>{asset.symbol}</h1>
-            <ModeBadge mode={asset.dataMode} />
+    <CanonShell>
+      <main className={styles.passportMain}>
+        <Link className={styles.backLink} href="/">
+          <ArrowLeftIcon size={14} /> Verify another asset
+        </Link>
+
+        <header className={styles.passportHero}>
+          <div className={styles.passportEyebrow}>
+            <span>{asset.dataMode === "LIVE" ? "Live data" : `${asset.dataMode.toLowerCase()} data`}</span>
+            <span>·</span>
+            <span>{asset.assetClass}</span>
           </div>
-          <p className={styles.passportSummary}>{asset.name}. {asset.underlying}</p>
-          <div className={styles.actions}>
-            <span className={styles.badge}>{asset.assetClass}</span>
-            <span className={styles.badge}>{asset.issuerName}</span>
-            {verdict ? (
-              <span
-                className={`${styles.status} ${
-                  verdict.status === "ELIGIBLE"
-                    ? styles.success
-                    : verdict.status === "RESTRICTED"
-                      ? styles.noticeDanger
-                      : styles.warning
-                }`}
-              >
-                {verdict.status === "ELIGIBLE" ? (
-                  <ShieldCheckIcon size={14} weight="fill" />
-                ) : verdict.status === "RESTRICTED" ? (
-                  <ProhibitIcon size={14} weight="fill" />
-                ) : (
-                  <QuestionIcon size={14} weight="fill" />
-                )}{" "}
-                ALIVE {verdict.status}
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div className={styles.passportSide}>
-          <p className={styles.label}>Current quote response</p>
-          {quote ? (
-            <>
-              <div className={styles.metric}>
-                <span>Reference price</span>
-                <strong>{formatPrice(quote.price)}</strong>
-                <small>{quote.provider} / {formatFreshness(quote.ageSeconds)}</small>
-              </div>
-              <span className={`${styles.status} ${quote.status === "OPEN" ? styles.success : styles.warning}`}>{quote.status}</span>
-            </>
-          ) : quoteError ? (
-            <ErrorState error={quoteError} />
-          ) : (
-            <Notice title="Quote missing" tone="warning">This asset has no quote in the current market response.</Notice>
-          )}
-        </div>
-      </header>
-
-      <section className={styles.section}>
-        <Notice title={`${asset.dataMode} asset disclosure`} tone={asset.dataMode === "LIVE" ? "success" : "warning"}>
-          {disclaimer}
-        </Notice>
-      </section>
-
-      {quote?.onchainSource ? (
-        <LiveMarketDataSection quote={quote} monitor={monitor} verdict={verdict} />
-      ) : null}
-
-      <section className={styles.section} aria-labelledby="eligibility-title">
-        <div className={styles.sectionHeader}>
-          <div><p className={styles.kicker}>ALIVE verdict</p><h2 id="eligibility-title">What can it do?</h2></div>
-        </div>
-        {verdict ? (
-          <article className={styles.panel}>
-            <ul className={styles.violationList}>
-              {verdict.reasons.map((reason, index) => (
-                <li key={`${reason.code}-${index}`}>
-                  <strong>{reason.code}</strong>
-                  {reason.message}
-                </li>
-              ))}
-            </ul>
-            <p className={styles.fieldHint}>
-              Evaluated {formatTimestamp(verdict.evaluatedAt)}, valid until {formatTimestamp(verdict.validUntil)}.{" "}
-              {verdict.eligible
-                ? "Eligible for vault deposit, collateral use, and strategy allocation."
-                : "Not currently eligible for any ALIVE-gated financial action."}
-            </p>
-          </article>
-        ) : verdictError ? (
-          <ErrorState error={verdictError} />
-        ) : (
-          <Notice title="Eligibility unavailable" tone="warning">
-            ALIVE could not evaluate this asset&apos;s eligibility right now.
-          </Notice>
-        )}
-      </section>
-
-      <section className={styles.section} aria-labelledby="passport-facts">
-        <div className={styles.sectionHeader}>
-          <div><p className={styles.kicker}>Product facts</p><h2 id="passport-facts">Known values only.</h2></div>
-          <p>Fields without a supporting source are omitted by the catalog schema instead of guessed.</p>
-        </div>
-        <div className={styles.grid2}>
-          <article className={styles.panel}>
-            <div className={styles.panelHeader}><div><p className={styles.kicker}>Identity</p><h2>Asset record</h2></div><DatabaseIcon size={24} color="#6de493" /></div>
-            <dl className={styles.definitionList}>
-              <Fact label="Asset ID" value={asset.id} mono />
-              <Fact label="Issuer" value={`${asset.issuerName} (${asset.issuer})`} />
-              <Fact label="Underlying" value={asset.underlying} />
-              <Fact label="Last updated" value={formatTimestamp(asset.lastUpdatedAt)} />
-              <Fact label="Network" value={asset.network ?? "UNKNOWN"} />
-              <Fact label="Chain ID" value={asset.chainId?.toString() ?? "UNKNOWN"} />
-              <Fact label="Token address" value={asset.tokenAddress ?? "UNKNOWN"} mono />
-              <Fact label="Market hours" value={asset.marketHours ? `${asset.marketHours.type}${asset.marketHours.timezone ? ` / ${asset.marketHours.timezone}` : ""}` : "UNKNOWN"} />
-            </dl>
-          </article>
-          <article className={styles.panel}>
-            <div className={styles.panelHeader}><div><p className={styles.kicker}>Risk surface</p><h2>ALIVE risk scores</h2></div><ShieldCheckIcon size={24} color="#6de493" /></div>
-            <div className={styles.riskMatrix}>
-              {riskRows.map(([label, value]) => (
-                <div className={styles.riskRow} key={label}>
-                  <span>{label}</span>
-                  <progress className={styles.scoreBar} max={100} value={value} aria-label={`${label} risk ${value} out of 100`} />
-                  <output>{value}</output>
-                </div>
-              ))}
-            </div>
-            <p className={styles.fieldHint}>Methodology: {asset.risk.methodology}. Scores are catalog metadata, not investment advice.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.section} aria-labelledby="economics-title">
-        <div className={styles.sectionHeader}><div><p className={styles.kicker}>Economics and access</p><h2 id="economics-title">Yield, liquidity, restrictions.</h2></div></div>
-        <div className={styles.metricGrid}>
-          <Metric label="Estimated APR" value={asset.yield?.estimatedAprBps === undefined ? "UNKNOWN" : formatBps(asset.yield.estimatedAprBps)} detail={asset.yield?.type ?? "No sourced yield field"} />
-          <Metric label="Liquidity" value={`${asset.liquidity.score}/100`} detail={asset.liquidity.redemptionWindow ?? "Redemption window UNKNOWN"} />
-          <Metric
-            label="Redemption"
-            value={
-              asset.redemption === undefined
-                ? "UNKNOWN"
-                : asset.redemption.supported === "unknown"
-                  ? "UNKNOWN"
-                  : asset.redemption.supported
-                    ? "ACTIVE"
-                    : "DISABLED"
-            }
-            detail={asset.redemption?.frequency ?? asset.redemption?.settlementPeriod ?? "Not yet documented"}
-          />
-          <Metric label="Management fee" value={asset.fees?.managementFeeBps === undefined ? "UNKNOWN" : formatBps(asset.fees.managementFeeBps)} detail="Catalog fact" />
-          <Metric label="Redemption fee" value={asset.fees?.redemptionFeeBps === undefined ? "UNKNOWN" : formatBps(asset.fees.redemptionFeeBps)} detail="Catalog fact" />
-        </div>
-        {asset.restrictions?.length ? (
-          <div className={`${styles.panel} ${styles.section}`}>
-            <p className={styles.label}>Restrictions</p>
-            <ul className={styles.plainList}>{asset.restrictions.map((restriction) => <li key={restriction}>{restriction}</li>)}</ul>
-          </div>
-        ) : null}
-      </section>
-
-      <section className={styles.section} aria-labelledby="sources-title">
-        <div className={styles.sectionHeader}>
-          <div><p className={styles.kicker}>Provenance</p><h2 id="sources-title">Source ledger</h2></div>
-          <p>Each source declares the fields it supports and when ALIVE retrieved it.</p>
-        </div>
-        <div className={styles.sourceGrid}>
-          {asset.sources.map((source) => (
-            <article className={styles.sourceCard} key={source.id}>
-              <span className={styles.badge}>{source.sourceType.replaceAll("_", " ")}</span>
-              <h3>{source.title}</h3>
-              <p>Retrieved {formatTimestamp(source.retrievedAt)}</p>
-              {source.sourceType === "DEMO_FIXTURE" ? <p>{source.disclaimer}</p> : null}
-              <p className={styles.sourceFields}>{source.supportedFields.join(" / ")}</p>
-              {source.sourceType !== "DEMO_FIXTURE" ? (
-                <a href={source.sourceUrl} target="_blank" rel="noreferrer">Open primary source <ArrowSquareOutIcon size={14} /></a>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return <div className={styles.definitionRow}><dt>{label}</dt><dd className={mono ? styles.mono : undefined}>{value}</dd></div>;
-}
-
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <article className={styles.metric}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
-}
-
-/** Ethereum mainnet only -- the only chain ALIVE reads Chainlink RWA feeds from today. */
-function ethereumExplorerAddressUrl(chainId: number, address: string): string | undefined {
-  return chainId === 1 ? `https://etherscan.io/address/${address}` : undefined;
-}
-
-function LiveMarketDataSection({
-  quote,
-  monitor,
-  verdict,
-}: {
-  quote: RwaMarketQuote;
-  monitor: AssetMonitorStatus | undefined;
-  verdict: EligibilityVerdict | undefined;
-}) {
-  const source = quote.onchainSource;
-  if (!source) return null;
-  const fresh = quote.status === "OPEN";
-  return (
-    <section className={styles.section} aria-labelledby="live-data-title">
-      <div className={styles.sectionHeader}>
-        <div>
-          <p className={styles.kicker}>Live Chainlink monitoring</p>
-          <h2 id="live-data-title">Where this number comes from.</h2>
-        </div>
-        <div className={styles.actions}>
-          <span className={`${styles.status} ${styles.success}`}>
-            <BroadcastIcon size={14} weight="fill" /> LIVE DATA / CHAINLINK
-          </span>
-        </div>
-      </div>
-      <article className={styles.panel}>
-        <div className={styles.metricGrid}>
-          <Metric label="Feed" value={source.description ?? "UNKNOWN"} detail={`Superstate USTB reference feed, ${source.decimals} decimals`} />
-          <Metric label="Value" value={formatPrice(quote.price)} detail="Read directly from the feed's latestRoundData()" />
-          <Metric label="Data source network" value={source.network} detail="Where Chainlink actually published this value" />
-          <Metric label="Enforcement network" value="X Layer" detail="Where ALIVE's eligibility verdict is enforced" />
-          <Metric label="Chainlink updated" value={formatRelativeAgo(source.sourceUpdatedAt)} detail={formatTimestamp(source.sourceUpdatedAt)} />
-          <Metric label="ALIVE last checked" value={formatRelativeAgo(monitor?.lastAliveCheckAt ?? source.observedAt)} detail={formatTimestamp(monitor?.lastAliveCheckAt ?? source.observedAt)} />
-          <Metric label="Monitoring" value={monitor?.monitoring ? "ACTIVE" : "NOT MONITORED"} detail={monitor?.monitoring ? "Persistent worker re-reads this feed on a timer" : "No background poll is registered for this asset"} />
-          <Metric label="Data status" value={fresh ? "FRESH" : "STALE"} detail="Computed from the Chainlink source timestamp, not the fetch time" />
-          <Metric label="Eligibility" value={verdict?.status ?? "UNKNOWN"} detail="Deterministic ALIVE verdict, re-evaluated every monitor cycle" />
-        </div>
-        <details className={styles.section}>
-          <summary className={styles.textButton}>Source provenance detail</summary>
-          <dl className={styles.definitionList}>
-            <Fact label="Provider" value={quote.provider} />
-            <Fact label="Feed description" value={source.description ?? "UNKNOWN"} />
-            <Fact label="Contract address" value={source.feedAddress} mono />
-            <Fact label="Chain ID" value={String(source.chainId)} />
-            <Fact label="Round ID" value={source.roundId} mono />
-            <Fact label="Answered in round" value={source.answeredInRound ?? "UNKNOWN"} mono />
-            <Fact label="Source block" value={String(source.blockNumber)} mono />
-            <Fact label="Decimals" value={String(source.decimals)} />
-            <Fact label="Chainlink source timestamp" value={formatTimestamp(source.sourceUpdatedAt)} />
-            <Fact label="ALIVE retrieval timestamp" value={formatTimestamp(source.observedAt)} />
-          </dl>
-          {ethereumExplorerAddressUrl(source.chainId, source.feedAddress) ? (
-            <a
-              className={styles.textButton}
-              href={ethereumExplorerAddressUrl(source.chainId, source.feedAddress)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View feed contract on Etherscan <ArrowSquareOutIcon size={14} />
-            </a>
+          <h1 className={styles.passportTitle}>{asset.symbol}</h1>
+          <p className={styles.passportSub}>
+            {asset.name}. {asset.underlying}
+          </p>
+          {verdict ? (
+            <span className={styles.statusRow} data-tone={tone}>
+              {verdictIcon(verdict.status)}
+              ALIVE {verdict.status}
+            </span>
           ) : null}
-        </details>
-      </article>
-    </section>
+        </header>
+
+        <section className={styles.section} aria-labelledby="status-title">
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.sectionKicker}>ALIVE verdict</p>
+              <h2 className={styles.sectionTitle} id="status-title">
+                What can it do?
+              </h2>
+            </div>
+          </div>
+          {verdict ? (
+            <>
+              <ul className={styles.reasonList}>
+                {verdict.reasons.map((reason, index) => (
+                  <li key={`${reason.code}-${index}`}>
+                    <strong>{reason.code}</strong>
+                    {reason.message}
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.sectionNote} style={{ marginTop: 14 }}>
+                {verdict.eligible
+                  ? "Eligible for vault deposit, collateral use, and strategy allocation."
+                  : "Not currently eligible for any ALIVE-gated financial action."}{" "}
+                Evaluated {formatTimestamp(verdict.evaluatedAt)}, valid until{" "}
+                {formatTimestamp(verdict.validUntil)}.
+              </p>
+            </>
+          ) : (
+            <p className={styles.sectionNote}>
+              ALIVE could not evaluate this asset&apos;s eligibility right now.
+            </p>
+          )}
+        </section>
+
+        <section className={styles.section} aria-labelledby="sources-title">
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.sectionKicker}>Provenance</p>
+              <h2 className={styles.sectionTitle} id="sources-title">
+                Source ledger
+              </h2>
+            </div>
+            <p className={styles.sectionNote}>Every fact below traces back to one of these.</p>
+          </div>
+          <div className={styles.sourceGrid}>
+            {asset.sources.map((sourceRecord) => (
+              <article className={styles.sourceCard} key={sourceRecord.id}>
+                <span className={styles.sourceType}>
+                  {sourceRecord.sourceType.replaceAll("_", " ")}
+                </span>
+                <h3>{sourceRecord.title}</h3>
+                <p>Retrieved {formatTimestamp(sourceRecord.retrievedAt)}</p>
+                {sourceRecord.sourceType === "DEMO_FIXTURE" ? (
+                  <p>{sourceRecord.disclaimer}</p>
+                ) : null}
+                {sourceRecord.sourceType !== "DEMO_FIXTURE" ? (
+                  <a href={sourceRecord.sourceUrl} target="_blank" rel="noreferrer">
+                    Open primary source <ArrowSquareOutIcon size={12} />
+                  </a>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="facts-title">
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.sectionKicker}>Product facts</p>
+              <h2 className={styles.sectionTitle} id="facts-title">
+                Known values only
+              </h2>
+            </div>
+            <p className={styles.sectionNote}>
+              Fields without a supporting source are omitted, not guessed.
+            </p>
+          </div>
+          <dl className={styles.factGrid}>
+            {facts.map((fact) => (
+              <div className={styles.factRow} key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <section className={styles.section} aria-label="Extended detail">
+          <p className={styles.sectionKicker} style={{ marginBottom: 14 }}>
+            Detail
+          </p>
+
+          {extraction ? (
+            <details className={styles.detailsBlock}>
+              <summary>
+                Document intelligence — what the AI read
+                <span className={styles.detailsBadge}>
+                  {live ? "AI · live" : extraction.mode.replaceAll("_", " ")}
+                </span>
+              </summary>
+              <div className={styles.detailsBody}>
+                <div className={styles.metricGrid}>
+                  <div className={styles.metric}>
+                    <span>Provider</span>
+                    <strong>{extraction.provider ?? "None"}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Model</span>
+                    <strong>{extraction.model ?? "N/A"}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Sources used</span>
+                    <strong>{extraction.sourceCount}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Facts extracted</span>
+                    <strong>{extraction.factsExtracted}</strong>
+                    <small>{extraction.unknownFields} came back UNKNOWN</small>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Cited facts</span>
+                    <strong>
+                      {extraction.factsCited} / {extraction.factsExtracted}
+                    </strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Unsupported claims rejected</span>
+                    <strong>{extraction.unsupportedClaimsRejected}</strong>
+                  </div>
+                </div>
+                <p className={styles.sectionNote}>
+                  Document intelligence never touches live financial data — NAV, timestamps,
+                  and freshness below come only from Chainlink.
+                </p>
+              </div>
+            </details>
+          ) : null}
+
+          {source ? (
+            <details className={styles.detailsBlock}>
+              <summary>
+                Live Chainlink monitoring — where this number comes from
+                <span className={styles.detailsBadge}>
+                  {quote?.status === "OPEN" ? "fresh" : "stale"}
+                </span>
+              </summary>
+              <div className={styles.detailsBody}>
+                <div className={styles.metricGrid}>
+                  <div className={styles.metric}>
+                    <span>Feed</span>
+                    <strong>{source.description ?? "UNKNOWN"}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Value</span>
+                    <strong>{quote ? formatPrice(quote.price) : "UNKNOWN"}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Source network</span>
+                    <strong>{source.network}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Enforcement network</span>
+                    <strong>X Layer</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Chainlink updated</span>
+                    <strong>{formatRelativeAgo(source.sourceUpdatedAt)}</strong>
+                    <small>{formatTimestamp(source.sourceUpdatedAt)}</small>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>ALIVE last checked</span>
+                    <strong>
+                      {formatRelativeAgo(monitor?.lastAliveCheckAt ?? source.observedAt)}
+                    </strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Monitoring</span>
+                    <strong>{monitor?.monitoring ? "Active" : "Not monitored"}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Data status</span>
+                    <strong>{quote?.status === "OPEN" ? "Fresh" : "Stale"}</strong>
+                    <small>{quote ? formatFreshness(quote.ageSeconds) : ""}</small>
+                  </div>
+                </div>
+                <ul className={styles.bindingList}>
+                  <li>
+                    <strong>Contract</strong> {source.feedAddress}
+                  </li>
+                  <li>
+                    <strong>Chain ID</strong> {source.chainId}
+                  </li>
+                  <li>
+                    <strong>Round</strong> {source.roundId}
+                  </li>
+                  <li>
+                    <strong>Source block</strong> {source.blockNumber}
+                  </li>
+                </ul>
+                {ethereumExplorerAddressUrl(source.chainId, source.feedAddress) ? (
+                  <a
+                    className={styles.moreLink}
+                    style={{ marginTop: 10, display: "inline-flex" }}
+                    href={ethereumExplorerAddressUrl(source.chainId, source.feedAddress)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View feed contract on Etherscan <ArrowSquareOutIcon size={12} />
+                  </a>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+
+          <details className={styles.detailsBlock}>
+            <summary>
+              {asset.dataMode} asset disclosure
+              <span className={styles.detailsBadge}>{asset.dataMode}</span>
+            </summary>
+            <div className={styles.detailsBody}>
+              <p className={styles.sectionNote}>{disclaimer}</p>
+            </div>
+          </details>
+        </section>
+      </main>
+    </CanonShell>
   );
 }

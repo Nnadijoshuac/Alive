@@ -53,7 +53,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
     };
   }, [open]);
 
-  if (pathname === "/demo") return <>{children}</>;
+  if (
+    pathname === "/demo" ||
+    pathname === "/" ||
+    pathname.startsWith("/assets/")
+  )
+    return <>{children}</>;
 
   return (
     <div className={`site-shell${isHome ? " site-shell-home" : ""}`}>

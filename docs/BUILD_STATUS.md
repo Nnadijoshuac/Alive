@@ -475,6 +475,105 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     existing architecture) and Proof 2 (real AI document extraction), which
     is the next milestone.
 
+- **2026-08-17 — Milestone 10 (real AI document extraction via GroqCloud):**
+  proves ALIVE using a real hosted AI model against a real RWA issuer
+  document, not `DEMO_FIXTURE`. Full writeup: [AI.md](AI.md).
+  - New `groq` provider (`services/intelligence/src/llm.ts`), reusing the
+    existing OpenAI-compatible transport rather than a separate AI
+    subsystem -- Groq exposes an OpenAI-compatible endpoint, so only the
+    provider label, default base URL, and Groq-specific
+    `reasoning_effort`/`reasoning_format` fields are provider-specific.
+    Model: `openai/gpt-oss-20b`, verified against Groq's current docs
+    (131K context, strict JSON-schema structured output via constrained
+    decoding). `GROQ_API_KEY` is read server-side only, with `LLM_API_KEY`
+    as a generic fallback; never logged, never in a response body.
+  - **Found and fixed a real secret-exposure risk before it reached git**:
+    the directive text arrived with a live Groq key already pasted into
+    `.env.example` (a file the repo documents as safe to commit). Moved it
+    to the gitignored `.env`, restored `.env.example` to blank, verified
+    with a full-repo grep that the key exists nowhere else.
+  - Extended `ExtractedFactsSchema` / `RwaAssetSchema` /
+    `AssetProvenanceFieldSchema` with `jurisdiction`, `eligibleInvestors`,
+    `custody`, `documentEffectiveDate`, plus wiring `productName`/
+    `assetClass`/`fees`/`marketHours`/`restrictions` into the AI-extractable
+    fact set (previously only `issuerName`/`underlying`/`redemption`). Every
+    field keeps the existing citation-provenance contract.
+  - New `strict-schema.ts`: builds Groq's required-but-nullable
+    `{value, sourceIds}` wire schema (a good fit for "UNKNOWN over a guess"
+    -- strict mode has no optional-key concept, only nullable values) and
+    converts the response back into the same candidate shape the non-strict
+    prompt path already produces, so `validateExtractedFacts` stays the
+    single trust boundary regardless of provider. Two empirical fixes
+    along the way: gpt-oss's hidden reasoning needs `reasoning_effort: low`
+    + `reasoning_format: hidden` + an explicit `max_completion_tokens`
+    bounded well under Groq's 8,000-tokens/minute free-tier ceiling, or
+    responses truncate before the closing JSON; and an earlier
+    asymmetric schema shape for `restrictions` measurably confused the
+    model into mixing conventions, fixed by wrapping it like every other
+    field.
+    Ollama's `format` field was also extended to accept the same schema
+    (Ollama's own structured-output mechanism), so the fallback path
+    benefits too, without adding a second schema representation.
+  - Two real, current, official Superstate/Invesco USTB documents ingested
+    (`docs.superstate.com/.../invesco-ustb`, `superstate.com/assets/ustb`)
+    as verbatim page text via the existing ingestion pipeline (normalize,
+    hash, store, chunk) -- the real-world analogue of `ttbill-b`, ALIVE's
+    live Chainlink showcase asset. Not a fixture.
+  - Retry-then-fail semantics unchanged in spirit, extended for the new
+    schema: one retry with the validation error fed back; a second failure
+    falls back to the deterministic reader, correctly labelled
+    `DETERMINISTIC_FALLBACK` -- **never** silently shown as `AI`. A test
+    asserts this explicitly for both a fake-source-ID response and a
+    transport failure.
+  - Extraction caching by document hash: `POST /api/assets/:assetId/extract`
+    reuses the last successful `AI`-mode run when source hashes are
+    unchanged (HTTP 200 + a warning) rather than re-calling a rate-limited
+    provider; a changed hash forces re-extraction (HTTP 201). New
+    repository migration v6 stores per-run fact/citation/rejection counts.
+  - New `GET /api/assets/:assetId/extraction` (mode, live, provider, model,
+    source count, facts extracted/cited, unknown fields, unsupported claims
+    rejected, schema/source validation, completion time) and a
+    "Document intelligence" section on the Asset Passport, structurally
+    separate from the Chainlink "Live financial data" section from
+    Milestone 9 -- confirmed neither can misrepresent the other (`ttbill-a`
+    shows neither section; a demo-mode run cannot show `AI · live`).
+  - 11 new tests (`groq-extraction.test.ts`): missing-key handled safely
+    with no key ever surfaced, valid strict response accepted and labelled
+    `AI`/`groq`, hallucination test (unsupported fact -> `UNKNOWN`, never
+    invented), fake-source-ID rejected even in an otherwise well-formed
+    response, malformed/failed response retries once then fails cleanly
+    into `DETERMINISTIC_FALLBACK`, extraction-caching by document hash.
+    73/73 `services/intelligence` tests passing; 200+ tests passing
+    repo-wide (excluding the pre-existing, unrelated `videos/alive-launch`
+    Remotion/port-3000 issue noted in Milestone 1); `pnpm -r typecheck`
+    clean across all 10 buildable workspaces; `pnpm -r build` clean.
+  - **Real run, not just unit tests, with an honest limitation.** GroqCloud
+    was reached and used successfully multiple times while building this:
+    a real strict-schema probe returned a correctly-cited extraction, and a
+    full-size request against the real two-document source set returned a
+    `failed_generation` payload showing the model had genuinely read and
+    extracted real facts (issuer, custody, jurisdiction, eligible
+    investors, management fee, redemption terms) from the real documents --
+    the failure at that point was ALIVE's own schema-shape bug, since
+    fixed. Partway through fixing it, every further request to Groq's API
+    -- from this code and from plain `curl`, with no custom headers --
+    began returning a Cloudflare-edge `403 Access denied`, with no
+    Groq-shaped error body: a network/WAF-level block on this sandbox's
+    shared egress IP, not an application rejection, and it did not clear
+    across several cooldowns within the session. The Ollama fallback was
+    then exercised for real against the real documents: `llama3.2:1b`
+    completed but failed schema validation twice (a 1B model without
+    constrained decoding is genuinely unreliable at 12-field structured
+    extraction); `llama3.2:3b` timed out twice on this CPU-only hardware.
+    Both produced the correct, honestly-labelled `DETERMINISTIC_FALLBACK`
+    result -- proof the safety net holds under real failure, not proof of
+    a live AI extraction. Full detail, including reproduction steps, in
+    [AI.md](AI.md)'s "A network-level limitation encountered during this
+    build" section.
+  - Cost: **$0**. No payment method entered, no plan upgraded. New
+    `pnpm --filter @alive/intelligence probe:groq` script for reproducing
+    the Groq connectivity check once network access is available.
+
 ## Pivot status
 
 ALIVE is being rebuilt from a Proof-of-Physical-State protocol into an

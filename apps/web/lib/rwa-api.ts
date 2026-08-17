@@ -621,6 +621,53 @@ export async function getAssetMonitor(
   };
 }
 
+export type AssetExtractionStatus = {
+  assetId: string;
+  mode: "AI" | "DETERMINISTIC_FALLBACK" | "DEMO_FIXTURE";
+  live: boolean;
+  provider?: string;
+  model?: string;
+  sourceCount: number;
+  factsExtracted: number;
+  factsCited: number;
+  unknownFields: number;
+  unsupportedClaimsRejected: number;
+  schemaValidation: "PASSED" | "FAILED";
+  sourceValidation: "PASSED" | "FAILED";
+  completedAt: string;
+};
+
+export async function getAssetExtraction(
+  assetId: string,
+): Promise<AssetExtractionStatus> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/extraction`),
+    "Asset extraction status",
+  );
+  const extraction = record(payload.extraction, "Asset extraction status");
+  const mode = extraction.mode;
+  if (mode !== "AI" && mode !== "DETERMINISTIC_FALLBACK" && mode !== "DEMO_FIXTURE") {
+    throw new RwaApiError("INVALID_RESPONSE", "Extraction mode is invalid.", 502);
+  }
+  const schemaValidation = extraction.schemaValidation === "PASSED" ? "PASSED" : "FAILED";
+  const sourceValidation = extraction.sourceValidation === "PASSED" ? "PASSED" : "FAILED";
+  return {
+    assetId: text(extraction.assetId, "Extraction asset ID"),
+    mode,
+    live: extraction.live === true,
+    ...(typeof extraction.provider === "string" ? { provider: extraction.provider } : {}),
+    ...(typeof extraction.model === "string" ? { model: extraction.model } : {}),
+    sourceCount: Number(extraction.sourceCount ?? 0),
+    factsExtracted: Number(extraction.factsExtracted ?? 0),
+    factsCited: Number(extraction.factsCited ?? 0),
+    unknownFields: Number(extraction.unknownFields ?? 0),
+    unsupportedClaimsRejected: Number(extraction.unsupportedClaimsRejected ?? 0),
+    schemaValidation,
+    sourceValidation,
+    completedAt: text(extraction.completedAt, "Extraction completion time"),
+  };
+}
+
 export async function getAssetEligibility(assetId: string): Promise<{
   verdict: EligibilityVerdict;
   policy: EligibilityPolicy;
