@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowClockwiseIcon,
+  ArrowSquareOutIcon,
   CircleNotchIcon,
   FlaskIcon,
   ProhibitIcon,
@@ -14,9 +15,10 @@ import {
   getAssetEligibility,
   getRwaAsset,
   listRwaMarkets,
-  publishAssetVerdict,
   resetDemoOverrides,
+  runGatewayProof,
   setDemoNavAge,
+  type GatewayProofResult,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
 import { loadAssetDocumentation } from "@/lib/verify-flow";
@@ -30,13 +32,19 @@ const ATTACK_ASSET_ID = "ttbill-a";
 const STALE_NAV_AGE_SECONDS = 31 * 3_600;
 
 type Stage = "loading" | "preparing" | "ready" | "running" | "restoring" | "error";
+type OnchainState = "unavailable" | "not-run" | "done";
+
+function explorerUrl(txHash: string): string {
+  return `https://www.okx.com/web3/explorer/xlayer-test/tx/${txHash}`;
+}
 
 export function AttackLabPage() {
   const [asset, setAsset] = useState<RwaAsset>();
   const [quote, setQuote] = useState<RwaMarketQuote>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
-  const [signedDigest, setSignedDigest] = useState<string>();
-  const [signingUnavailable, setSigningUnavailable] = useState(false);
+  const [gateway, setGateway] = useState<GatewayProofResult>();
+  const [onchainState, setOnchainState] = useState<OnchainState>("not-run");
+  const [onchainUnavailableReason, setOnchainUnavailableReason] = useState<string>();
   const [stage, setStage] = useState<Stage>("loading");
   const [progress, setProgress] = useState<string[]>([]);
   const [error, setError] = useState<unknown>();
@@ -54,17 +62,22 @@ export function AttackLabPage() {
     return eligibility.verdict;
   }, []);
 
-  const publish = useCallback(async () => {
+  const runOnchain = useCallback(async () => {
+    setOnchainState("not-run");
     try {
-      const published = await publishAssetVerdict(ATTACK_ASSET_ID);
-      setSignedDigest(published.signed.digest);
-      setSigningUnavailable(false);
-    } catch {
-      // Signing requires ELIGIBILITY_SIGNER_PRIVATE_KEY configured
-      // server-side. Not fatal to the demo -- ALIVE's own detection and
-      // eligibility re-evaluation are already real and shown regardless.
-      setSignedDigest(undefined);
-      setSigningUnavailable(true);
+      const result = await runGatewayProof(ATTACK_ASSET_ID);
+      setGateway(result);
+      setOnchainState("done");
+      setOnchainUnavailableReason(undefined);
+    } catch (requestError) {
+      // GATEWAY_CLIENT_UNAVAILABLE (no broadcasting key configured) or a
+      // genuine RPC/broadcast failure -- either way, this is honestly
+      // "not proven onchain this run," never faked as blocked/allowed.
+      setGateway(undefined);
+      setOnchainState("unavailable");
+      setOnchainUnavailableReason(
+        requestError instanceof Error ? requestError.message : "Onchain proof unavailable.",
+      );
     }
   }, []);
 
@@ -77,7 +90,8 @@ export function AttackLabPage() {
       await loadAssetDocumentation(ATTACK_ASSET_ID, "tTBILL-A");
       await extractAssetPassport(ATTACK_ASSET_ID);
       const v = await refresh();
-      await publish();
+      setProgress((current) => [...current, "Publishing verdict to X Layer Testnet...", "Attempting gated deposit..."]);
+      await runOnchain();
       setStage(v.status === "ELIGIBLE" ? "ready" : "error");
       if (v.status !== "ELIGIBLE") {
         setError(new Error(`Baseline is not ELIGIBLE (${v.status}): ${v.reasons.map((r) => r.code).join(", ")}`));
@@ -88,7 +102,7 @@ export function AttackLabPage() {
     } finally {
       setProgress([]);
     }
-  }, [refresh, publish]);
+  }, [refresh, runOnchain]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +113,7 @@ export function AttackLabPage() {
         if (cancelled) return;
         if (v.status === "ELIGIBLE") {
           setStage("ready");
-          await publish();
+          await runOnchain();
         } else {
           await prepareBaseline();
         }
@@ -120,11 +134,16 @@ export function AttackLabPage() {
   async function runAttack() {
     setStage("running");
     setError(undefined);
-    setProgress(["Making TTBILL-A's NAV stale...", "Re-evaluating eligibility...", "Signing updated verdict..."]);
+    setProgress([
+      "Making TTBILL-A's NAV stale...",
+      "Re-evaluating eligibility...",
+      "Signing and publishing restricted verdict to X Layer Testnet...",
+      "Attempting the gated deposit against the new verdict...",
+    ]);
     try {
       await setDemoNavAge(ATTACK_ASSET_ID, STALE_NAV_AGE_SECONDS);
       await refresh();
-      await publish();
+      await runOnchain();
       setAttacked(true);
       setStage("ready");
     } catch (requestError) {
@@ -138,11 +157,16 @@ export function AttackLabPage() {
   async function restore() {
     setStage("restoring");
     setError(undefined);
-    setProgress(["Restoring fresh NAV...", "Re-evaluating eligibility...", "Signing updated verdict..."]);
+    setProgress([
+      "Restoring fresh NAV...",
+      "Re-evaluating eligibility...",
+      "Signing and publishing eligible verdict to X Layer Testnet...",
+      "Retrying the gated deposit...",
+    ]);
     try {
       await resetDemoOverrides();
       await refresh();
-      await publish();
+      await runOnchain();
       setAttacked(false);
       setStage("ready");
     } catch (requestError) {
@@ -156,6 +180,16 @@ export function AttackLabPage() {
   const busy = stage === "loading" || stage === "preparing" || stage === "running" || stage === "restoring";
   const isRestricted = verdict?.status === "RESTRICTED";
   const isEligible = verdict?.status === "ELIGIBLE";
+  const depositAllowed = gateway?.deposit.ok === true;
+  const depositBlocked = gateway?.deposit.ok === false;
+
+  function xLayerLabel(): string {
+    if (onchainState === "unavailable") return isEligible ? "Ready (unproven)" : "Restricted — onchain proof not run";
+    if (onchainState === "not-run") return isEligible ? "Ready" : "Restricted — onchain proof not run";
+    if (depositAllowed) return "Action allowed";
+    if (depositBlocked) return "Blocked by contract";
+    return "—";
+  }
 
   return (
     <div className={overviewStyles.page}>
@@ -198,10 +232,10 @@ export function AttackLabPage() {
               <span className={styles.stateLabel}>X Layer</span>
               <span
                 className={`${styles.stateValue} ${
-                  isEligible ? styles.stateValuePositive : isRestricted ? styles.stateValueNegative : ""
+                  depositAllowed ? styles.stateValuePositive : depositBlocked ? styles.stateValueNegative : ""
                 }`}
               >
-                {isEligible ? "Ready" : isRestricted ? "Blocking" : "—"}
+                {xLayerLabel()}
               </span>
             </div>
           </div>
@@ -212,8 +246,8 @@ export function AttackLabPage() {
         <h2 className={styles.scenarioTitle}>Make NAV stale</h2>
         <p className={styles.scenarioDescription}>
           Push the demo asset&apos;s NAV beyond ALIVE&apos;s permitted freshness window
-          (24 hours). Expect ALIVE to detect NAV_STALE, mark the asset RESTRICTED,
-          and X Layer to refuse the gated action.
+          (24 hours). Expect ALIVE to detect NAV_STALE, publish a RESTRICTED verdict
+          to X Layer Testnet, and the gated deposit to be rejected by the contract.
         </p>
         {!attacked ? (
           <button className={styles.actionButton} type="button" onClick={runAttack} disabled={busy || stage !== "ready"}>
@@ -250,7 +284,7 @@ export function AttackLabPage() {
       {verdict && stage !== "loading" && stage !== "preparing" ? (
         <div
           className={`${styles.resultBlock} ${
-            isRestricted ? styles.resultBlockRestricted : isEligible ? styles.resultBlockEligible : ""
+            depositBlocked ? styles.resultBlockRestricted : depositAllowed ? styles.resultBlockEligible : ""
           }`}
         >
           <h2 className={styles.resultHeading}>
@@ -281,31 +315,41 @@ export function AttackLabPage() {
             </div>
             <div className={styles.stateCell}>
               <span className={styles.stateLabel}>X Layer</span>
-              <span className={styles.stateValue}>
-                {isEligible ? "Action allowed" : "Blocked by contract"}
-              </span>
+              <span className={styles.stateValue}>{xLayerLabel()}</span>
             </div>
           </div>
-          <p className={styles.onchainNote}>
-            {signedDigest ? (
-              <>
-                Signed verdict digest <code>{signedDigest.slice(0, 18)}…</code> is ready to
-                publish to <code>AliveEligibilityRegistry</code> on X Layer Testnet
-                (chain 1952). <code>AliveVault.depositEligibleAsset</code> reverts with{" "}
-                <code>AssetNotEligible</code> whenever the registry reports this asset
-                ineligible -- proven in <code>packages/contracts/test</code> and against
-                a real testnet deployment via{" "}
-                <code>pnpm --filter @alive/contracts prove:flow</code>.
-              </>
-            ) : signingUnavailable ? (
-              <>
-                Verdict signing requires <code>ELIGIBILITY_SIGNER_PRIVATE_KEY</code> to be
-                configured server-side -- not available in this environment. ALIVE&apos;s
-                detection above (NAV staleness, reason code, eligibility status) is real
-                and unaffected; only the onchain publish step is unavailable here.
-              </>
-            ) : null}
-          </p>
+
+          {onchainState === "done" && gateway ? (
+            <p className={styles.onchainNote}>
+              Verdict published to <code>AliveEligibilityRegistry</code> (X Layer Testnet, chain 1952):{" "}
+              <a href={explorerUrl(gateway.publish.txHash)} target="_blank" rel="noreferrer">
+                {gateway.publish.txHash.slice(0, 14)}…<ArrowSquareOutIcon size={11} />
+              </a>{" "}
+              (block {gateway.publish.blockNumber}), registry.isEligible ={" "}
+              {String(gateway.publish.onchainEligible)}.
+              <br />
+              {gateway.deposit.ok ? (
+                <>
+                  <code>AliveVault.depositEligibleAsset</code> succeeded:{" "}
+                  <a href={explorerUrl(gateway.deposit.txHash)} target="_blank" rel="noreferrer">
+                    {gateway.deposit.txHash.slice(0, 14)}…<ArrowSquareOutIcon size={11} />
+                  </a>{" "}
+                  (block {gateway.deposit.blockNumber}).
+                </>
+              ) : (
+                <>
+                  <code>AliveVault.depositEligibleAsset</code> rejected before broadcast:{" "}
+                  <code>{gateway.deposit.contractError}</code>.
+                </>
+              )}
+            </p>
+          ) : onchainState === "unavailable" ? (
+            <p className={styles.onchainNote}>
+              Onchain proof not run this session: {onchainUnavailableReason}. ALIVE&apos;s
+              detection above (NAV staleness, reason code, eligibility status) is real and
+              unaffected; only the X Layer publish/deposit step is unavailable here.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

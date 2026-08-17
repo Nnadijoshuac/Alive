@@ -17,6 +17,7 @@ import {
   CompositeMarketDataProvider,
   ControllableDemoMarketDataProvider,
   MarketDataError,
+  feedForAsset,
   type MarketDataProvider,
 } from "@alive/market-data";
 import {
@@ -53,6 +54,11 @@ import {
 } from "./ingestion/ingestion-service.js";
 import type { LlmJsonProvider } from "./llm.js";
 import type { MonitorService } from "./monitoring/service.js";
+import {
+  GatewayClient,
+  assetIdHashFor,
+  resolveGatewayClientConfig,
+} from "./onchain/gateway-client.js";
 import { IntelligenceRepository } from "./repository.js";
 
 const CompileBodySchema = z
@@ -933,6 +939,88 @@ export async function buildIntelligenceApp(
       }
       return { demoMode: true, overrides: provider.list() };
     });
+
+    // Real X Layer Testnet enforcement proof for the Attack Lab: signs the
+    // asset's current deterministic verdict, publishes it to
+    // AliveEligibilityRegistry, waits for the receipt, then attempts
+    // depositEligibleAsset against the freshly-published state on
+    // AliveVault. Reuses the exact eligibility computation and signer
+    // already used by /publish-verdict -- this route only adds the
+    // broadcasting step, not a second verdict pipeline. Never touches a
+    // live Chainlink-backed asset: feedForAsset() gates that before any
+    // signing or broadcasting happens, same protection the market-data
+    // degrade routes already enforce.
+    app.post<{ Params: { assetId: string } }>(
+      "/api/demo/assets/:assetId/gateway-proof",
+      async (request, reply) => {
+        const assetId = request.params.assetId;
+        if (feedForAsset(assetId)) {
+          reply.status(409);
+          return {
+            error: {
+              code: "PROVIDER_DISABLED",
+              message: `${assetId} is backed by a live Chainlink feed. ALIVE does not publish or enforce simulated verdicts against a real asset.`,
+            },
+          };
+        }
+
+        const result = await computeEligibilityVerdict(assetId);
+        if (!result) {
+          reply.status(404);
+          return { error: { code: "ASSET_NOT_FOUND", message: "Asset passport was not found." } };
+        }
+
+        let signed;
+        try {
+          signed = await dependencies.eligibilitySigner.sign(assetId, result.verdict, now());
+        } catch (error) {
+          if (!(error instanceof EligibilitySignerError)) throw error;
+          reply.status(503);
+          return { error: { code: error.code, message: error.message } };
+        }
+
+        const clientConfig = resolveGatewayClientConfig(assetId);
+        if (!clientConfig.configured) {
+          reply.status(503);
+          return {
+            error: {
+              code: "GATEWAY_CLIENT_UNAVAILABLE",
+              message: `Onchain broadcasting is not configured. Missing: ${clientConfig.missing.join(", ")}.`,
+            },
+          };
+        }
+
+        const client = new GatewayClient(clientConfig.config, assetIdHashFor(assetId));
+        const decimals = await client.tokenDecimals();
+        const amount = 10n ** BigInt(decimals) * 100n; // 100 demo tokens
+
+        try {
+          const publish = await client.publishVerdict(signed);
+          await client.ensureFunded(amount);
+          const deposit = await client.attemptDeposit(amount);
+          reply.status(200);
+          return {
+            assetId,
+            verdict: result.verdict,
+            broadcaster: client.broadcasterAddress,
+            publish: {
+              txHash: publish.txHash,
+              blockNumber: publish.blockNumber,
+              onchainEligible: publish.onchainEligible,
+            },
+            deposit,
+          };
+        } catch (error) {
+          reply.status(502);
+          return {
+            error: {
+              code: "GATEWAY_BROADCAST_FAILED",
+              message: error instanceof Error ? error.message : "Broadcast failed.",
+            },
+          };
+        }
+      },
+    );
   }
 
   app.addHook("onClose", async () => {

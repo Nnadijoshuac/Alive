@@ -799,6 +799,35 @@ export async function getDemoState(): Promise<DemoOverrides> {
   return (payload.overrides ?? {}) as DemoOverrides;
 }
 
+export type GatewayProofResult = {
+  assetId: string;
+  verdict: EligibilityVerdict;
+  broadcaster: `0x${string}`;
+  publish: { txHash: `0x${string}`; blockNumber: number; onchainEligible: boolean };
+  deposit:
+    | { ok: true; txHash: `0x${string}`; blockNumber: number; broadcast: true }
+    | { ok: false; contractError: string; broadcast: false };
+};
+
+/**
+ * Server-side only: signs the asset's current verdict, publishes it to
+ * AliveEligibilityRegistry on X Layer Testnet, and attempts
+ * depositEligibleAsset against that published state. Never touches a
+ * live Chainlink-backed asset (409). Throws RwaApiError with code
+ * GATEWAY_CLIENT_UNAVAILABLE if the server has no broadcasting key
+ * configured -- callers must show that honestly, never treat it as a
+ * simulated success.
+ */
+export async function runGatewayProof(assetId: string): Promise<GatewayProofResult> {
+  const payload = record(
+    await request(`/api/demo/assets/${encodeURIComponent(assetId)}/gateway-proof`, {
+      method: "POST",
+    }),
+    "Gateway proof",
+  );
+  return payload as unknown as GatewayProofResult;
+}
+
 export async function proposeRwaRebalance(
   policyId: string,
   allocations: Allocation[],
