@@ -162,7 +162,7 @@ export function RebalanceWorkspace() {
               <article className={styles.panel}>
                 <div className={styles.panelHeader}>
                   <div><p className={styles.kicker}>Current holdings</p><h2>Allocation editor</h2><p>Policy {truncateIdentifier(policy.id)}. Values must total exactly 10,000 BPS.</p></div>
-                  <ArrowsClockwiseIcon size={24} color="#6de493" />
+                  <ArrowsClockwiseIcon size={24} color="currentColor" />
                 </div>
                 <div className={styles.allocationEditor}>
                   {draft.map((row, index) => (

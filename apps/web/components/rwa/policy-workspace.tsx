@@ -94,7 +94,7 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
               <article className={styles.panel}>
                 <div className={styles.panelHeader}>
                   <div><p className={styles.kicker}>Interpretation</p><h2>How the candidate was produced</h2></div>
-                  <FunctionIcon size={24} color="#6de493" />
+                  <FunctionIcon size={24} color="currentColor" />
                 </div>
                 <dl className={styles.definitionList}>
                   <div className={styles.definitionRow}><dt>Mode</dt><dd>{policy.compiler.isAiGenerated ? "AI candidate" : "NON-AI DETERMINISTIC FALLBACK"}</dd></div>

@@ -45,3 +45,33 @@ export async function listAssetSummaries(): Promise<AssetSummary[]> {
 export function summaryPrimaryValue(summary: AssetSummary): string | undefined {
   return summary.quote?.price;
 }
+
+/**
+ * Verification, eligibility, and data-freshness are three distinct
+ * questions ALIVE can answer about an asset, and conflating them into one
+ * status pill hides real information: an asset can be VERIFIED (real,
+ * cited source documents exist) yet still RESTRICTED (it fails a policy
+ * rule), or ELIGIBLE with only a demo/synthetic data source behind it.
+ */
+export type VerificationStatus = "VERIFIED" | "UNVERIFIED";
+export type EligibilityStatus = "ELIGIBLE" | "RESTRICTED" | "NOT_EVALUATED";
+export type DataStatus = "LIVE" | "DEMO" | "UNAVAILABLE";
+
+export function verificationStatus(summary: AssetSummary): VerificationStatus {
+  const hasRealSource = summary.asset.sources.some(
+    (source) => source.sourceType !== "DEMO_FIXTURE",
+  );
+  return hasRealSource ? "VERIFIED" : "UNVERIFIED";
+}
+
+export function eligibilityStatus(summary: AssetSummary): EligibilityStatus {
+  if (summary.verdictError || !summary.verdict) return "NOT_EVALUATED";
+  if (summary.verdict.status === "ELIGIBLE") return "ELIGIBLE";
+  if (summary.verdict.status === "RESTRICTED") return "RESTRICTED";
+  return "NOT_EVALUATED";
+}
+
+export function dataStatus(summary: AssetSummary): DataStatus {
+  if (!summary.quote) return "UNAVAILABLE";
+  return summary.quote.dataMode === "LIVE" ? "LIVE" : "DEMO";
+}

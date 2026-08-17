@@ -109,7 +109,7 @@ export function CreateWorkspace() {
                 <h2 id="mandate-title">Natural-language mandate</h2>
                 <p>Be specific about floors, caps, liquidity, risk, and excluded exposures.</p>
               </div>
-              <SparkleIcon size={24} color="#6de493" aria-hidden="true" />
+              <SparkleIcon size={24} color="currentColor" aria-hidden="true" />
             </div>
             <div className={styles.field}>
               <label htmlFor="mandate">What should this capital do?</label>
@@ -148,7 +148,7 @@ export function CreateWorkspace() {
                 <p className={styles.kicker}>Trust boundary</p>
                 <h2>Interpretation is not execution</h2>
               </div>
-              <FunctionIcon size={24} color="#6de493" aria-hidden="true" />
+              <FunctionIcon size={24} color="currentColor" aria-hidden="true" />
             </div>
             <div className={styles.flow}>
               {[
@@ -259,7 +259,7 @@ export function CreateWorkspace() {
                 <h2>Review before optimization</h2>
                 <p>This approval permits a deterministic proposal calculation. It is not a wallet signature, policy registration, deposit, trade, or vault execution.</p>
               </div>
-              <CheckCircleIcon size={26} color="#6de493" aria-hidden="true" />
+              <CheckCircleIcon size={26} color="currentColor" aria-hidden="true" />
             </div>
             <label className={styles.checkboxRow}>
               <input

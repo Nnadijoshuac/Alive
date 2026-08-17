@@ -142,7 +142,7 @@ export function AttackLabWorkspace() {
                   >
                     <div className={styles.panelHeader}>
                       <div><p className={styles.kicker}>{scenario.id}</p><h2>{scenario.name}</h2><p>{scenario.description}</p></div>
-                      {scenario.id === "OPTIMIZER" ? <ShieldCheckIcon size={22} color="#6de493" /> : <CrosshairIcon size={22} color="#6de493" />}
+                      {scenario.id === "OPTIMIZER" ? <ShieldCheckIcon size={22} color="currentColor" /> : <CrosshairIcon size={22} color="currentColor" />}
                     </div>
                     <p className={styles.fieldHint}>{scenario.expected}</p>
                   </button>

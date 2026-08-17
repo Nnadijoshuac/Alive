@@ -17,7 +17,7 @@ export function DesignSystemWorkspace() {
             <label className={styles.field}><span className={styles.fieldLabel}>Mandate fixture</span><textarea className={styles.textarea} value={sample} onChange={(event) => setSample(event.target.value)} /></label>
           </article>
           <article className={styles.panel}>
-            <div className={styles.panelHeader}><div><p className={styles.kicker}>Data modes</p><h2>Never blur provenance</h2></div><DatabaseIcon size={24} color="#6de493" /></div>
+            <div className={styles.panelHeader}><div><p className={styles.kicker}>Data modes</p><h2>Never blur provenance</h2></div><DatabaseIcon size={24} color="currentColor" /></div>
             <div className={styles.stack}><ModeBadge mode="DEMO" /><ModeBadge mode="SNAPSHOT" /><ModeBadge mode="LIVE" /><ModeBadge mode="AI" /><ModeBadge mode="DETERMINISTIC_FALLBACK" /></div>
           </article>
         </div>

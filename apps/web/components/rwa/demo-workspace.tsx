@@ -204,7 +204,7 @@ export function DemoWorkspace() {
               <h1>Do not confuse readiness with execution.</h1>
               <p>The contract suite can enforce policies and single-use strategy capabilities. This demo reports only the configuration visible to the web client.</p>
               <div className={styles.grid2}>
-                <article className={styles.panel}><LockKeyIcon size={28} color="#6de493" /><h2>{rwaContractConfiguration.complete ? "Contract addresses configured" : "Contract configuration incomplete"}</h2><p className={styles.subtle}>{rwaContractConfiguration.configuredCount} / {rwaContractConfiguration.requiredCount} required addresses on {rwaContractConfiguration.chainName}.</p></article>
+                <article className={styles.panel}><LockKeyIcon size={28} color="currentColor" /><h2>{rwaContractConfiguration.complete ? "Contract addresses configured" : "Contract configuration incomplete"}</h2><p className={styles.subtle}>{rwaContractConfiguration.configuredCount} / {rwaContractConfiguration.requiredCount} required addresses on {rwaContractConfiguration.chainName}.</p></article>
                 <article className={styles.panel}><CheckCircleIcon size={28} color="#e4b96f" /><h2>No transaction submitted</h2><p className={styles.subtle}>No policy registration, vault creation, deposit, strategy signature, or execution receipt exists in this guided flow.</p></article>
               </div>
               <Notice title="End of verified local flow" tone="warning">The working demo covers mandate compilation, strict validation, deterministic optimization, wrong-allocation rejection, and rebalance calculation. Onchain submission requires configured deployment addresses and a separate wallet-authorized transaction flow.</Notice>

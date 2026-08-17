@@ -194,6 +194,17 @@
   font-size: 12.5px;
 }
 
+.policyNote {
+  margin: 14px 0 0;
+  color: var(--muted-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.policyNote strong {
+  color: var(--ink-soft);
+}
+
 .section {
   display: flex;
   flex-direction: column;

@@ -1,33 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
-  --bg: #141518;
-  --bg-deep: #0d0e10;
-  --surface: #1a1b1f;
-  --surface-raised: #212228;
-  --surface-hover: #292a30;
-  --line: #303137;
-  --line-strong: #4b4c54;
-  --text: #f6f6f1;
-  --text-soft: #c8c8c3;
-  --muted: #8d8e94;
-  --accent: #6de493;
-  --accent-ink: #0a140d;
-  --paper: #f1f1ec;
-  --paper-ink: #111216;
-  --focus: #8cf4aa;
-  --radius: 16px;
+  color-scheme: light;
+  /* Every route now shares the milk + black system below. These legacy
+     names (--bg/--surface/--text/--accent/--line/--paper/--focus) are kept
+     only because a handful of older components (motion-system.tsx,
+     protocol-explorer.tsx) still reference them; they point at the same
+     milk+black values as the tokens further down rather than a separate
+     dark/green palette. No new code should read these -- use --ink/--milk/
+     etc. directly. */
+  --bg: #f7f4ee;
+  --bg-deep: #efeae1;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #efeae1;
+  --line: #e4ded2;
+  --line-strong: #d2cabb;
+  --text: #14130f;
+  --text-soft: #4a473d;
+  --muted: #85807a;
+  --accent: #14130f;
+  --accent-ink: #f7f4ee;
+  --paper: #ffffff;
+  --paper-ink: #14130f;
+  --focus: #14130f;
+  --radius: 14px;
   --radius-small: 8px;
   --rail-width: 176px;
   --header-height: 76px;
 
-  /* ALIVE product surface: milk + black. Used by the app shell and every
-     current-generation page (Overview, Asset Intelligence, Explore,
-     Watchlist, Activity, Attack Lab, Verify). Deliberately additive,
-     separate from the --bg/--text/--accent tokens above, which the
-     not-yet-restyled secondary surfaces (Dashboard/Create/Markets/
-     Rebalance/Protocol/Vault) still use -- no brand green here. */
+  /* ALIVE product surface: milk + black. The single design system for
+     every route (Overview, Asset Intelligence, Explore, Watchlist,
+     Activity, Attack Lab, Demo, and the legacy Advanced pages). No brand
+     green -- green/red/amber are semantic status colors only. */
   --ink: #14130f;
   --ink-soft: #4a473d;
   --muted-2: #85807a;

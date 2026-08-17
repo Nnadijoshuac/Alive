@@ -2,21 +2,36 @@
 
 import { useRouter } from "next/navigation";
 import { StarIcon } from "@phosphor-icons/react";
-import type { AssetSummary } from "@/lib/asset-intelligence-summary";
+import {
+  dataStatus,
+  eligibilityStatus,
+  verificationStatus,
+  type AssetSummary,
+} from "@/lib/asset-intelligence-summary";
 import { formatPrice, formatRelativeAgo } from "@/lib/rwa-format";
 import styles from "./asset-table.module.css";
 
-function statusPill(summary: AssetSummary) {
-  if (summary.verdictError || !summary.verdict) {
-    return <span className={styles.pillUnknown}>UNKNOWN</span>;
-  }
-  if (summary.verdict.status === "ELIGIBLE") {
-    return <span className={styles.pillEligible}>VERIFIED</span>;
-  }
-  if (summary.verdict.status === "RESTRICTED") {
+function verificationPill(summary: AssetSummary) {
+  return verificationStatus(summary) === "VERIFIED" ? (
+    <span className={styles.pillEligible}>VERIFIED</span>
+  ) : (
+    <span className={styles.pillUnknown}>UNVERIFIED</span>
+  );
+}
+
+function eligibilityPill(summary: AssetSummary) {
+  const status = eligibilityStatus(summary);
+  if (status === "ELIGIBLE") return <span className={styles.pillEligible}>ELIGIBLE</span>;
+  if (status === "RESTRICTED")
     return <span className={styles.pillRestricted}>RESTRICTED</span>;
-  }
-  return <span className={styles.pillUnknown}>UNKNOWN</span>;
+  return <span className={styles.pillUnknown}>NOT EVALUATED</span>;
+}
+
+function dataPill(summary: AssetSummary) {
+  const status = dataStatus(summary);
+  if (status === "LIVE") return <span className={styles.pillEligible}>LIVE</span>;
+  if (status === "DEMO") return <span className={styles.pillUnknown}>DEMO</span>;
+  return <span className={styles.pillUnknown}>UNAVAILABLE</span>;
 }
 
 export function AssetTable({
@@ -45,7 +60,9 @@ export function AssetTable({
           <th>Type</th>
           <th>Issuer</th>
           <th>Value</th>
-          <th>Status</th>
+          <th>Verification</th>
+          <th>Eligibility</th>
+          <th>Data</th>
           <th>Last checked</th>
         </tr>
       </thead>
@@ -90,7 +107,9 @@ export function AssetTable({
             <td className={styles.value}>
               {summary.quote ? formatPrice(summary.quote.price) : "—"}
             </td>
-            <td>{statusPill(summary)}</td>
+            <td>{verificationPill(summary)}</td>
+            <td>{eligibilityPill(summary)}</td>
+            <td>{dataPill(summary)}</td>
             <td className={styles.muted}>
               {summary.verdict ? formatRelativeAgo(summary.verdict.evaluatedAt) : "—"}
             </td>

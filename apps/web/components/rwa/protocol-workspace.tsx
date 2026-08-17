@@ -59,7 +59,7 @@ export function ProtocolWorkspace() {
           ))}
         </div>
         <article className={`${styles.panel} ${styles.panelAccent} ${styles.section}`}>
-          <div className={styles.panelHeader}><div><p className={styles.kicker}>{active.index} / {active.label}</p><h2>{active.title}</h2><p>{active.body}</p></div><Icon size={30} color="#6de493" /></div>
+          <div className={styles.panelHeader}><div><p className={styles.kicker}>{active.index} / {active.label}</p><h2>{active.title}</h2><p>{active.body}</p></div><Icon size={30} color="currentColor" /></div>
           <Notice title="Invariant" tone="success">{active.invariant}</Notice>
         </article>
       </section>

@@ -208,7 +208,7 @@ export function VaultOnchainActions({ vault, onRefresh }: { vault: RwaVaultRead;
     <div className={styles.stack}>
       <div className={styles.grid2}>
         <article className={styles.panel}>
-          <div className={styles.panelHeader}><div><p className={styles.kicker}>Demo cash rail</p><h2>Claim, approve, deposit</h2><p>Each confirmed action is a separate wallet transaction.</p></div><CoinsIcon size={23} color="#6de493" /></div>
+          <div className={styles.panelHeader}><div><p className={styles.kicker}>Demo cash rail</p><h2>Claim, approve, deposit</h2><p>Each confirmed action is a separate wallet transaction.</p></div><CoinsIcon size={23} color="currentColor" /></div>
           <dl className={styles.definitionList}>
             <Fact label="Wallet balance" value={`${formatUnits(facts.balance, facts.decimals)} ${facts.symbol}`} />
             <Fact label="Vault cash balance" value={`${formatUnits(facts.vaultBalance, facts.decimals)} ${facts.symbol}`} />
@@ -228,7 +228,7 @@ export function VaultOnchainActions({ vault, onRefresh }: { vault: RwaVaultRead;
         </article>
 
         <article className={styles.panel}>
-          <div className={styles.panelHeader}><div><p className={styles.kicker}>Policy Registry</p><h2>Register and activate</h2><p>The canonical hash is committed with the contract-enforceable V1 subset.</p></div><LockKeyOpenIcon size={23} color="#6de493" /></div>
+          <div className={styles.panelHeader}><div><p className={styles.kicker}>Policy Registry</p><h2>Register and activate</h2><p>The canonical hash is committed with the contract-enforceable V1 subset.</p></div><LockKeyOpenIcon size={23} color="currentColor" /></div>
           {policy && registryArgs ? (
             <>
               <dl className={styles.definitionList}>

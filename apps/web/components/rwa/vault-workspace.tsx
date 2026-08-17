@@ -75,10 +75,10 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
           ) : (
             <>
               <section className={styles.section} aria-labelledby="vault-facts-title">
-                <div className={styles.sectionHeader}><div><p className={styles.kicker}>Onchain facts</p><h2 id="vault-facts-title">Vault control plane</h2></div><VaultIcon size={27} color="#6de493" /></div>
+                <div className={styles.sectionHeader}><div><p className={styles.kicker}>Onchain facts</p><h2 id="vault-facts-title">Vault control plane</h2></div><VaultIcon size={27} color="currentColor" /></div>
                 <div className={styles.grid2}>
                   <article className={styles.panel}>
-                    <div className={styles.panelHeader}><div><p className={styles.kicker}>Ownership</p><h2>User-controlled exit</h2></div><LockKeyIcon size={23} color="#6de493" /></div>
+                    <div className={styles.panelHeader}><div><p className={styles.kicker}>Ownership</p><h2>User-controlled exit</h2></div><LockKeyIcon size={23} color="currentColor" /></div>
                     <dl className={styles.definitionList}>
                       <Fact label="Owner" value={vault.owner ?? "READ FAILED"} />
                       <Fact label="Guarded executor" value={vault.guardedExecutor === zeroAddress ? "NOT SET" : vault.guardedExecutor ?? "READ FAILED"} />

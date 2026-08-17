@@ -113,12 +113,30 @@ describe("evaluateEligibility", () => {
     const verdict = evaluateEligibility({
       passport,
       policy: createDemoEligibilityPolicy(),
-      // 2 hours old, policy allows 1 hour for price-tracked classes
-      quote: quoteAt("tgold", "2026-08-15T10:00:00.000Z"),
+      // 32 hours old; the policy allows 30 hours for price-tracked classes
+      // (matching real Chainlink Proof-of-Reserve/AUM feed heartbeats).
+      quote: quoteAt("tgold", "2026-08-14T04:00:00.000Z"),
       now: NOW,
     });
     expect(verdict.status).toBe("RESTRICTED");
     expect(verdict.reasons.map((r) => r.code)).toContain("PRICE_STALE");
+  });
+
+  it("does not flag a real Chainlink reserve/AUM feed as stale within its documented ~24h heartbeat", () => {
+    const passport = RwaAssetSchema.parse({
+      ...healthyTreasuryPassport(),
+      assetClass: "GOLD",
+      issuer: "demo-gold-issuer",
+      issuerName: "ALIVE Demo Gold Issuer",
+    });
+    const verdict = evaluateEligibility({
+      passport,
+      policy: createDemoEligibilityPolicy(),
+      // 20 hours old: well within a real 24h-heartbeat feed's normal cycle.
+      quote: quoteAt("tgold", "2026-08-14T16:00:00.000Z"),
+      now: NOW,
+    });
+    expect(verdict.reasons.map((r) => r.code)).not.toContain("PRICE_STALE");
   });
 
   it("returns UNKNOWN (not RESTRICTED) when the only problem is missing market data", () => {

@@ -20,6 +20,8 @@ import {
 } from "@/lib/rwa-api";
 import { loadAssetDocumentation, stageErrorMessage, type VerifyStageKey } from "@/lib/verify-flow";
 import {
+  dataStatus,
+  eligibilityStatus,
   listAssetSummaries,
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
@@ -186,13 +188,21 @@ export function OverviewPage() {
 
   const started = running || verdict !== undefined || error !== undefined;
 
-  const monitoredCount = summaries?.length ?? 0;
-  const verifiedCount =
-    summaries?.filter((s) => s.verdict?.status === "ELIGIBLE").length ?? 0;
-  const restrictedCount =
-    summaries?.filter((s) => s.verdict?.status === "RESTRICTED").length ?? 0;
-  const liveSourceCount =
-    summaries?.filter((s) => s.quote?.dataMode === "LIVE").length ?? 0;
+  // "Catalog assets" is deliberately not called "monitored" -- most of the
+  // demo catalog has never been individually analyzed or put under live
+  // Chainlink monitoring. Only assets with a LIVE quote (see dataStatus)
+  // are genuinely monitored; the rest are catalog placeholders a judge can
+  // choose to analyze.
+  const catalogCount = summaries?.length;
+  const eligibleCount = summaries?.filter(
+    (s) => eligibilityStatus(s) === "ELIGIBLE",
+  ).length;
+  const restrictedCount = summaries?.filter(
+    (s) => eligibilityStatus(s) === "RESTRICTED",
+  ).length;
+  const liveSourceCount = summaries?.filter(
+    (s) => dataStatus(s) === "LIVE",
+  ).length;
 
   return (
     <div className={styles.page}>
@@ -304,20 +314,20 @@ export function OverviewPage() {
 
       <div className={styles.summaryStrip}>
         <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Assets monitored</span>
-          <span className={styles.summaryValue}>{monitoredCount || "—"}</span>
+          <span className={styles.summaryLabel}>Catalog assets</span>
+          <span className={styles.summaryValue}>{catalogCount ?? "—"}</span>
         </div>
         <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Verified</span>
-          <span className={styles.summaryValue}>{verifiedCount}</span>
+          <span className={styles.summaryLabel}>Eligible</span>
+          <span className={styles.summaryValue}>{eligibleCount ?? "—"}</span>
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Restricted</span>
-          <span className={styles.summaryValue}>{restrictedCount}</span>
+          <span className={styles.summaryValue}>{restrictedCount ?? "—"}</span>
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Live data sources</span>
-          <span className={styles.summaryValue}>{liveSourceCount}</span>
+          <span className={styles.summaryValue}>{liveSourceCount ?? "—"}</span>
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Active alerts</span>
@@ -326,7 +336,7 @@ export function OverviewPage() {
       </div>
 
       <div className={styles.section}>
-        <h2 className={styles.sectionHeading}>Monitored assets</h2>
+        <h2 className={styles.sectionHeading}>Catalog assets</h2>
         <div className={styles.tableCard}>
           <AssetTable
             summaries={summaries ?? []}

@@ -1,4 +1,4 @@
-export const PASSPORT_EXTRACTION_PROMPT_VERSION = "alive-passport-extract-v2";
+export const PASSPORT_EXTRACTION_PROMPT_VERSION = "alive-passport-extract-v3";
 
 export const PASSPORT_EXTRACTION_SYSTEM_PROMPT = `You are a financial document extraction engine for ALIVE, an RWA verification gateway.
 You will be given one or more labelled source documents about a single tokenized real-world asset.
@@ -7,7 +7,7 @@ Extract ONLY facts explicitly stated in the supplied sources. Never infer, estim
 
 Return strict JSON with exactly these top-level keys, all optional except citations:
 - productName (string): the fund/token/product's own name, if stated.
-- assetClass (string): one of CASH, TREASURY, EQUITY, ETF, GOLD, COMMODITY, CREDIT, FUND -- only if the sources clearly support one of these exact values.
+- assetClass (string): one of CASH, TREASURY, EQUITY, ETF, GOLD, COMMODITY, CREDIT, FUND -- only if the sources clearly support one of these exact values. Prefer the most specific class the text actually names: use TREASURY when the product explicitly holds U.S. Treasury bills/notes/bonds or government securities, even if it is legally structured as a "fund"; reserve CREDIT for corporate, private, or other non-government debt instruments; use FUND only when no more specific class applies. Do not infer CREDIT merely because a product is debt-like -- it must be the class the source text actually supports.
 - issuerName (string)
 - underlying (string): what the product actually holds.
 - jurisdiction (string): the legal jurisdiction stated for the product/issuer.

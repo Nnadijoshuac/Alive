@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { AssetClass } from "@alive/shared";
-import { listAssetSummaries, type AssetSummary } from "@/lib/asset-intelligence-summary";
+import {
+  eligibilityStatus,
+  listAssetSummaries,
+  type AssetSummary,
+} from "@/lib/asset-intelligence-summary";
 import { getWatchlist, toggleWatch } from "@/lib/watchlist-state";
 import { AssetTable } from "./asset-table";
 import styles from "./overview.module.css";
 import filterStyles from "./explore.module.css";
 
-const VERIFICATION_FILTERS = ["ALL", "ELIGIBLE", "RESTRICTED", "UNKNOWN"] as const;
+const VERIFICATION_FILTERS = ["ALL", "ELIGIBLE", "RESTRICTED", "NOT_EVALUATED"] as const;
+const FILTER_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {
+  ALL: "All statuses",
+  ELIGIBLE: "Eligible",
+  RESTRICTED: "Restricted",
+  NOT_EVALUATED: "Not evaluated",
+};
 
 export function ExplorePage() {
   const [summaries, setSummaries] = useState<AssetSummary[]>();
@@ -40,9 +50,8 @@ export function ExplorePage() {
       if (assetClassFilter !== "ALL" && summary.asset.assetClass !== assetClassFilter) {
         return false;
       }
-      if (statusFilter !== "ALL") {
-        const status = summary.verdict?.status ?? "UNKNOWN";
-        if (status !== statusFilter) return false;
+      if (statusFilter !== "ALL" && eligibilityStatus(summary) !== statusFilter) {
+        return false;
       }
       return true;
     });
@@ -80,7 +89,7 @@ export function ExplorePage() {
         >
           {VERIFICATION_FILTERS.map((status) => (
             <option key={status} value={status}>
-              {status === "ALL" ? "All statuses" : status}
+              {FILTER_LABELS[status]}
             </option>
           ))}
         </select>

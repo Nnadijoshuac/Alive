@@ -9,7 +9,7 @@ import {
   QuestionIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react";
-import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
+import type { EligibilityPolicy, EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
   getAssetEligibility,
   getAssetExtraction,
@@ -41,6 +41,16 @@ function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
   return <QuestionIcon size={13} weight="fill" />;
 }
 
+/**
+ * Verification (does this asset have real, cited source documents) and
+ * eligibility (does it pass ALIVE's policy) are different questions -- an
+ * asset can be verified and still restricted. Kept separate in the UI
+ * rather than one conflated status pill.
+ */
+function isVerified(asset: RwaAsset): boolean {
+  return asset.sources.some((source) => source.sourceType !== "DEMO_FIXTURE");
+}
+
 /** Ethereum mainnet only -- the only chain ALIVE reads Chainlink RWA feeds from today. */
 function ethereumExplorerAddressUrl(chainId: number, address: string): string | undefined {
   return chainId === 1 ? `https://etherscan.io/address/${address}` : undefined;
@@ -53,6 +63,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
+  const [policy, setPolicy] = useState<EligibilityPolicy>();
   const [monitor, setMonitor] = useState<AssetMonitorStatus>();
   const [extraction, setExtraction] = useState<AssetExtractionStatus>();
 
@@ -72,8 +83,10 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       try {
         const eligibility = await getAssetEligibility(passport.asset.id);
         setVerdict(eligibility.verdict);
+        setPolicy(eligibility.policy);
       } catch {
         setVerdict(undefined);
+        setPolicy(undefined);
       }
       try {
         setMonitor(await getAssetMonitor(passport.asset.id));
@@ -190,10 +203,16 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         </div>
       </header>
 
-      {/* 2. Intelligence summary strip -- only Verification is real today */}
+      {/* 2. Intelligence summary strip -- only Verification and Eligibility are real today */}
       <div className={styles.summaryStrip}>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Verification</span>
+          <span className={styles.summaryValue}>
+            {isVerified(asset) ? "Verified" : "Unverified"}
+          </span>
+        </div>
+        <div className={styles.summaryCell}>
+          <span className={styles.summaryLabel}>Eligibility</span>
           <span className={styles.summaryValue}>{verdict ? verdict.status : "Not evaluated"}</span>
         </div>
         <div className={styles.summaryCell}>
@@ -250,6 +269,13 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             )}
           </div>
         </div>
+        {policy ? (
+          <p className={styles.policyNote}>
+            Evaluated against policy <strong>{policy.policyId}</strong>. A RESTRICTED
+            result means this asset failed ALIVE&apos;s configured rules -- not that
+            ALIVE doubts the asset is real.
+          </p>
+        ) : null}
       </section>
 
       {/* 4. Financials */}
