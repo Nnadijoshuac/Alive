@@ -564,6 +564,63 @@ export async function getAssetPassport(assetId: string): Promise<{
   };
 }
 
+export type AssetMonitorStatus = {
+  assetId: string;
+  monitoring: boolean;
+  provider?: string;
+  latestValue?: string;
+  sourceUpdatedAt?: string;
+  lastAliveCheckAt?: string;
+  ageSeconds?: number;
+  freshness?: "OK" | "STALE" | "DATA_UNAVAILABLE";
+  eligibility?: string;
+  lastEligibilityChangeAt?: string;
+  lastError?: string;
+};
+
+export async function getAssetMonitor(
+  assetId: string,
+): Promise<AssetMonitorStatus> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/monitor`),
+    "Asset monitor status",
+  );
+  const monitor = record(payload.monitor, "Asset monitor status");
+  return {
+    assetId: text(monitor.assetId, "Monitor asset ID"),
+    monitoring: monitor.monitoring === true,
+    ...(typeof monitor.provider === "string"
+      ? { provider: monitor.provider }
+      : {}),
+    ...(typeof monitor.latestValue === "string"
+      ? { latestValue: monitor.latestValue }
+      : {}),
+    ...(typeof monitor.sourceUpdatedAt === "string"
+      ? { sourceUpdatedAt: monitor.sourceUpdatedAt }
+      : {}),
+    ...(typeof monitor.lastAliveCheckAt === "string"
+      ? { lastAliveCheckAt: monitor.lastAliveCheckAt }
+      : {}),
+    ...(typeof monitor.ageSeconds === "number"
+      ? { ageSeconds: monitor.ageSeconds }
+      : {}),
+    ...(monitor.freshness === "OK" ||
+    monitor.freshness === "STALE" ||
+    monitor.freshness === "DATA_UNAVAILABLE"
+      ? { freshness: monitor.freshness }
+      : {}),
+    ...(typeof monitor.eligibility === "string"
+      ? { eligibility: monitor.eligibility }
+      : {}),
+    ...(typeof monitor.lastEligibilityChangeAt === "string"
+      ? { lastEligibilityChangeAt: monitor.lastEligibilityChangeAt }
+      : {}),
+    ...(typeof monitor.lastError === "string"
+      ? { lastError: monitor.lastError }
+      : {}),
+  };
+}
+
 export async function getAssetEligibility(assetId: string): Promise<{
   verdict: EligibilityVerdict;
   policy: EligibilityPolicy;

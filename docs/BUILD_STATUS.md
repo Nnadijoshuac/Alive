@@ -413,6 +413,67 @@ RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
     pre-publish state.
   - 274 tests passing repo-wide, `pnpm -r typecheck` clean across all 10
     buildable workspaces.
+- **2026-08-17 — Milestone 9 (persistent Chainlink monitoring worker):** the
+  `MarketMonitor` class from Milestone 8's groundwork now actually runs
+  inside `services/intelligence` as a background worker, not just a tested
+  class.
+  - **Found and fixed a real wiring bug first:** `MARKET_DATA_PROVIDER=chainlink`
+    was routing to the legacy paid Data Streams provider, not the free
+    `ChainlinkDataFeedProvider`/`CompositeMarketDataProvider` built earlier in
+    the session -- `.env.example`'s own comment already documented the free
+    behavior the code didn't deliver. Renamed the paid path to
+    `chainlink-streams` and made `chainlink` mean the free on-chain read.
+  - New `MonitorService` (`services/intelligence/src/monitoring/service.ts`):
+    idempotent `start()`/`stop()` (repeated `start()` never creates a second
+    loop), an `AbortController`-driven loop that finishes its current cycle
+    before stopping, per-asset and aggregate health tracking
+    (`ACTIVE`/`DEGRADED`/`ERROR`/`DISABLED`), and a `published_verdicts`
+    table (new `IntelligenceRepository` migration v5) so publish comparisons
+    survive a restart without an extra chain read. Signs a publish decision
+    into an EIP-712 attestation via the existing `EligibilitySigner` when one
+    is configured; never holds or uses a key to broadcast a transaction
+    itself, preserving Milestone 5's decide/broadcast separation.
+  - `MARKET_MONITOR_ENABLED` (config, default false) and a 30-second floor on
+    `MARKET_MONITOR_INTERVAL_SECONDS` (was unbounded). Wired into `index.ts`'s
+    `start()`: begins after the app and its `onClose` hook exist, registers
+    every Chainlink-backed asset by default, and stops on `SIGINT`/`SIGTERM`
+    before the database closes.
+  - Two new endpoints: `GET /api/monitor/status`, `GET /api/assets/:assetId/monitor`.
+  - 12 new tests (`test/monitor-service.test.ts`, fake timers): start/stop,
+    no duplicate loop on repeated `start()`, interval respected, DATA_UNAVAILABLE
+    never reuses a previous value, publish-on-transition / silent-on-steady-state,
+    survives a transient provider failure, DEGRADED vs ERROR health across
+    multi-asset failures, observation tie-breaking. 62/62 `services/intelligence`
+    tests passing; `pnpm -r typecheck` and `pnpm -r test` clean repo-wide.
+  - **Real run, not just unit tests:** started the service against live
+    Ethereum mainnet Chainlink (`MARKET_DATA_PROVIDER=chainlink`,
+    `MARKET_MONITOR_ENABLED=true`, 30s local interval) and let it complete
+    two full cycles against `ttbill-b`'s USTB NAV feed. `GET /api/monitor/status`
+    reported `health: ACTIVE`, `successfulReads: 2`, `failedReads: 0`.
+    Persisted-database evidence: two `market_observations` rows for
+    `ttbill-b`, 30 seconds apart, same NAV value (`11.177748`, expected --
+    NAVLink updates on a business-day cycle, not every poll), **different**
+    block numbers (`25771101` -> `25771104`, confirming a fresh read each
+    cycle) and distinct `observed_at` timestamps, while `source_updated_at`
+    stayed the Chainlink feed's own unchanged timestamp throughout -- the two
+    clocks visibly do not move together.
+  - Asset Passport UI (`apps/web/components/rwa/asset-passport-workspace.tsx`):
+    a "Live Chainlink monitoring" section renders only when a quote carries
+    `onchainSource` (structurally impossible for demo assets per the shared
+    schema), showing feed, value, **Data source network: Ethereum** next to
+    **Enforcement network: X Layer** as two explicit, separately labelled
+    fields, Chainlink-updated and ALIVE-last-checked as two distinct relative
+    timestamps, monitoring/freshness/eligibility, and an expandable source
+    provenance panel (contract address, chain ID, round ID, source block,
+    decimals, both timestamps, an Etherscan link). Verified live in-browser
+    against the running service: `ttbill-b` renders the full live section;
+    `ttbill-a` (Attack Lab) renders no live section at all and its quote
+    stays labelled `ALIVE_DEMO_MARKET` / `DEMO DATA` throughout.
+  - Not done in this milestone, by design: actually broadcasting a signed
+    verdict onchain from the monitor loop (decide-and-sign is wired; sending
+    the transaction is left to a separate authorized step, matching the
+    existing architecture) and Proof 2 (real AI document extraction), which
+    is the next milestone.
 
 ## Pivot status
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowSquareOutIcon,
+  BroadcastIcon,
   DatabaseIcon,
   ProhibitIcon,
   QuestionIcon,
@@ -13,11 +14,19 @@ import {
 import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
   getAssetEligibility,
+  getAssetMonitor,
   getRwaAsset,
   listRwaMarkets,
+  type AssetMonitorStatus,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
-import { formatBps, formatFreshness, formatPrice, formatTimestamp } from "@/lib/rwa-format";
+import {
+  formatBps,
+  formatFreshness,
+  formatPrice,
+  formatRelativeAgo,
+  formatTimestamp,
+} from "@/lib/rwa-format";
 import { ErrorState, LoadingState, ModeBadge, Notice, styles } from "./ui";
 
 export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
@@ -29,6 +38,7 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
   const [quoteError, setQuoteError] = useState<unknown>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
   const [verdictError, setVerdictError] = useState<unknown>();
+  const [monitor, setMonitor] = useState<AssetMonitorStatus>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +60,13 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
         setVerdict(eligibility.verdict);
       } catch (eligibilityError) {
         setVerdictError(eligibilityError);
+      }
+      try {
+        setMonitor(await getAssetMonitor(passport.asset.id));
+      } catch {
+        // Monitor status is supplementary -- its absence should not block
+        // the rest of the passport from rendering.
+        setMonitor(undefined);
       }
     } catch (requestError) {
       setError(requestError);
@@ -136,6 +153,10 @@ export function AssetPassportWorkspace({ assetId }: { assetId: string }) {
           {disclaimer}
         </Notice>
       </section>
+
+      {quote?.onchainSource ? (
+        <LiveMarketDataSection quote={quote} monitor={monitor} verdict={verdict} />
+      ) : null}
 
       <section className={styles.section} aria-labelledby="eligibility-title">
         <div className={styles.sectionHeader}>
@@ -261,4 +282,76 @@ function Fact({ label, value, mono = false }: { label: string; value: string; mo
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return <article className={styles.metric}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+}
+
+/** Ethereum mainnet only -- the only chain ALIVE reads Chainlink RWA feeds from today. */
+function ethereumExplorerAddressUrl(chainId: number, address: string): string | undefined {
+  return chainId === 1 ? `https://etherscan.io/address/${address}` : undefined;
+}
+
+function LiveMarketDataSection({
+  quote,
+  monitor,
+  verdict,
+}: {
+  quote: RwaMarketQuote;
+  monitor: AssetMonitorStatus | undefined;
+  verdict: EligibilityVerdict | undefined;
+}) {
+  const source = quote.onchainSource;
+  if (!source) return null;
+  const fresh = quote.status === "OPEN";
+  return (
+    <section className={styles.section} aria-labelledby="live-data-title">
+      <div className={styles.sectionHeader}>
+        <div>
+          <p className={styles.kicker}>Live Chainlink monitoring</p>
+          <h2 id="live-data-title">Where this number comes from.</h2>
+        </div>
+        <div className={styles.actions}>
+          <span className={`${styles.status} ${styles.success}`}>
+            <BroadcastIcon size={14} weight="fill" /> LIVE DATA / CHAINLINK
+          </span>
+        </div>
+      </div>
+      <article className={styles.panel}>
+        <div className={styles.metricGrid}>
+          <Metric label="Feed" value={source.description ?? "UNKNOWN"} detail={`Superstate USTB reference feed, ${source.decimals} decimals`} />
+          <Metric label="Value" value={formatPrice(quote.price)} detail="Read directly from the feed's latestRoundData()" />
+          <Metric label="Data source network" value={source.network} detail="Where Chainlink actually published this value" />
+          <Metric label="Enforcement network" value="X Layer" detail="Where ALIVE's eligibility verdict is enforced" />
+          <Metric label="Chainlink updated" value={formatRelativeAgo(source.sourceUpdatedAt)} detail={formatTimestamp(source.sourceUpdatedAt)} />
+          <Metric label="ALIVE last checked" value={formatRelativeAgo(monitor?.lastAliveCheckAt ?? source.observedAt)} detail={formatTimestamp(monitor?.lastAliveCheckAt ?? source.observedAt)} />
+          <Metric label="Monitoring" value={monitor?.monitoring ? "ACTIVE" : "NOT MONITORED"} detail={monitor?.monitoring ? "Persistent worker re-reads this feed on a timer" : "No background poll is registered for this asset"} />
+          <Metric label="Data status" value={fresh ? "FRESH" : "STALE"} detail="Computed from the Chainlink source timestamp, not the fetch time" />
+          <Metric label="Eligibility" value={verdict?.status ?? "UNKNOWN"} detail="Deterministic ALIVE verdict, re-evaluated every monitor cycle" />
+        </div>
+        <details className={styles.section}>
+          <summary className={styles.textButton}>Source provenance detail</summary>
+          <dl className={styles.definitionList}>
+            <Fact label="Provider" value={quote.provider} />
+            <Fact label="Feed description" value={source.description ?? "UNKNOWN"} />
+            <Fact label="Contract address" value={source.feedAddress} mono />
+            <Fact label="Chain ID" value={String(source.chainId)} />
+            <Fact label="Round ID" value={source.roundId} mono />
+            <Fact label="Answered in round" value={source.answeredInRound ?? "UNKNOWN"} mono />
+            <Fact label="Source block" value={String(source.blockNumber)} mono />
+            <Fact label="Decimals" value={String(source.decimals)} />
+            <Fact label="Chainlink source timestamp" value={formatTimestamp(source.sourceUpdatedAt)} />
+            <Fact label="ALIVE retrieval timestamp" value={formatTimestamp(source.observedAt)} />
+          </dl>
+          {ethereumExplorerAddressUrl(source.chainId, source.feedAddress) ? (
+            <a
+              className={styles.textButton}
+              href={ethereumExplorerAddressUrl(source.chainId, source.feedAddress)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View feed contract on Etherscan <ArrowSquareOutIcon size={14} />
+            </a>
+          ) : null}
+        </details>
+      </article>
+    </section>
+  );
 }

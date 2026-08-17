@@ -33,6 +33,25 @@ export function formatFreshness(ageSeconds: number): string {
   return `${Math.floor(ageSeconds / 86_400)}d old`;
 }
 
+/** "1h 14m ago" style relative age, for live-data provenance display. */
+export function formatRelativeAgo(iso: string, now = Date.now()): string {
+  const timestamp = Date.parse(iso);
+  if (!Number.isFinite(timestamp)) return "UNKNOWN";
+  const ageSeconds = Math.max(0, Math.floor((now - timestamp) / 1_000));
+  if (ageSeconds < 60) return `${ageSeconds}s ago`;
+  if (ageSeconds < 3_600) {
+    return `${Math.floor(ageSeconds / 60)}m ago`;
+  }
+  if (ageSeconds < 86_400) {
+    const hours = Math.floor(ageSeconds / 3_600);
+    const minutes = Math.floor((ageSeconds % 3_600) / 60);
+    return minutes > 0 ? `${hours}h ${minutes}m ago` : `${hours}h ago`;
+  }
+  const days = Math.floor(ageSeconds / 86_400);
+  const hours = Math.floor((ageSeconds % 86_400) / 3_600);
+  return hours > 0 ? `${days}d ${hours}h ago` : `${days}d ago`;
+}
+
 export function truncateIdentifier(value: string, head = 10, tail = 8): string {
   if (value.length <= head + tail + 3) return value;
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
