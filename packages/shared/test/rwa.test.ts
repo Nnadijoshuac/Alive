@@ -141,14 +141,28 @@ describe("RWA asset provenance", () => {
     expect(parsed.extraction?.mode).toBe("DEMO_FIXTURE");
   });
 
-  it("parses the catalog fixture and keeps it explicitly demo-only", () => {
+  // The catalog is a mixed SNAPSHOT, not a pure demo catalog: ttbill-b
+  // carries its real, sourced identity and dataMode LIVE from boot (no
+  // synthetic fallback), while every other entry stays an explicitly
+  // labelled DEMO fixture.
+  it("parses the catalog fixture: mixed real+demo, ttbill-b real and every other asset explicitly demo", () => {
     const fixturePath = fileURLToPath(
       new URL("../../../data/rwa-catalog/catalog.demo.json", import.meta.url),
     );
     const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as unknown;
     const catalog = RwaCatalogSchema.parse(fixture);
-    expect(catalog.dataMode).toBe("DEMO");
-    expect(catalog.disclaimer).toMatch(/NOT LIVE MARKET DATA/i);
+    expect(catalog.dataMode).toBe("SNAPSHOT");
     expect(catalog.assets.length).toBeGreaterThanOrEqual(8);
+
+    const ttbillB = catalog.assets.find((asset) => asset.id === "ttbill-b");
+    expect(ttbillB?.dataMode).toBe("LIVE");
+    expect(ttbillB?.sources.some((source) => source.sourceType === "DEMO_FIXTURE")).toBe(false);
+
+    const otherAssets = catalog.assets.filter((asset) => asset.id !== "ttbill-b");
+    expect(otherAssets.length).toBeGreaterThanOrEqual(7);
+    for (const asset of otherAssets) {
+      expect(asset.dataMode).toBe("DEMO");
+      expect(asset.sources.some((source) => source.sourceType === "DEMO_FIXTURE")).toBe(true);
+    }
   });
 });

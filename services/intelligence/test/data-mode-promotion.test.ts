@@ -95,11 +95,55 @@ function ttbillBWireResponse() {
 }
 
 describe("data-mode promotion", () => {
-  it("ttbill-b starts DEMO before any real analysis", async () => {
+  // ttbill-b's catalog seed carries its real, sourced identity (Invesco
+  // Short Duration US Government Securities Fund / Invesco Advisers, Inc.)
+  // from boot -- never the old synthetic "Test Treasury Fund B" fixture,
+  // even before the Analyze flow runs a fresh AI extraction.
+  it("ttbill-b starts with its real identity and real sources, never a demo fixture", async () => {
     const catalog = await loadRwaCatalog(catalogPath);
     const asset = catalog.assets.find((a) => a.id === "ttbill-b");
-    expect(asset?.dataMode).toBe("DEMO");
-    expect(asset?.sources.some((s) => s.sourceType === "DEMO_FIXTURE")).toBe(true);
+    expect(asset?.dataMode).toBe("LIVE");
+    expect(asset?.name).toBe("Invesco Short Duration US Government Securities Fund");
+    expect(asset?.issuerName).toBe("Invesco Advisers, Inc.");
+    expect(asset?.sources.some((s) => s.sourceType === "DEMO_FIXTURE")).toBe(false);
+    expect(asset?.sources.some((s) => s.sourceType === "ISSUER_DOCUMENTATION")).toBe(true);
+  });
+
+  it("GET /api/assets/ttbill-b never returns the old synthetic identity, before or after analysis", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const app = await buildIntelligenceApp(baseConfig(), {
+      repository,
+      catalog,
+      llm: mockGroqProvider(() => ttbillBWireResponse()),
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+
+    // Before any analysis: real catalog-seeded identity, not "Test
+    // Treasury Fund B" / DEMO_FIXTURE.
+    const before = await app.inject({ method: "GET", url: "/api/assets/ttbill-b" });
+    expect(before.statusCode).toBe(200);
+    const beforeBody = before.json() as { asset: { name: string; dataMode: string } };
+    expect(beforeBody.asset.name).toBe("Invesco Short Duration US Government Securities Fund");
+    expect(beforeBody.asset.dataMode).toBe("LIVE");
+
+    // After analysis: the persisted, freshly-extracted passport wins --
+    // still the same real identity, now with full AI-extracted facts too.
+    await app.inject({
+      method: "POST",
+      url: "/api/assets/ttbill-b/ingest-official-sources",
+    });
+    await app.inject({ method: "POST", url: "/api/assets/ttbill-b/extract" });
+    const after = await app.inject({ method: "GET", url: "/api/assets/ttbill-b" });
+    expect(after.statusCode).toBe(200);
+    const afterBody = after.json() as { asset: { name: string; dataMode: string } };
+    expect(afterBody.asset.name).toBe("Invesco Short Duration US Government Securities Fund");
+    expect(afterBody.asset.dataMode).toBe("LIVE");
+
+    await app.close();
   });
 
   it("promotes ttbill-b to LIVE after real sources + real AI extraction, with no DEMO_FIXTURE remaining", async () => {

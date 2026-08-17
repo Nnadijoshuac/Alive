@@ -14,11 +14,22 @@ export type AssetSummary = {
 };
 
 /**
- * One shared fetch for every page that needs a table of "all monitored
- * assets + their current status" (Overview's watchlist strip, Explore).
- * The catalog is small (~8 assets today), so N parallel eligibility
- * fetches client-side is simpler and cheaper than a new backend endpoint
- * -- avoids introducing an aggregate API purely for frontend convenience.
+ * Overview/Explore show only assets with a genuine real-world identity and
+ * real sources -- not the synthetic demo catalog. ttbill-b is the only
+ * asset that currently qualifies (real Superstate/Invesco documentation,
+ * real Chainlink NAV). The other 7 catalog entries remain reachable by ID
+ * (they still back the Attack Lab / policy-compiler test harness), just
+ * not surfaced as if they were real, investable products. A smaller real
+ * list is preferred over a larger fabricated-looking one.
+ */
+export const REAL_CATALOG_ASSET_IDS = new Set(["ttbill-b"]);
+
+/**
+ * One shared fetch for every page that needs a table of "all real assets +
+ * their current status" (Overview's watchlist strip, Explore). The catalog
+ * is small, so N parallel eligibility fetches client-side is simpler and
+ * cheaper than a new backend endpoint -- avoids introducing an aggregate
+ * API purely for frontend convenience.
  */
 export async function listAssetSummaries(): Promise<AssetSummary[]> {
   const [{ assets }, marketResult] = await Promise.all([
@@ -29,8 +40,10 @@ export async function listAssetSummaries(): Promise<AssetSummary[]> {
     (marketResult?.quotes ?? []).map((quote) => [quote.assetId, quote]),
   );
 
+  const realAssets = assets.filter((asset) => REAL_CATALOG_ASSET_IDS.has(asset.id));
+
   return Promise.all(
-    assets.map(async (asset) => {
+    realAssets.map(async (asset) => {
       const quote = quotesById.get(asset.id);
       try {
         const { verdict } = await getAssetEligibility(asset.id);

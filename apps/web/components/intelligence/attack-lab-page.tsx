@@ -9,11 +9,10 @@ import {
   ProhibitIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react";
-import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
+import type { EligibilityVerdict } from "@alive/shared";
 import {
   extractAssetPassport,
   getAssetEligibility,
-  getRwaAsset,
   listRwaMarkets,
   resetDemoOverrides,
   runGatewayProof,
@@ -39,7 +38,6 @@ function explorerUrl(txHash: string): string {
 }
 
 export function AttackLabPage() {
-  const [asset, setAsset] = useState<RwaAsset>();
   const [quote, setQuote] = useState<RwaMarketQuote>();
   const [verdict, setVerdict] = useState<EligibilityVerdict>();
   const [gateway, setGateway] = useState<GatewayProofResult>();
@@ -51,12 +49,10 @@ export function AttackLabPage() {
   const [attacked, setAttacked] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [passport, markets, eligibility] = await Promise.all([
-      getRwaAsset(ATTACK_ASSET_ID),
+    const [markets, eligibility] = await Promise.all([
       listRwaMarkets(),
       getAssetEligibility(ATTACK_ASSET_ID),
     ]);
-    setAsset(passport.asset);
     setQuote(markets.quotes.find((q) => q.assetId === ATTACK_ASSET_ID));
     setVerdict(eligibility.verdict);
     return eligibility.verdict;
@@ -205,8 +201,8 @@ export function AttackLabPage() {
       <div className={styles.assetCard}>
         <div className={styles.assetIdentity}>
           <span className={styles.assetSymbol}>TTBILL-A</span>
-          <span className={styles.assetName}>{asset?.name ?? "Tokenized Treasury Demo"}</span>
-          <span className={styles.demoBadge}>Demo data</span>
+          <span className={styles.assetName}>X Layer Testnet Enforcement Harness</span>
+          <span className={styles.demoBadge}>Testnet harness — not a real asset</span>
         </div>
         {quote ? (
           <div className={styles.stateGrid}>

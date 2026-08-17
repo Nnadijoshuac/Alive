@@ -184,9 +184,15 @@ async function optimizationInput(
     catalog.assets.map((asset) => asset.id),
   );
   repository.saveQuotes(quotes, asOf);
+  // The snapshot's dataMode must match every quote's own dataMode (schema
+  // invariant), which is a property of the market-data provider that
+  // fetched them -- not of the catalog. A mixed catalog (ttbill-b LIVE,
+  // the rest DEMO) means catalog.dataMode ("SNAPSHOT") is no longer a
+  // reliable stand-in for what the quotes actually are.
+  const quotesDataMode = quotes[0]?.dataMode ?? catalog.dataMode;
   const snapshot = MarketSnapshotSchema.parse({
     version: 1,
-    dataMode: catalog.dataMode,
+    dataMode: quotesDataMode,
     capturedAt: asOf,
     quotes,
   });

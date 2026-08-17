@@ -14,7 +14,10 @@ export function createDemoEligibilityPolicy(): EligibilityPolicy {
     approvedIssuers: [
       "demo-cash-issuer",
       "demo-treasury-issuer-a",
-      "demo-treasury-issuer-b",
+      // ttbill-b's real issuer, per its actual Superstate/Invesco source
+      // documentation -- not a demo placeholder. See
+      // data/rwa-catalog/catalog.demo.json.
+      "invesco-advisers",
       "demo-treasury-issuer-c",
       "demo-gold-issuer",
       "demo-equity-issuer",

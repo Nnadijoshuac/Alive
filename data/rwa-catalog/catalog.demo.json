@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "catalogId": "alive-rwa-demo-2026-08-14",
-  "label": "ALIVE synthetic RWA catalog",
-  "dataMode": "DEMO",
+  "label": "ALIVE RWA catalog",
+  "dataMode": "SNAPSHOT",
   "asOf": "2026-08-14T12:00:00.000Z",
-  "disclaimer": "DEMO DATA — NOT LIVE MARKET DATA. These synthetic products, issuers, yields, risk scores, liquidity scores, and prices exist only to exercise ALIVE locally and on testnet. They are not investment products or investment advice.",
+  "disclaimer": "MIXED CATALOG. ttbill-b is backed by real Superstate/Invesco source documents and live Chainlink data -- see its own dataMode and sources. Every other asset in this catalog (tusdc, ttbill-a, ttbill-c, tgold, tsp500, tnvda, taapl) is DEMO DATA -- NOT LIVE MARKET DATA, synthetic products/issuers/yields/risk scores/liquidity scores/prices that exist only to exercise ALIVE locally and on testnet. Check each asset's own dataMode and sources before treating any figure as real.",
   "assets": [
     {
       "id": "tusdc",
@@ -131,18 +131,13 @@
     {
       "id": "ttbill-b",
       "symbol": "tTBILL-B",
-      "name": "Test Treasury Fund B",
+      "name": "Invesco Short Duration US Government Securities Fund",
       "assetClass": "TREASURY",
-      "issuer": "demo-treasury-issuer-b",
-      "issuerName": "ALIVE Demo Treasury Issuer B",
-      "underlying": "Synthetic overnight Treasury repo reference basket",
-      "yield": {
-        "type": "Synthetic snapshot estimate",
-        "estimatedAprBps": 455
-      },
+      "issuer": "invesco-advisers",
+      "issuerName": "Invesco Advisers, Inc.",
+      "underlying": "Short-duration U.S. Treasury Bills",
       "liquidity": {
-        "score": 97,
-        "redemptionWindow": "Immediate in MockRwaRouter"
+        "score": 97
       },
       "risk": {
         "score": 16,
@@ -152,27 +147,38 @@
         "oracleRisk": 18,
         "redemptionRisk": 10,
         "productComplexityRisk": 11,
-        "methodology": "ALIVE_DEMO_RISK_V1"
+        "methodology": "ALIVE_RISK_V1"
       },
-      "marketHours": { "type": "ALWAYS_OPEN" },
-      "restrictions": ["Demo token only", "No claim on US Treasuries"],
+      "restrictions": [
+        "Transfers of Shares are subject to consent requirements and, for Tokenized Shares, automated smart contract controls.",
+        "Tokenized Shares are not listed on any exchange or trading system and may only be transferred through limited peer-to-peer transactions, subject to restrictions."
+      ],
       "sources": [
         {
-          "id": "demo-source-ttbill-b",
-          "title": "ALIVE synthetic demo fixture",
-          "sourceType": "DEMO_FIXTURE",
-          "fixtureId": "alive-rwa-demo-2026-08-14",
-          "retrievedAt": "2026-08-14T12:00:00.000Z",
+          "id": "superstate-catalog-seed-issuer-doc",
+          "title": "Invesco USTB | Superstate (docs.superstate.com)",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.superstate.com/investors/tokenized-funds/available-funds/invesco-ustb",
+          "retrievedAt": "2026-08-17T00:00:00.000Z",
           "supportedFields": [
+            "symbol",
+            "name",
             "assetClass",
             "issuer",
             "issuerName",
-            "lastUpdatedAt",
-            "liquidity.redemptionWindow",
-            "liquidity.score",
-            "marketHours.type",
-            "name",
+            "underlying",
             "restrictions",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "alive-methodology-ttbill-b",
+          "title": "ALIVE risk & liquidity methodology",
+          "sourceType": "ALIVE_METHODOLOGY",
+          "methodology": "ALIVE_RISK_V1",
+          "retrievedAt": "2026-08-17T00:00:00.000Z",
+          "supportedFields": [
+            "liquidity.score",
             "risk.issuerRisk",
             "risk.liquidityRisk",
             "risk.marketRisk",
@@ -180,17 +186,13 @@
             "risk.oracleRisk",
             "risk.productComplexityRisk",
             "risk.redemptionRisk",
-            "risk.score",
-            "symbol",
-            "underlying",
-            "yield.estimatedAprBps",
-            "yield.type"
+            "risk.score"
           ],
-          "disclaimer": "Synthetic fixture; not live market data."
+          "disclaimer": "ALIVE's own computed risk and liquidity methodology output -- not a claim from any third-party document."
         }
       ],
       "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
-      "dataMode": "DEMO"
+      "dataMode": "LIVE"
     },
     {
       "id": "ttbill-c",

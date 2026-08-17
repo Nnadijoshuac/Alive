@@ -225,7 +225,7 @@ export function promoteAssetIfGenuinelyLive(
       id: source.id,
       title: "ALIVE risk & liquidity methodology",
       sourceType: "ALIVE_METHODOLOGY" as const,
-      methodology: "ALIVE_DEMO_RISK_V1",
+      methodology: passport.risk.methodology,
       retrievedAt: source.retrievedAt,
       supportedFields: source.supportedFields,
       disclaimer:

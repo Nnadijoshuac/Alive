@@ -23,6 +23,7 @@ import {
   dataStatus,
   eligibilityStatus,
   listAssetSummaries,
+  REAL_CATALOG_ASSET_IDS,
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
 import { recordActivity } from "@/lib/activity-log";
@@ -72,7 +73,9 @@ export function OverviewPage() {
 
   useEffect(() => {
     listRwaAssets()
-      .then((result) => setCatalog(result.assets))
+      .then((result) =>
+        setCatalog(result.assets.filter((asset) => REAL_CATALOG_ASSET_IDS.has(asset.id))),
+      )
       .catch(() => setCatalog([]));
     listAssetSummaries()
       .then(setSummaries)

@@ -187,7 +187,11 @@ describe("intelligence API", () => {
     expect(health.json()).toMatchObject({
       llm: { mode: "OFFLINE" },
       marketData: { dataMode: "DEMO" },
-      catalog: { assetCount: 8, dataMode: "DEMO" },
+      // SNAPSHOT, not DEMO: the catalog is mixed -- ttbill-b carries its
+      // real, sourced identity from boot, the rest remain synthetic demo
+      // fixtures. Each asset's own dataMode is authoritative, not the
+      // catalog-wide label.
+      catalog: { assetCount: 8, dataMode: "SNAPSHOT" },
     });
 
     const compile = await app.inject({
@@ -206,7 +210,10 @@ describe("intelligence API", () => {
     expect(optimize.statusCode).toBe(201);
     expect(optimize.json()).toMatchObject({
       proposal: { feasible: true, calculation: { allocationTotalBps: 10_000 } },
-      dataMode: "DEMO",
+      // SNAPSHOT, matching the catalog-level label of this mixed catalog
+      // (see the /health assertion above) -- the quotes actually used for
+      // this calculation are still uniformly DEMO from DemoMarketDataProvider.
+      dataMode: "SNAPSHOT",
     });
 
     const attack = await app.inject({
@@ -245,7 +252,7 @@ describe("intelligence API", () => {
     expect(rebalance.statusCode).toBe(201);
     expect(rebalance.json()).toMatchObject({
       rebalance: { feasible: true, drift: { withinPolicy: false } },
-      dataMode: "DEMO",
+      dataMode: "SNAPSHOT",
     });
 
     await app.close();
