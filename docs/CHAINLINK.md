@@ -145,13 +145,54 @@ future change could quietly break.
 
 ## Continuous monitoring
 
-`MarketMonitor` (`services/intelligence/src/monitoring/`) re-reads each
-asset, records an observation, re-runs eligibility, and decides whether the
-onchain verdict must change.
+`MarketMonitor` (`services/intelligence/src/monitoring/market-monitor.ts`)
+re-reads each asset, records an observation, re-runs eligibility, and decides
+whether the onchain verdict must change. `MonitorService`
+(`services/intelligence/src/monitoring/service.ts`) is what actually runs it:
+a persistent worker inside the intelligence service process, not just a
+testable class.
 
-It decides but does not broadcast. It returns a decision and the caller owns
-the key and the transaction, which keeps the loop testable without a chain
-and keeps signing authority in one place.
+Enable it with:
+
+```dotenv
+MARKET_DATA_PROVIDER=chainlink
+MARKET_MONITOR_ENABLED=true
+MARKET_MONITOR_INTERVAL_SECONDS=300
+```
+
+`MARKET_DATA_PROVIDER=chainlink` selects the free on-chain feed path
+(`ChainlinkDataFeedProvider` behind `CompositeMarketDataProvider`) -- this is
+distinct from `MARKET_DATA_PROVIDER=chainlink-streams`, the legacy paid Data
+Streams adapter kept only for callers that already configured it. The
+monitor starts after market-data and the app are constructed, registers
+every Chainlink-backed asset (override with `MARKET_MONITOR_ASSET_IDS`),
+begins the poll loop, and stops cleanly on `SIGINT`/`SIGTERM` -- the current
+cycle finishes, the timer is cleared, no orphan loop survives a restart.
+Calling start twice is a no-op: there is one loop per process, never one per
+asset per start call. `MARKET_MONITOR_INTERVAL_SECONDS` enforces a 30-second
+floor; the production default stays 300s.
+
+Two health endpoints expose what the worker is actually doing, not just that
+the process is up:
+
+- `GET /api/monitor/status` -- enabled, running, health
+  (`ACTIVE`/`DEGRADED`/`ERROR`/`DISABLED`), interval, cycle timestamps,
+  monitored assets, cumulative successful/failed read counts.
+- `GET /api/assets/:assetId/monitor` -- per-asset provider, latest value,
+  Chainlink source timestamp, ALIVE's own last-checked timestamp, age,
+  freshness, current eligibility, and the last error if the asset's most
+  recent read failed. `DEGRADED` means some monitored assets failed their
+  last read while others succeeded; `ERROR` means all of them did. A failed
+  read never gets reported as healthy just because the process is alive.
+
+It decides but does not broadcast. `MarketMonitor.check()` returns a
+decision; `MonitorService` signs it into an EIP-712 attestation with the
+existing `EligibilitySigner` when a publish is warranted and a signer key is
+configured, and records ALIVE's own last-published state so the next cycle's
+comparison does not require an extra chain read. It never holds or uses a
+key to broadcast a transaction itself -- sending the signed attestation
+onchain stays a separate, later step with its own authorized component, the
+same separation of concerns the class already had.
 
 **Publish rule**, so polling never spams the chain:
 

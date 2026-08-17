@@ -45,6 +45,7 @@ import {
   ingestDocument,
 } from "./ingestion/ingestion-service.js";
 import type { LlmJsonProvider } from "./llm.js";
+import type { MonitorService } from "./monitoring/service.js";
 import { IntelligenceRepository } from "./repository.js";
 
 const CompileBodySchema = z
@@ -120,6 +121,8 @@ export type IntelligenceAppDependencies = {
   llm: LlmJsonProvider;
   marketData: MarketDataProvider;
   eligibilitySigner: EligibilitySigner;
+  /** Absent when MARKET_MONITOR_ENABLED is not set -- the routes then report a disabled monitor rather than 404ing. */
+  monitorService?: MonitorService;
   now?: () => Date;
 };
 
@@ -423,6 +426,41 @@ export async function buildIntelligenceApp(
             }
           : undefined,
         disclaimer: dependencies.catalog.disclaimer,
+      };
+    },
+  );
+
+  app.get("/api/monitor/status", async () => ({
+    monitor: dependencies.monitorService
+      ? dependencies.monitorService.status()
+      : {
+          enabled: false,
+          running: false,
+          health: "DISABLED" as const,
+          intervalSeconds: config.marketMonitorIntervalSeconds,
+          monitoredAssets: [],
+          successfulReads: 0,
+          failedReads: 0,
+        },
+  }));
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/monitor",
+    async (request, reply) => {
+      const asset = dependencies.repository.getAsset(request.params.assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset was not found.",
+          },
+        };
+      }
+      return {
+        monitor: dependencies.monitorService
+          ? dependencies.monitorService.assetStatus(request.params.assetId)
+          : { assetId: request.params.assetId, monitoring: false },
       };
     },
   );

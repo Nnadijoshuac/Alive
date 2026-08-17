@@ -38,6 +38,7 @@ const config: IntelligenceConfig = {
   eligibilitySigner: { ttlSeconds: 900 },
   demoMode: false,
   marketMonitorIntervalSeconds: 300,
+  marketMonitorEnabled: false,
 };
 
 /** Same config with the DEMO_MODE-gated /api/demo/* controls registered. */

@@ -204,6 +204,22 @@ const MIGRATIONS = [
         ON market_observations(asset_id, observed_at DESC);
     `,
   },
+  {
+    version: 5,
+    sql: `
+      -- The monitor's own record of the last verdict it published for each
+      -- asset. Read back on the next cycle to decide whether the status
+      -- actually changed, without depending on an RPC read of the registry.
+      CREATE TABLE IF NOT EXISTS published_verdicts (
+        asset_id TEXT PRIMARY KEY,
+        status TEXT NOT NULL,
+        valid_until TEXT NOT NULL,
+        published_at TEXT NOT NULL,
+        transaction_hash TEXT,
+        digest TEXT
+      ) STRICT;
+    `,
+  },
 ] as const;
 
 export type PolicyRecord = CompiledPolicy & {
@@ -404,6 +420,37 @@ function rowToObservation(row: MarketObservationRow): MarketObservationRecord {
     ...(row.reason_codes_json !== null
       ? { reasonCodes: JSON.parse(row.reason_codes_json) as string[] }
       : {}),
+  };
+}
+
+export type PublishedVerdictRecord = {
+  assetId: string;
+  status: string;
+  validUntil: string;
+  publishedAt: string;
+  transactionHash?: string;
+  digest?: string;
+};
+
+type PublishedVerdictRow = {
+  asset_id: string;
+  status: string;
+  valid_until: string;
+  published_at: string;
+  transaction_hash: string | null;
+  digest: string | null;
+};
+
+function rowToPublishedVerdict(row: PublishedVerdictRow): PublishedVerdictRecord {
+  return {
+    assetId: row.asset_id,
+    status: row.status,
+    validUntil: row.valid_until,
+    publishedAt: row.published_at,
+    ...(row.transaction_hash !== null
+      ? { transactionHash: row.transaction_hash }
+      : {}),
+    ...(row.digest !== null ? { digest: row.digest } : {}),
   };
 }
 
@@ -1016,6 +1063,44 @@ export class IntelligenceRepository {
       )
       .get(assetId) as { total: number };
     return row.total;
+  }
+
+  savePublishedVerdict(record: PublishedVerdictRecord): void {
+    this.#database
+      .prepare(
+        `
+        INSERT INTO published_verdicts (
+          asset_id, status, valid_until, published_at, transaction_hash, digest
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(asset_id) DO UPDATE SET
+          status = excluded.status,
+          valid_until = excluded.valid_until,
+          published_at = excluded.published_at,
+          transaction_hash = excluded.transaction_hash,
+          digest = excluded.digest
+      `,
+      )
+      .run(
+        record.assetId,
+        record.status,
+        record.validUntil,
+        record.publishedAt,
+        record.transactionHash ?? null,
+        record.digest ?? null,
+      );
+  }
+
+  latestPublishedVerdict(assetId: string): PublishedVerdictRecord | undefined {
+    const row = this.#database
+      .prepare(
+        `
+        SELECT asset_id, status, valid_until, published_at, transaction_hash, digest
+        FROM published_verdicts
+        WHERE asset_id = ?
+      `,
+      )
+      .get(assetId) as PublishedVerdictRow | undefined;
+    return row ? rowToPublishedVerdict(row) : undefined;
   }
 
   tableNames(): string[] {

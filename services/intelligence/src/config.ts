@@ -45,16 +45,23 @@ export type IntelligenceConfig = {
    * load while finding nothing.
    */
   marketMonitorIntervalSeconds: number;
+  /**
+   * Whether the persistent monitor worker starts with the service. Off by
+   * default so a plain `pnpm start` never spins up a background polling
+   * loop the operator did not ask for.
+   */
+  marketMonitorEnabled: boolean;
 };
 
 function positiveInteger(
   value: string | undefined,
   fallback: number,
   name: string,
+  minimum = 1,
 ): number {
   const parsed = value === undefined ? fallback : Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0)
-    throw new Error(`${name} must be a positive integer`);
+  if (!Number.isInteger(parsed) || parsed < minimum)
+    throw new Error(`${name} must be an integer >= ${minimum}`);
   return parsed;
 }
 
@@ -152,7 +159,10 @@ export function loadIntelligenceConfig(
       environment.MARKET_MONITOR_INTERVAL_SECONDS,
       300,
       "MARKET_MONITOR_INTERVAL_SECONDS",
+      30,
     ),
+    marketMonitorEnabled:
+      environment.MARKET_MONITOR_ENABLED?.trim().toLowerCase() === "true",
   };
 }
 
