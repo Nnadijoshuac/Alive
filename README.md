@@ -70,6 +70,35 @@ Being precise about this matters more than sounding impressive.
 ALIVE never presents demo data as live. Degraded or synthetic quotes stay
 labelled `DEMO` end to end.
 
+### Live today
+
+- Groq AI document extraction (real official Superstate/Invesco USTB
+  documents for `ttbill-b`, cited facts, schema-validated)
+- Source/citation validation (every extracted fact traces to a supplied
+  source; unsupported claims are rejected, not guessed)
+- Real Chainlink NAV, Proof-of-Reserve, and AUM feeds (USTB, OpenEden
+  TBILL, Kinesis KAU, Cap cUSD) with persistent monitoring
+- Deterministic eligibility evaluation, with a real DEMO → LIVE promotion
+  once an asset has genuinely been analyzed from real sources
+- X Layer Testnet enforcement (`AliveVault.depositEligibleAsset`, proven
+  with real transactions)
+- Attack Lab (adversarial policy-allocation testing against the
+  deterministic policy evaluator)
+
+### Not yet connected
+
+- Macroeconomic intelligence (unemployment, GDP, rate data)
+- News / event monitoring
+- Equity fundamentals beyond the demo catalog
+- Outlook / prediction modeling — the Asset Intelligence page has a UI
+  slot for this and always shows "Not evaluated," never a fabricated
+  number
+- Continuous AI document-change monitoring (re-analysis is triggered
+  manually today, not on a schedule)
+
+These are roadmap ideas, not shipped features — do not read the "Live
+today" list as complete coverage of ALIVE's eventual product surface.
+
 ## Current status
 
 | Product line                    | Status                    | Boundary                                                                                                     |
