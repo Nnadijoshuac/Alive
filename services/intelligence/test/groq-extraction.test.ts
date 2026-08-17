@@ -14,6 +14,7 @@ import {
   buildStrictExtractionJsonSchema,
   strictResponseToCandidate,
 } from "../src/extraction/strict-schema.js";
+import { validateExtractedFacts } from "../src/extraction/extraction-validator.js";
 import { ingestDocument } from "../src/ingestion/ingestion-service.js";
 import { IntelligenceRepository } from "../src/repository.js";
 
@@ -154,7 +155,7 @@ describe("strict JSON-schema wire adapter", () => {
     const candidate = strictResponseToCandidate(wire) as Record<string, unknown>;
     expect(candidate.issuerName).toBe("Superstate");
     expect(candidate.redemption).toMatchObject({
-      supported: "true",
+      supported: true,
       frequency: "Continuous",
     });
     expect(candidate.restrictions).toEqual([
@@ -176,6 +177,112 @@ describe("strict JSON-schema wire adapter", () => {
     expect(candidate.marketHours).toBeUndefined();
     expect(candidate.jurisdiction).toBeUndefined();
     expect(candidate.restrictions).toBeUndefined();
+  });
+
+  // Regression test for a real failure: a live GroqCloud response, captured
+  // verbatim (only sourceIds are the real ones from the ttbill-b documents;
+  // no secret material), reached this exact shape and
+  // validateExtractedFacts rejected it with "Expected boolean, received
+  // string" at redemption.supported. Fails before the redemptionSupported
+  // string->boolean conversion in strictResponseToCandidate; passes after.
+  it("regression: a real Groq strict response with redemptionSupported='true' validates cleanly", () => {
+    const realWireResponse = {
+      productName: {
+        value: "Invesco Short Duration US Government Securities Fund",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      assetClass: {
+        value: "CREDIT",
+        sourceIds: ["superstate-docs-invesco-ustb-2026-08-17"],
+      },
+      issuerName: {
+        value: "Invesco Advisers, Inc.",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      underlying: {
+        value: "short-duration U.S. Treasury Bills",
+        sourceIds: ["superstate-docs-invesco-ustb-2026-08-17"],
+      },
+      jurisdiction: {
+        value: "United States",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      eligibleInvestors: {
+        value: "Accredited Investors and Qualified Purchasers",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      custody: {
+        value: "The Bank of New York Mellon",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      documentEffectiveDate: { value: null, sourceIds: [] },
+      redemptionSupported: {
+        value: "true",
+        sourceIds: [
+          "superstate-docs-invesco-ustb-2026-08-17",
+          "superstate-product-page-ustb-2026-08-17",
+        ],
+      },
+      redemptionFrequency: {
+        value: "Same-day",
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      redemptionSettlementPeriod: {
+        value: "Immediate (including non-business days, subject to available liquidity)",
+        sourceIds: [
+          "superstate-docs-invesco-ustb-2026-08-17",
+          "superstate-product-page-ustb-2026-08-17",
+        ],
+      },
+      redemptionMinimum: { value: null, sourceIds: [] },
+      managementFeeBps: {
+        value: 15,
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+      redemptionFeeBps: { value: null, sourceIds: [] },
+      marketHoursType: {
+        value: "TRADITIONAL_MARKET",
+        sourceIds: ["superstate-docs-invesco-ustb-2026-08-17"],
+      },
+      restrictions: {
+        value: [
+          "Transfers of Shares are subject to consent requirements and, for Tokenized Shares, automated smart contract controls.",
+          "Tokenized Shares are not listed on any exchange or trading system and may only be transferred through limited peer-to-peer transactions, subject to restrictions.",
+        ],
+        sourceIds: ["superstate-product-page-ustb-2026-08-17"],
+      },
+    };
+
+    const candidate = strictResponseToCandidate(realWireResponse);
+    const availableSourceIds = [
+      "superstate-docs-invesco-ustb-2026-08-17",
+      "superstate-product-page-ustb-2026-08-17",
+    ];
+
+    const facts = validateExtractedFacts(candidate, availableSourceIds);
+    expect(facts.redemption?.supported).toBe(true);
+    expect(typeof facts.redemption?.supported).toBe("boolean");
+    expect(facts.assetClass).toBe("CREDIT");
+    expect(facts.fees?.managementFeeBps).toBe(15);
+    expect(facts.restrictions).toHaveLength(2);
+  });
+
+  it("normalizes a bare document-effective-date to a full ISO datetime", () => {
+    const candidate = strictResponseToCandidate(
+      fullStrictWireResponse({
+        documentEffectiveDate: { value: "2026-08-17", sourceIds: ["demo-doc-tusdc"] },
+      }),
+    ) as Record<string, unknown>;
+    expect(candidate.documentEffectiveDate).toBe("2026-08-17T00:00:00Z");
+  });
+
+  it("drops an unparseable document-effective-date rather than pass a malformed value through", () => {
+    const candidate = strictResponseToCandidate(
+      fullStrictWireResponse({
+        documentEffectiveDate: { value: "sometime in 2026", sourceIds: ["demo-doc-tusdc"] },
+      }),
+    ) as Record<string, unknown>;
+    expect(candidate.documentEffectiveDate).toBeUndefined();
   });
 });
 

@@ -32,14 +32,19 @@ const SCALAR_FACT_FIELDS = [
 ] as const;
 type ScalarFactField = (typeof SCALAR_FACT_FIELDS)[number];
 
-const NUMBER_FIELDS = new Set<ScalarFactField>([
-  "redemptionMinimum",
-  "managementFeeBps",
-  "redemptionFeeBps",
-]);
+/** Maps onto RwaRedemptionSchema.minimum (z.number().nonnegative()) -- any
+ * non-negative number, not necessarily an integer. */
+const GENERIC_NUMBER_FIELDS = new Set<ScalarFactField>(["redemptionMinimum"]);
+/** Maps onto BasisPointsSchema (z.number().int().min(0).max(10_000)) --
+ * requesting an integer with bounds up front reduces (not replaces) the
+ * chance Groq emits a value the Zod schema will reject. */
+const BPS_FIELDS = new Set<ScalarFactField>(["managementFeeBps", "redemptionFeeBps"]);
 
 function scalarValueSchema(field: ScalarFactField): Record<string, unknown> {
-  if (NUMBER_FIELDS.has(field)) return { type: ["number", "null"] };
+  if (BPS_FIELDS.has(field)) {
+    return { type: ["integer", "null"], minimum: 0, maximum: 10_000 };
+  }
+  if (GENERIC_NUMBER_FIELDS.has(field)) return { type: ["number", "null"] };
   if (field === "assetClass") {
     return { type: ["string", "null"], enum: [...AssetClassSchema.options, null] };
   }
@@ -116,6 +121,24 @@ function scalar(
 }
 
 /**
+ * IsoDateSchema (`@alive/shared`) requires a full ISO 8601 datetime with an
+ * offset (e.g. "2026-08-17T00:00:00Z"), but a document's own "effective
+ * date" is naturally expressed as a bare calendar date. Normalizes a bare
+ * date to midnight UTC; leaves an already-full datetime as-is; anything
+ * else is treated as unparseable and the field is dropped -- UNKNOWN, per
+ * ALIVE's own rule, rather than a guessed or malformed value reaching Zod.
+ */
+function normalizeIsoDate(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return `${trimmed}T00:00:00Z`;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/u.test(trimmed)) {
+    return trimmed;
+  }
+  return undefined;
+}
+
+/**
  * Reassembles the flat, strict-mode wire response into the same candidate
  * shape (`{productName?, redemption?, fees?, ..., citations}`) the
  * non-strict prompt path produces, so both paths converge on one
@@ -135,7 +158,6 @@ export function strictResponseToCandidate(wire: unknown): unknown {
     ["jurisdiction", "jurisdiction"],
     ["eligibleInvestors", "eligibleInvestors"],
     ["custody", "custody"],
-    ["documentEffectiveDate", "documentEffectiveDate"],
   ];
   for (const [wireField, candidateField] of direct) {
     const fact = scalar(w, wireField);
@@ -145,12 +167,29 @@ export function strictResponseToCandidate(wire: unknown): unknown {
     }
   }
 
+  const documentEffectiveDate = scalar(w, "documentEffectiveDate");
+  if (documentEffectiveDate) {
+    const normalized = normalizeIsoDate(documentEffectiveDate.value);
+    if (normalized) {
+      candidate.documentEffectiveDate = normalized;
+      citations.documentEffectiveDate = documentEffectiveDate.sourceIds;
+    }
+    // Unparseable -> silently omitted (UNKNOWN), never handed to Zod as a
+    // guess dressed up as a real date.
+  }
+
   const supported = scalar(w, "redemptionSupported");
   const frequency = scalar(w, "redemptionFrequency");
   const settlementPeriod = scalar(w, "redemptionSettlementPeriod");
   const minimum = scalar(w, "redemptionMinimum");
   if (supported) {
-    const redemption: Record<string, unknown> = { supported: supported.value };
+    // RwaRedemptionSchema.supported is boolean | "unknown" -- the wire value
+    // is always one of the literal strings "true"/"false"/"unknown" (see
+    // scalarValueSchema's enum for this field), never a JSON boolean, so it
+    // must be converted here rather than passed through as a string.
+    const supportedValue =
+      supported.value === "true" ? true : supported.value === "false" ? false : "unknown";
+    const redemption: Record<string, unknown> = { supported: supportedValue };
     if (frequency) redemption.frequency = frequency.value;
     if (settlementPeriod) redemption.settlementPeriod = settlementPeriod.value;
     if (minimum) redemption.minimum = minimum.value;
