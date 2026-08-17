@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { AttackLabWorkspace } from "@/components/rwa/attack-lab-workspace";
+import { AttackLabPage as AttackLabPageComponent } from "@/components/intelligence/attack-lab-page";
 
 export const metadata: Metadata = {
-  title: "Policy Attack Lab",
-  description: "Run adversarial allocations through ALIVE's deterministic policy evaluator.",
+  title: "Attack Lab",
+  description: "Prove ALIVE detects a NAV-staleness failure and X Layer blocks the gated action.",
 };
 
 export default function AttackLabPage() {
-  return <AttackLabWorkspace />;
+  return <AttackLabPageComponent />;
 }
-

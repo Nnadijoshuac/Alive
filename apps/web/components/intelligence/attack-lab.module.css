@@ -1,0 +1,185 @@
+.assetCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  background: var(--paper-2);
+}
+
+.assetIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assetSymbol {
+  color: var(--ink);
+  font: 650 1.05rem/1.2 var(--font-geist-mono), monospace;
+}
+
+.assetName {
+  color: var(--muted-2);
+  font-size: 12.5px;
+}
+
+.demoBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: var(--muted-2);
+  font: 650 10px/1.4 var(--font-geist-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stateGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 28px;
+}
+
+.stateCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stateLabel {
+  color: var(--muted-2);
+  font: 650 10px/1.3 var(--font-geist-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stateValue {
+  color: var(--ink);
+  font: 600 1rem/1.2 var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.stateValuePositive {
+  color: var(--positive);
+}
+
+.stateValueNegative {
+  color: var(--negative);
+}
+
+.scenarioCard {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  background: var(--paper-2);
+}
+
+.scenarioTitle {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 620;
+}
+
+.scenarioDescription {
+  margin: 0 0 18px;
+  color: var(--muted-2);
+  font-size: 13px;
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 18px;
+  color: var(--milk);
+  background: var(--ink);
+  font: 650 13px/1 var(--font-geist-sans), sans-serif;
+  cursor: pointer;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.restoreButton {
+  composes: actionButton;
+  background: var(--positive);
+}
+
+.progressList {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progressList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-2);
+  font-size: 12.5px;
+}
+
+.resultBlock {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  background: var(--paper-2);
+}
+
+.resultBlockRestricted {
+  border-color: rgb(168 64 42 / 0.35);
+  background: var(--negative-bg);
+}
+
+.resultBlockEligible {
+  border-color: rgb(31 122 77 / 0.35);
+  background: var(--positive-bg);
+}
+
+.resultHeading {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.onchainNote {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  color: var(--muted-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.onchainNote code {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11.5px;
+}
+
+@media (max-width: 780px) {
+  .stateGrid,
+  .resultGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

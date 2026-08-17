@@ -765,6 +765,40 @@ export async function publishAssetVerdict(
   };
 }
 
+export type DemoOverrides = Record<string, { ageSeconds?: number }>;
+
+/**
+ * Attack Lab controls. Only ever registered server-side when DEMO_MODE=true,
+ * and only ever able to make a DEMO asset's data worse -- the backend
+ * refuses (409) to degrade a live Chainlink-backed asset like ttbill-b.
+ */
+export async function setDemoNavAge(
+  assetId: string,
+  ageSeconds: number,
+): Promise<DemoOverrides> {
+  const payload = record(
+    await request(`/api/demo/assets/${encodeURIComponent(assetId)}/nav-age`, {
+      method: "POST",
+      body: JSON.stringify({ ageSeconds }),
+    }),
+    "Demo NAV age",
+  );
+  return (payload.overrides ?? {}) as DemoOverrides;
+}
+
+export async function resetDemoOverrides(): Promise<DemoOverrides> {
+  const payload = record(
+    await request("/api/demo/reset", { method: "POST" }),
+    "Demo reset",
+  );
+  return (payload.overrides ?? {}) as DemoOverrides;
+}
+
+export async function getDemoState(): Promise<DemoOverrides> {
+  const payload = record(await request("/api/demo/state"), "Demo state");
+  return (payload.overrides ?? {}) as DemoOverrides;
+}
+
 export async function proposeRwaRebalance(
   policyId: string,
   allocations: Allocation[],

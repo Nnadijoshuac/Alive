@@ -14,6 +14,7 @@ import {
   type RwaExtractionMetadata,
 } from "@alive/shared";
 import {
+  CompositeMarketDataProvider,
   ControllableDemoMarketDataProvider,
   MarketDataError,
   type MarketDataProvider,
@@ -826,16 +827,50 @@ export async function buildIntelligenceApp(
   // violation. They are registered only when DEMO_MODE=true, and they can
   // only ever make demo data worse -- there is no path here that fabricates
   // or improves a quote, and nothing here touches a live provider.
-  if (config.demoMode) {
-    const controllable =
-      dependencies.marketData instanceof ControllableDemoMarketDataProvider
-        ? dependencies.marketData
-        : undefined;
+  //
+  // Two provider shapes need to work here: the bare ControllableDemoMarketDataProvider
+  // (MARKET_DATA_PROVIDER=demo) and CompositeMarketDataProvider
+  // (MARKET_DATA_PROVIDER=chainlink, the config that also serves ttbill-b's
+  // real Chainlink feed). Only the former was ever recognized before, which
+  // meant these controls -- and therefore the Attack Lab -- silently
+  // returned 409 in the exact configuration that also runs the real ttbill-b
+  // showcase. CompositeMarketDataProvider.degrade() already refuses to touch
+  // a live-feed asset (MarketDataError), which both shapes now surface the
+  // same way.
+  type DegradeHandle = {
+    setNavAge: (assetId: string, ageSeconds: number) => void;
+    reset: () => void;
+    list: () => Record<string, { ageSeconds?: number }>;
+  };
 
-    function requireControllable(reply: {
+  function degradeHandle(marketData: MarketDataProvider): DegradeHandle | undefined {
+    if (marketData instanceof CompositeMarketDataProvider) {
+      return {
+        setNavAge: (assetId, ageSeconds) => marketData.degrade(assetId, ageSeconds),
+        reset: () => marketData.clearDegradations(),
+        list: () => marketData.listDegradations(),
+      };
+    }
+    if (marketData instanceof ControllableDemoMarketDataProvider) {
+      return {
+        setNavAge: (assetId, ageSeconds) => {
+          if (ageSeconds === 0) marketData.clearOverride(assetId);
+          else marketData.setOverride(assetId, { ageSeconds });
+        },
+        reset: () => marketData.clearAllOverrides(),
+        list: () => marketData.listOverrides(),
+      };
+    }
+    return undefined;
+  }
+
+  if (config.demoMode) {
+    const handle = degradeHandle(dependencies.marketData);
+
+    function requireHandle(reply: {
       status: (code: number) => unknown;
-    }): ControllableDemoMarketDataProvider | undefined {
-      if (controllable) return controllable;
+    }): DegradeHandle | undefined {
+      if (handle) return handle;
       reply.status(409);
       return undefined;
     }
@@ -843,60 +878,60 @@ export async function buildIntelligenceApp(
     app.post<{ Params: { assetId: string } }>(
       "/api/demo/assets/:assetId/nav-age",
       async (request, reply) => {
-        const provider = requireControllable(reply);
+        const provider = requireHandle(reply);
         if (!provider) {
           return {
             error: {
               code: "DEMO_CONTROLS_UNAVAILABLE",
               message:
-                "The active market-data provider is not the controllable demo provider.",
+                "The active market-data provider does not support demo degradation.",
             },
           };
         }
         const body = DemoNavAgeBodySchema.parse(request.body);
-        if (body.ageSeconds === 0) {
-          provider.clearOverride(request.params.assetId);
-        } else {
-          provider.setOverride(request.params.assetId, {
-            ageSeconds: body.ageSeconds,
-          });
+        try {
+          provider.setNavAge(request.params.assetId, body.ageSeconds);
+        } catch (error) {
+          if (!(error instanceof MarketDataError)) throw error;
+          reply.status(409);
+          return { error: { code: error.code, message: error.message } };
         }
         return {
           assetId: request.params.assetId,
           ageSeconds: body.ageSeconds,
           dataMode: "DEMO",
-          overrides: provider.listOverrides(),
+          overrides: provider.list(),
         };
       },
     );
 
     app.post("/api/demo/reset", async (_request, reply) => {
-      const provider = requireControllable(reply);
+      const provider = requireHandle(reply);
       if (!provider) {
         return {
           error: {
             code: "DEMO_CONTROLS_UNAVAILABLE",
             message:
-              "The active market-data provider is not the controllable demo provider.",
+              "The active market-data provider does not support demo degradation.",
           },
         };
       }
-      provider.clearAllOverrides();
-      return { reset: true, overrides: provider.listOverrides() };
+      provider.reset();
+      return { reset: true, overrides: provider.list() };
     });
 
     app.get("/api/demo/state", async (_request, reply) => {
-      const provider = requireControllable(reply);
+      const provider = requireHandle(reply);
       if (!provider) {
         return {
           error: {
             code: "DEMO_CONTROLS_UNAVAILABLE",
             message:
-              "The active market-data provider is not the controllable demo provider.",
+              "The active market-data provider does not support demo degradation.",
           },
         };
       }
-      return { demoMode: true, overrides: provider.listOverrides() };
+      return { demoMode: true, overrides: provider.list() };
     });
   }
 

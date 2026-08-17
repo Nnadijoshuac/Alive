@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { DemoWorkspace } from "@/components/rwa/demo-workspace";
+import { DemoGuidePage } from "@/components/intelligence/demo-guide-page";
 
 export const metadata: Metadata = {
-  title: "Guided RWA demo",
-  description: "Run the verified local ALIVE mandate, policy, optimizer, rejection, and rebalance flow.",
+  title: "Guided demo",
+  description: "The ALIVE judge flow: a real verified asset, then a controlled failure ALIVE catches and X Layer enforces.",
 };
 
 export default function DemoPage() {
-  return <DemoWorkspace />;
+  return <DemoGuidePage />;
 }
-
