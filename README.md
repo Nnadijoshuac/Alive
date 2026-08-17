@@ -121,6 +121,32 @@ Demo quotes must say `DEMO DATA - NOT LIVE MARKET DATA`. Missing issuer or
 product facts remain `UNKNOWN`. ALIVE does not promise returns, beat the market,
 or describe any investment as risk-free.
 
+## RWA intelligence flow
+
+How a tokenized asset goes from raw source documents to an onchain-enforced
+verdict:
+
+```mermaid
+flowchart LR
+    A[Official issuer docs] --> C[Groq AI extraction]
+    B[Chainlink NAV / price feed] --> F[Live market snapshot]
+    C --> D[Cited facts + schema validation]
+    D --> E[Asset Intelligence]
+    F --> E
+    D --> G[Deterministic eligibility engine]
+    F --> G
+    G --> H[Signed eligibility verdict]
+    H --> E
+    H --> I[X Layer eligibility registry]
+    I --> J[AliveVault enforcement]
+    J --> K[Deposit confirmed or reverted]
+```
+
+Every fact on the Asset Intelligence page cites a real source; the AI never
+decides eligibility — it only proposes facts. A deterministic engine checks
+those facts (plus live price/NAV) against policy and signs a verdict, and the
+vault contract enforces that verdict onchain, independent of the frontend.
+
 ## V2 architecture
 
 ```mermaid
@@ -148,7 +174,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for target boundaries and
 
 | Path                     | Responsibility and current state                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `apps/web`               | Next.js, wagmi/viem, visualization, and transaction UX. V2 route/content rebuild is pending acceptance. |
+| `apps/web`               | Next.js, wagmi/viem, visualization, and transaction UX. RWA intelligence terminal (Overview/Explore/Watchlist/Activity/Asset Intelligence) rebuilt; legacy policy-compiler pages retained under Advanced nav. |
 | `packages/shared`        | Runtime schemas, canonical encoding, policy/RWA/market/strategy types, and shared chain configuration.  |
 | `packages/policy-engine` | Strict policy validation and clearly labelled deterministic mandate fallback.                           |
 | `packages/market-data`   | Tested demo provider plus a fail-closed, server-side Chainlink Data Streams adapter.                    |
