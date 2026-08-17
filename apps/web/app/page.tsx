@@ -1,11 +1,11 @@
 import type { Viewport } from "next";
-import { VerifyHome } from "@/components/canon/verify-home";
+import { OverviewPage } from "@/components/intelligence/overview-page";
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f7f4ee",
   colorScheme: "light",
 };
 
 export default function HomePage() {
-  return <VerifyHome />;
+  return <OverviewPage />;
 }

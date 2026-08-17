@@ -1,0 +1,13 @@
+.filterRow {
+  display: flex;
+  gap: 10px;
+}
+
+.filterRow select {
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 7px 10px;
+  color: var(--ink);
+  background: var(--paper-2);
+  font-size: 12.5px;
+}

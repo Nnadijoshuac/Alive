@@ -1,18 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { AssetPassportWorkspace } from "@/components/rwa/asset-passport-workspace";
+import { AssetIntelligencePage } from "@/components/intelligence/asset-intelligence-page";
 
 export const metadata: Metadata = {
-  title: "RWA asset passport",
-  description: "Inspect known product facts, risk, liquidity, restrictions, quote freshness, and source provenance.",
+  title: "ALIVE Asset Intelligence",
+  description: "What this tokenized asset is, how it's doing, and what ALIVE currently thinks -- with every fact traced to its source.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f7f4ee",
   colorScheme: "light",
 };
 
 export default async function AssetPage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
-  return <AssetPassportWorkspace assetId={assetId} />;
+  return <AssetIntelligencePage assetId={assetId} />;
 }
-
