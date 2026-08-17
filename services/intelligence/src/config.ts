@@ -7,6 +7,7 @@ const workspaceRoot = fileURLToPath(new URL("../../..", import.meta.url));
 export const LlmProviderSchema = z.enum([
   "ollama",
   "openai-compatible",
+  "groq",
   "disabled",
 ]);
 export type LlmProviderName = z.infer<typeof LlmProviderSchema>;
@@ -94,6 +95,21 @@ function optionalUrl(
   return parsed.toString().replace(/\/$/u, "");
 }
 
+/**
+ * GROQ_API_KEY is the documented, provider-specific name; LLM_API_KEY is the
+ * generic fallback so an existing openai-compatible/ollama setup keeps
+ * working unchanged. Never logged, never defaulted to a placeholder.
+ */
+function apiKeyFor(
+  provider: LlmProviderName,
+  environment: NodeJS.ProcessEnv,
+): string | undefined {
+  if (provider === "groq") {
+    return environment.GROQ_API_KEY?.trim() || environment.LLM_API_KEY?.trim();
+  }
+  return environment.LLM_API_KEY?.trim();
+}
+
 export function loadIntelligenceConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): IntelligenceConfig {
@@ -107,7 +123,11 @@ export function loadIntelligenceConfig(
   );
   const baseUrl =
     configuredBaseUrl ??
-    (provider === "ollama" ? "http://127.0.0.1:11434" : undefined);
+    (provider === "ollama"
+      ? "http://127.0.0.1:11434"
+      : provider === "groq"
+        ? "https://api.groq.com/openai/v1"
+        : undefined);
   if (provider !== "disabled" && !model) {
     throw new Error(
       "LLM_MODEL is required when the AI policy compiler is enabled",
@@ -140,19 +160,20 @@ export function loadIntelligenceConfig(
       environment.RWA_SOURCE_DOCUMENTS_PATH ?? "./data/source-documents",
     ),
     allowedOrigins: origins(environment.INTELLIGENCE_ALLOWED_ORIGINS),
-    llm: {
-      provider,
-      ...(model ? { model } : {}),
-      ...(baseUrl ? { baseUrl } : {}),
-      ...(environment.LLM_API_KEY?.trim()
-        ? { apiKey: environment.LLM_API_KEY.trim() }
-        : {}),
-      timeoutMs: positiveInteger(
-        environment.LLM_TIMEOUT_MS,
-        30_000,
-        "LLM_TIMEOUT_MS",
-      ),
-    },
+    llm: (() => {
+      const apiKey = apiKeyFor(provider, environment);
+      return {
+        provider,
+        ...(model ? { model } : {}),
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(apiKey ? { apiKey } : {}),
+        timeoutMs: positiveInteger(
+          environment.LLM_TIMEOUT_MS,
+          30_000,
+          "LLM_TIMEOUT_MS",
+        ),
+      };
+    })(),
     eligibilitySigner: eligibilitySignerConfig(environment),
     demoMode: environment.DEMO_MODE?.trim().toLowerCase() === "true",
     marketMonitorIntervalSeconds: positiveInteger(
