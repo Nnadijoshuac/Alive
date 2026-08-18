@@ -156,7 +156,57 @@ function fixture(
   };
 }
 
+function unanalyzedRealAsset(id: string, symbol: string, assetClass: AssetClass): RwaAsset {
+  return RwaAssetSchema.parse({
+    id,
+    symbol,
+    name: `${symbol} real unanalyzed asset`,
+    assetClass,
+    issuer: "real-issuer",
+    issuerName: "Real Issuer",
+    underlying: "Real underlying instrument",
+    sources: [
+      {
+        id: `source:${id}`,
+        title: "Issuer product page",
+        sourceType: "ISSUER_DOCUMENTATION",
+        sourceUrl: "https://example.com/product",
+        retrievedAt: AS_OF,
+        supportedFields: ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"],
+      },
+    ],
+    lastUpdatedAt: AS_OF,
+    dataMode: "SNAPSHOT",
+  });
+}
+
 describe("optimizePortfolio", () => {
+  it("excludes a real, unanalyzed asset (no risk/liquidity score) from allocation with ASSET_NOT_ANALYZED, never crashing", () => {
+    const input = fixture();
+    const unanalyzed = unanalyzedRealAsset("real:unanalyzed", "RUA", "TREASURY");
+    const withUnanalyzed: OptimizationInput = {
+      ...input,
+      assets: [...input.assets, unanalyzed],
+      quotes: [...input.quotes, quote(unanalyzed.id)],
+    };
+
+    const proposal = optimizePortfolio(withUnanalyzed);
+
+    expect(proposal.excludedAssets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetId: "real:unanalyzed",
+          reasons: expect.arrayContaining([
+            expect.objectContaining({ code: "ASSET_NOT_ANALYZED" }),
+          ]),
+        }),
+      ]),
+    );
+    expect(
+      proposal.allocations.some((allocation) => allocation.assetId === "real:unanalyzed"),
+    ).toBe(false);
+  });
+
   it("builds the same feasible proposal regardless of catalog order", () => {
     const input = fixture();
     const first = optimizePortfolio(input);
@@ -205,7 +255,7 @@ describe("optimizePortfolio", () => {
             symbol: item.symbol,
             assetClass: item.assetClass,
             issuer: item.issuer,
-            risk: item.risk.score,
+            risk: item.risk?.score ?? 0,
             apr: item.yield?.estimatedAprBps ?? 0,
             liquidity: 40,
           })

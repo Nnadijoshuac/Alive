@@ -299,8 +299,8 @@ const RwaAssetObjectSchema = z
     tokenAddress: AddressSchema.optional(),
     priceFeed: RwaPriceFeedSchema.optional(),
     yield: RwaYieldSchema.optional(),
-    liquidity: RwaLiquiditySchema,
-    risk: RwaRiskSchema,
+    liquidity: RwaLiquiditySchema.optional(),
+    risk: RwaRiskSchema.optional(),
     marketHours: RwaMarketHoursSchema.optional(),
     fees: RwaFeesSchema.optional(),
     redemption: RwaRedemptionSchema.optional(),
@@ -348,15 +348,6 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
     "issuer",
     "issuerName",
     "underlying",
-    "liquidity.score",
-    "risk.score",
-    "risk.issuerRisk",
-    "risk.liquidityRisk",
-    "risk.marketRisk",
-    "risk.oracleRisk",
-    "risk.redemptionRisk",
-    "risk.productComplexityRisk",
-    "risk.methodology",
     "lastUpdatedAt",
   ];
 
@@ -372,9 +363,24 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
     if (asset.yield.estimatedAprBps !== undefined)
       fields.push("yield.estimatedAprBps");
   }
-  if (asset.liquidity.redemptionWindow !== undefined)
-    fields.push("liquidity.redemptionWindow");
-  if (asset.liquidity.notes !== undefined) fields.push("liquidity.notes");
+  if (asset.liquidity !== undefined) {
+    fields.push("liquidity.score");
+    if (asset.liquidity.redemptionWindow !== undefined)
+      fields.push("liquidity.redemptionWindow");
+    if (asset.liquidity.notes !== undefined) fields.push("liquidity.notes");
+  }
+  if (asset.risk !== undefined) {
+    fields.push(
+      "risk.score",
+      "risk.issuerRisk",
+      "risk.liquidityRisk",
+      "risk.marketRisk",
+      "risk.oracleRisk",
+      "risk.redemptionRisk",
+      "risk.productComplexityRisk",
+      "risk.methodology",
+    );
+  }
   if (asset.marketHours !== undefined) {
     fields.push("marketHours.type");
     if (asset.marketHours.timezone !== undefined)

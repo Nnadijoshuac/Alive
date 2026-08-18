@@ -188,7 +188,7 @@ export function MarketsWorkspace() {
                   <div className={styles.assetCardFooter}>
                     <div>
                       <span className={styles.label}>Risk</span>
-                      <strong>{asset.risk.score}/100</strong>
+                      <strong>{asset.risk ? `${asset.risk.score}/100` : "Not analyzed"}</strong>
                     </div>
                     <ArrowRightIcon size={18} aria-hidden="true" />
                   </div>

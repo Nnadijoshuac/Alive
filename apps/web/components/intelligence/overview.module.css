@@ -213,6 +213,25 @@
   font-weight: 650;
 }
 
+.sectionHeaderRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.exploreLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted, var(--ink));
+  text-decoration: none;
+}
+
+.exploreLink:hover {
+  text-decoration: underline;
+}
+
 .tableCard {
   overflow: hidden;
   border: 1px solid var(--hairline);

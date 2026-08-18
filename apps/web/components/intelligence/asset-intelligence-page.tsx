@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   ArrowSquareOutIcon,
+  CircleNotchIcon,
   ProhibitIcon,
   QuestionIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react";
 import type { EligibilityPolicy, EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
+  extractAssetPassport,
   getAssetEligibility,
   getAssetExtraction,
   getAssetMonitor,
@@ -20,6 +23,7 @@ import {
   type AssetMonitorStatus,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
+import { loadAssetDocumentation } from "@/lib/verify-flow";
 import {
   formatBps,
   formatFreshness,
@@ -42,13 +46,22 @@ function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
 }
 
 /**
- * Verification (does this asset have real, cited source documents) and
- * eligibility (does it pass ALIVE's policy) are different questions -- an
- * asset can be verified and still restricted. Kept separate in the UI
- * rather than one conflated status pill.
+ * Verification (does this asset have real, cited source documents),
+ * analysis (has ALIVE actually run AI extraction against those documents),
+ * and eligibility (does it pass ALIVE's policy) are three different
+ * questions -- a real catalog asset can have a genuine source and still be
+ * "not analyzed" because no one has clicked Analyze yet. Conflating "we
+ * know its identity" with "ALIVE verified it" would misrepresent every
+ * unanalyzed real asset as already checked.
  */
-function isVerified(asset: RwaAsset): boolean {
-  return asset.sources.some((source) => source.sourceType !== "DEMO_FIXTURE");
+type AnalysisStatus = "VERIFIED" | "NOT_ANALYZED" | "UNVERIFIED";
+
+function analysisStatus(asset: RwaAsset): AnalysisStatus {
+  const hasRealSource = asset.sources.some(
+    (source) => source.sourceType !== "DEMO_FIXTURE",
+  );
+  if (!hasRealSource) return "UNVERIFIED";
+  return asset.extraction !== undefined ? "VERIFIED" : "NOT_ANALYZED";
 }
 
 /** Ethereum mainnet only -- the only chain ALIVE reads Chainlink RWA feeds from today. */
@@ -66,6 +79,8 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   const [policy, setPolicy] = useState<EligibilityPolicy>();
   const [monitor, setMonitor] = useState<AssetMonitorStatus>();
   const [extraction, setExtraction] = useState<AssetExtractionStatus>();
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<unknown>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,6 +122,21 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
 
   useEffect(() => void load(), [load]);
 
+  async function runAnalyze() {
+    if (!asset) return;
+    setAnalyzing(true);
+    setAnalyzeError(undefined);
+    try {
+      await loadAssetDocumentation(asset.id, asset.symbol);
+      await extractAssetPassport(asset.id);
+      await load();
+    } catch (requestError) {
+      setAnalyzeError(requestError);
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   if (loading) {
     return <div className={styles.page}>Loading asset intelligence…</div>;
   }
@@ -126,8 +156,15 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   }
 
   const source = quote?.onchainSource;
-  const positiveSignals = verdict?.reasons.filter((r) => r.code === "OK") ?? [];
-  const riskSignals = verdict?.reasons.filter((r) => r.code !== "OK") ?? [];
+  const status = analysisStatus(asset);
+  // The deterministic engine still computes a real verdict for an
+  // unanalyzed asset (e.g. an unapproved-issuer check), but surfacing that
+  // as a headline RESTRICTED/ELIGIBLE pill would misrepresent "ALIVE
+  // hasn't looked at this yet" as "ALIVE checked and it failed." Only a
+  // genuinely analyzed asset gets to show its verdict as a status.
+  const displayVerdict = status === "VERIFIED" ? verdict : undefined;
+  const positiveSignals = displayVerdict?.reasons.filter((r) => r.code === "OK") ?? [];
+  const riskSignals = displayVerdict?.reasons.filter((r) => r.code !== "OK") ?? [];
 
   const financialFacts: Array<{ label: string; value: string }> = [];
   if (asset.redemption) {
@@ -149,9 +186,11 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
     financialFacts.push({ label: "Redemption fee", value: formatBps(asset.fees.redemptionFeeBps) });
   if (asset.yield?.estimatedAprBps !== undefined)
     financialFacts.push({ label: "Estimated yield", value: formatBps(asset.yield.estimatedAprBps) });
-  financialFacts.push({ label: "Liquidity score", value: `${asset.liquidity.score}/100` });
-  if (asset.liquidity.redemptionWindow)
-    financialFacts.push({ label: "Redemption window", value: asset.liquidity.redemptionWindow });
+  if (asset.liquidity) {
+    financialFacts.push({ label: "Liquidity score", value: `${asset.liquidity.score}/100` });
+    if (asset.liquidity.redemptionWindow)
+      financialFacts.push({ label: "Redemption window", value: asset.liquidity.redemptionWindow });
+  }
   if (asset.custody) financialFacts.push({ label: "Custody", value: asset.custody });
   if (asset.jurisdiction) financialFacts.push({ label: "Jurisdiction", value: asset.jurisdiction });
   if (asset.eligibleInvestors)
@@ -173,10 +212,37 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           </div>
           <h1 className={styles.symbol}>{asset.symbol}</h1>
           <p className={styles.assetName}>{asset.name}</p>
-          {verdict ? (
-            <span className={styles.statusPill} data-tone={verdictTone(verdict.status)}>
-              {verdictIcon(verdict.status)} {verdict.status}
+          {displayVerdict ? (
+            <span className={styles.statusPill} data-tone={verdictTone(displayVerdict.status)}>
+              {verdictIcon(displayVerdict.status)} {displayVerdict.status}
             </span>
+          ) : null}
+          {status === "NOT_ANALYZED" ? (
+            <div className={styles.analyzeRow}>
+              <button
+                type="button"
+                className={styles.retryButton}
+                disabled={analyzing}
+                onClick={() => void runAnalyze()}
+              >
+                {analyzing ? (
+                  <>
+                    <CircleNotchIcon size={14} className="spin" /> Analyzing…
+                  </>
+                ) : (
+                  <>
+                    Analyze asset <ArrowRightIcon size={13} weight="bold" />
+                  </>
+                )}
+              </button>
+              {analyzeError ? (
+                <span className={styles.sectionSub}>
+                  {analyzeError instanceof Error
+                    ? analyzeError.message
+                    : "The request could not be completed."}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <div className={styles.headerMetric}>
@@ -208,12 +274,18 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Verification</span>
           <span className={styles.summaryValue}>
-            {isVerified(asset) ? "Verified" : "Unverified"}
+            {status === "VERIFIED"
+              ? "Verified"
+              : status === "NOT_ANALYZED"
+                ? "Not analyzed"
+                : "Unverified"}
           </span>
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Eligibility</span>
-          <span className={styles.summaryValue}>{verdict ? verdict.status : "Not evaluated"}</span>
+          <span className={styles.summaryValue}>
+            {displayVerdict ? displayVerdict.status : "Not evaluated"}
+          </span>
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Financial health</span>
@@ -238,44 +310,54 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         <h2 className={styles.sectionHeading} id="signals-title">
           What ALIVE sees
         </h2>
-        <div className={styles.signalsGrid}>
-          <div className={styles.signalColumn}>
-            <p className={styles.signalColumnHeading}>Positive signals</p>
-            {positiveSignals.length > 0 ? (
-              <ul className={styles.signalList}>
-                {positiveSignals.map((reason, index) => (
-                  <li className={styles.signalItem} key={`${reason.code}-${index}`}>
-                    {reason.message}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={styles.signalEmpty}>No confirmed positive signals yet.</p>
-            )}
-          </div>
-          <div className={styles.signalColumn}>
-            <p className={styles.signalColumnHeading}>Risks / watch</p>
-            {riskSignals.length > 0 ? (
-              <ul className={styles.signalList}>
-                {riskSignals.map((reason, index) => (
-                  <li className={styles.signalItem} key={`${reason.code}-${index}`}>
-                    <strong>{reason.code}</strong>
-                    {reason.message}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={styles.signalEmpty}>No risks currently flagged.</p>
-            )}
-          </div>
-        </div>
-        {policy ? (
-          <p className={styles.policyNote}>
-            Evaluated against policy <strong>{policy.policyId}</strong>. A RESTRICTED
-            result means this asset failed ALIVE&apos;s configured rules -- not that
-            ALIVE doubts the asset is real.
+        {status === "VERIFIED" ? (
+          <>
+            <div className={styles.signalsGrid}>
+              <div className={styles.signalColumn}>
+                <p className={styles.signalColumnHeading}>Positive signals</p>
+                {positiveSignals.length > 0 ? (
+                  <ul className={styles.signalList}>
+                    {positiveSignals.map((reason, index) => (
+                      <li className={styles.signalItem} key={`${reason.code}-${index}`}>
+                        {reason.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.signalEmpty}>No confirmed positive signals yet.</p>
+                )}
+              </div>
+              <div className={styles.signalColumn}>
+                <p className={styles.signalColumnHeading}>Risks / watch</p>
+                {riskSignals.length > 0 ? (
+                  <ul className={styles.signalList}>
+                    {riskSignals.map((reason, index) => (
+                      <li className={styles.signalItem} key={`${reason.code}-${index}`}>
+                        <strong>{reason.code}</strong>
+                        {reason.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.signalEmpty}>No risks currently flagged.</p>
+                )}
+              </div>
+            </div>
+            {policy ? (
+              <p className={styles.policyNote}>
+                Evaluated against policy <strong>{policy.policyId}</strong>. A RESTRICTED
+                result means this asset failed ALIVE&apos;s configured rules -- not that
+                ALIVE doubts the asset is real.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className={styles.emptyState}>
+            {status === "NOT_ANALYZED"
+              ? "ALIVE has not analyzed this asset yet -- run Analyze to extract and evaluate it against real documents."
+              : "This asset has no real, cited source and has not been evaluated."}
           </p>
-        ) : null}
+        )}
       </section>
 
       {/* 4. Financials */}
@@ -489,7 +571,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         <details className={styles.detailsBlock}>
           <summary>
             X Layer enforcement
-            <span className={styles.detailsBadge}>{verdict?.status ?? "UNKNOWN"}</span>
+            <span className={styles.detailsBadge}>{displayVerdict?.status ?? "NOT EVALUATED"}</span>
           </summary>
           <div className={styles.detailsBody}>
             <div className={styles.metricGrid}>
@@ -499,17 +581,17 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
               </div>
               <div className={styles.metric}>
                 <span>Eligibility</span>
-                <strong>{verdict?.eligible ? "Eligible" : "Not eligible"}</strong>
+                <strong>{displayVerdict?.eligible ? "Eligible" : "Not evaluated"}</strong>
               </div>
-              {verdict ? (
+              {displayVerdict ? (
                 <>
                   <div className={styles.metric}>
                     <span>Evaluated</span>
-                    <strong>{formatTimestamp(verdict.evaluatedAt)}</strong>
+                    <strong>{formatTimestamp(displayVerdict.evaluatedAt)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Valid until</span>
-                    <strong>{formatTimestamp(verdict.validUntil)}</strong>
+                    <strong>{formatTimestamp(displayVerdict.validUntil)}</strong>
                   </div>
                 </>
               ) : null}

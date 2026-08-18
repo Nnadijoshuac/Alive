@@ -22,6 +22,7 @@ const FILTER_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {
 
 export function ExplorePage() {
   const [summaries, setSummaries] = useState<AssetSummary[]>();
+  const [query, setQuery] = useState("");
   const [assetClassFilter, setAssetClassFilter] = useState<AssetClass | "ALL">("ALL");
   const [statusFilter, setStatusFilter] =
     useState<(typeof VERIFICATION_FILTERS)[number]>("ALL");
@@ -46,6 +47,7 @@ export function ExplorePage() {
   }, [summaries]);
 
   const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
     return (summaries ?? []).filter((summary) => {
       if (assetClassFilter !== "ALL" && summary.asset.assetClass !== assetClassFilter) {
         return false;
@@ -53,9 +55,14 @@ export function ExplorePage() {
       if (statusFilter !== "ALL" && eligibilityStatus(summary) !== statusFilter) {
         return false;
       }
+      if (needle) {
+        const { asset } = summary;
+        const haystack = `${asset.symbol} ${asset.name} ${asset.issuerName} ${asset.assetClass}`.toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
       return true;
     });
-  }, [summaries, assetClassFilter, statusFilter]);
+  }, [summaries, assetClassFilter, statusFilter, query]);
 
   return (
     <div className={styles.page}>
@@ -68,6 +75,15 @@ export function ExplorePage() {
       </div>
 
       <div className={filterStyles.filterRow}>
+        <input
+          type="text"
+          inputMode="search"
+          autoComplete="off"
+          placeholder="Search symbol, product, issuer, or category"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          aria-label="Search the real asset catalog"
+        />
         <select
           value={assetClassFilter}
           onChange={(event) => setAssetClassFilter(event.target.value as AssetClass | "ALL")}

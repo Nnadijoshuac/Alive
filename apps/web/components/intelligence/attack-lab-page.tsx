@@ -83,7 +83,9 @@ export function AttackLabPage() {
     setProgress(["Resetting demo overrides...", "Loading issuer documentation...", "Extracting facts...", "Evaluating eligibility..."]);
     try {
       await resetDemoOverrides();
-      await loadAssetDocumentation(ATTACK_ASSET_ID, "tTBILL-A");
+      await loadAssetDocumentation(ATTACK_ASSET_ID, "tTBILL-A", {
+        allowDemoFixtureFallback: true,
+      });
       await extractAssetPassport(ATTACK_ASSET_ID);
       const v = await refresh();
       setProgress((current) => [...current, "Publishing verdict to X Layer Testnet...", "Attempting gated deposit..."]);

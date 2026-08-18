@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { listAssetSummaries } from "@/lib/asset-intelligence-summary";
+import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
+import {
+  eligibilityStatus,
+  listAssetSummaries,
+  verificationStatus,
+  type AssetSummary,
+} from "@/lib/asset-intelligence-summary";
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -157,5 +163,42 @@ describe("listAssetSummaries", () => {
     expect(summaries[0]!.asset.name).not.toMatch(/Test Treasury Fund/);
     expect(summaries.some((s) => s.asset.id === "ttbill-a")).toBe(false);
     expect(summaries.some((s) => s.asset.id === "tgold")).toBe(false);
+  });
+});
+
+function unanalyzedRealSummary(): AssetSummary {
+  const asset = realAsset() as unknown as RwaAsset;
+  const verdict: EligibilityVerdict = {
+    version: 1,
+    assetId: asset.id,
+    eligible: false,
+    status: "RESTRICTED",
+    reasons: [{ code: "ISSUER_NOT_APPROVED", message: "Issuer is not approved." }],
+    evaluatedAt: "2026-08-18T00:00:00.000Z",
+    validUntil: "2026-08-18T00:15:00.000Z",
+    passportHash: `0x${"aa".repeat(32)}`,
+    policyHash: `0x${"bb".repeat(32)}`,
+  };
+  return { asset, verdict };
+}
+
+describe("verificationStatus / eligibilityStatus", () => {
+  it("a real, unanalyzed asset reads NOT_ANALYZED / NOT_EVALUATED -- never RESTRICTED, even when the raw verdict is RESTRICTED", () => {
+    const summary = unanalyzedRealSummary();
+    expect(verificationStatus(summary)).toBe("NOT_ANALYZED");
+    // The invariant this test protects: an asset ALIVE has not analyzed
+    // must never surface as RESTRICTED in the product, even though the
+    // deterministic engine legitimately computed that verdict (e.g. for an
+    // unapproved issuer) -- "not analyzed" and "restricted" are different
+    // claims and must stay visually and semantically distinct.
+    expect(eligibilityStatus(summary)).toBe("NOT_EVALUATED");
+  });
+
+  it("a demo-only asset (no real source) reads UNVERIFIED", () => {
+    const summary: AssetSummary = {
+      asset: demoAsset("ttbill-a", "Test Treasury Fund A") as unknown as RwaAsset,
+    };
+    expect(verificationStatus(summary)).toBe("UNVERIFIED");
+    expect(eligibilityStatus(summary)).toBe("NOT_EVALUATED");
   });
 });

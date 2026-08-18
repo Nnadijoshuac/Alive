@@ -105,10 +105,23 @@ export class DemoMarketDataProvider implements MarketDataProvider {
     };
   }
 
+  /**
+   * Tolerant by design: a real catalog can (and now does) contain assets
+   * this demo provider has no seed for -- e.g. a real, unanalyzed RWA with
+   * no Chainlink mapping either. Those assets simply have no quote (market
+   * data UNAVAILABLE), not a hard failure for the whole batch.
+   */
   async getQuotes(assetIds: string[]): Promise<MarketQuote[]> {
-    return Promise.all(
-      [...new Set(assetIds)].sort().map((assetId) => this.getQuote(assetId)),
+    const unique = [...new Set(assetIds)].sort();
+    const settled = await Promise.allSettled(
+      unique.map((assetId) => this.getQuote(assetId)),
     );
+    return settled
+      .filter(
+        (entry): entry is PromiseFulfilledResult<MarketQuote> =>
+          entry.status === "fulfilled",
+      )
+      .map((entry) => entry.value);
   }
 
   async health(): Promise<DataProviderHealth> {

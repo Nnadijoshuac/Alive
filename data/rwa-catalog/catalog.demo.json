@@ -4,7 +4,7 @@
   "label": "ALIVE RWA catalog",
   "dataMode": "SNAPSHOT",
   "asOf": "2026-08-14T12:00:00.000Z",
-  "disclaimer": "MIXED CATALOG. ttbill-b is backed by real Superstate/Invesco source documents and live Chainlink data -- see its own dataMode and sources. Every other asset in this catalog (tusdc, ttbill-a, ttbill-c, tgold, tsp500, tnvda, taapl) is DEMO DATA -- NOT LIVE MARKET DATA, synthetic products/issuers/yields/risk scores/liquidity scores/prices that exist only to exercise ALIVE locally and on testnet. Check each asset's own dataMode and sources before treating any figure as real.",
+  "disclaimer": "MIXED CATALOG. ttbill-b and the other real tokenized RWAs (ousg, usdy, benji-fobxx, buidl, openeden-tbill, backed-bib01, backed-bcspx, jtrsy, acred, superstate-uscc, wisdomtree-wtgxx, usyc) carry real, sourced canonical identities -- most have not yet been analyzed by ALIVE (no risk/liquidity score, no AI extraction) until a user runs Analyze on them; ttbill-b alone also has live Chainlink data. Every other asset in this catalog (tusdc, ttbill-a, ttbill-c, tgold, tsp500, tnvda, taapl) is DEMO DATA -- NOT LIVE MARKET DATA, synthetic products/issuers/yields/risk scores/liquidity scores/prices that exist only to exercise ALIVE locally and on testnet (ttbill-a backs the Attack Lab harness specifically). Check each asset's own dataMode and sources before treating any figure as real.",
   "assets": [
     {
       "id": "tusdc",
@@ -193,6 +193,258 @@
       ],
       "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
       "dataMode": "LIVE"
+    },
+    {
+      "id": "ousg",
+      "symbol": "OUSG",
+      "name": "Ondo Short-Term US Government Bond Fund",
+      "assetClass": "TREASURY",
+      "issuer": "ondo-finance",
+      "issuerName": "Ondo Finance",
+      "underlying": "Short-term US Treasury bonds, held via BlackRock's BUIDL fund",
+      "sources": [
+        {
+          "id": "ondo-docs-ousg-overview",
+          "title": "OUSG Overview | Ondo Finance",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.ondo.finance/qualified-access-products/ousg/overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "usdy",
+      "symbol": "USDY",
+      "name": "Ondo US Dollar Yield",
+      "assetClass": "TREASURY",
+      "issuer": "ondo-finance",
+      "issuerName": "Ondo Finance",
+      "underlying": "Short-term US Treasuries and bank demand deposits",
+      "sources": [
+        {
+          "id": "ondo-usdy-product-page",
+          "title": "USDY | Ondo Finance",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://ondo.finance/usdy",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "benji-fobxx",
+      "symbol": "BENJI",
+      "name": "Franklin OnChain US Government Money Fund (FOBXX)",
+      "assetClass": "FUND",
+      "issuer": "franklin-templeton",
+      "issuerName": "Franklin Templeton",
+      "underlying": "US Treasury securities, repurchase agreements, and cash",
+      "sources": [
+        {
+          "id": "franklin-templeton-benji-page",
+          "title": "Invest with Benji | Franklin Templeton Digital Assets",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://digitalassets.franklintempleton.com/benji/",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "buidl",
+      "symbol": "BUIDL",
+      "name": "BlackRock USD Institutional Digital Liquidity Fund",
+      "assetClass": "FUND",
+      "issuer": "blackrock",
+      "issuerName": "BlackRock Financial Management, Inc. (tokenized by Securitize)",
+      "underlying": "Cash, US Treasury bills, and repurchase agreements",
+      "sources": [
+        {
+          "id": "securitize-buidl-page",
+          "title": "Introducing the BlackRock BUIDL Fund | Securitize",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://securitize.io/blackrock/buidl",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "openeden-tbill",
+      "symbol": "TBILL",
+      "name": "OpenEden TBILL Vault",
+      "assetClass": "TREASURY",
+      "issuer": "openeden",
+      "issuerName": "OpenEden",
+      "underlying": "Short-dated US Treasury Bills, managed and custodied by BNY",
+      "sources": [
+        {
+          "id": "openeden-tbill-docs",
+          "title": "Introduction | OpenEden TBILL",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.openeden.com/tbill/introduction",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "backed-bib01",
+      "symbol": "BIB01",
+      "name": "Backed IB01 $ Treasury Bond 0-1yr",
+      "assetClass": "TREASURY",
+      "issuer": "backed-finance",
+      "issuerName": "Backed Finance AG",
+      "underlying": "iShares $ Treasury Bond 0-1yr UCITS ETF (tracker certificate)",
+      "sources": [
+        {
+          "id": "backed-assets-bib01-page",
+          "title": "bIB01 | Backed Assets",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://assets.backed.fi/products/bib01",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "backed-bcspx",
+      "symbol": "BCSPX",
+      "name": "Backed CSPX Core S&P 500",
+      "assetClass": "ETF",
+      "issuer": "backed-finance",
+      "issuerName": "Backed Finance AG",
+      "underlying": "iShares Core S&P 500 UCITS ETF (CSPX, tracker certificate)",
+      "sources": [
+        {
+          "id": "backed-assets-bcspx-page",
+          "title": "bCSPX | Backed Assets",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://assets.backed.fi/products/bcspx",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "jtrsy",
+      "symbol": "JTRSY",
+      "name": "Janus Henderson Anemoy Treasury Fund",
+      "assetClass": "TREASURY",
+      "issuer": "anemoy",
+      "issuerName": "Anemoy Capital Ltd. (sub-advised by Janus Henderson Investors)",
+      "underlying": "Short-duration US Treasury bills (0-3 month maturities)",
+      "sources": [
+        {
+          "id": "anemoy-jtrsy-fund-page",
+          "title": "Janus Henderson Anemoy Treasury Fund (JTRSY) | Anemoy",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://www.anemoy.io/funds/jtrsy",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "acred",
+      "symbol": "ACRED",
+      "name": "Apollo Diversified Credit Securitize Fund",
+      "assetClass": "CREDIT",
+      "issuer": "apollo-global-management",
+      "issuerName": "Apollo Global Management (tokenized by Securitize)",
+      "underlying": "Corporate direct lending, asset-backed lending, and structured credit",
+      "sources": [
+        {
+          "id": "securitize-acred-primary-market-page",
+          "title": "Apollo Diversified Credit Securitize Fund | Securitize",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://securitize.io/primary-market/apollo-diversified-credit-securitize-fund",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "superstate-uscc",
+      "symbol": "USCC",
+      "name": "Superstate Crypto Carry Fund",
+      "assetClass": "FUND",
+      "issuer": "superstate-advisers",
+      "issuerName": "Superstate Advisers LLC",
+      "underlying": "Crypto basis (spot/futures) strategies across Bitcoin and Ether, plus US Treasuries",
+      "sources": [
+        {
+          "id": "superstate-docs-uscc",
+          "title": "USCC | Superstate",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.superstate.com/superstate-funds/uscc",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "wisdomtree-wtgxx",
+      "symbol": "WTGXX",
+      "name": "WisdomTree Government Money Market Digital Fund",
+      "assetClass": "FUND",
+      "issuer": "wisdomtree",
+      "issuerName": "WisdomTree",
+      "underlying": "US government securities, cash, and fully-collateralized repurchase agreements",
+      "sources": [
+        {
+          "id": "wisdomtree-connect-wtgxx-page",
+          "title": "WTGXX | WisdomTree Connect",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://www.wisdomtreeconnect.com/digital-funds/money-market/wtgxx",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
+    },
+    {
+      "id": "usyc",
+      "symbol": "USYC",
+      "name": "Hashnote International Short Duration Fund (USYC)",
+      "assetClass": "TREASURY",
+      "issuer": "hashnote",
+      "issuerName": "Hashnote International Short Duration Fund Ltd. (a Circle company)",
+      "underlying": "US Treasury bills and reverse repurchase agreements",
+      "sources": [
+        {
+          "id": "circle-usyc-page",
+          "title": "USYC | Tokenized Money Market Fund | Circle",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://www.circle.com/usyc",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "supportedFields": ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT"
     },
     {
       "id": "ttbill-c",

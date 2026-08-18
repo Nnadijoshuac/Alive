@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -22,8 +23,9 @@ import { loadAssetDocumentation, stageErrorMessage, type VerifyStageKey } from "
 import {
   dataStatus,
   eligibilityStatus,
+  isRealAsset,
   listAssetSummaries,
-  REAL_CATALOG_ASSET_IDS,
+  verificationStatus,
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
 import { recordActivity } from "@/lib/activity-log";
@@ -73,9 +75,7 @@ export function OverviewPage() {
 
   useEffect(() => {
     listRwaAssets()
-      .then((result) =>
-        setCatalog(result.assets.filter((asset) => REAL_CATALOG_ASSET_IDS.has(asset.id))),
-      )
+      .then((result) => setCatalog(result.assets.filter(isRealAsset)))
       .catch(() => setCatalog([]));
     listAssetSummaries()
       .then(setSummaries)
@@ -101,7 +101,9 @@ export function OverviewPage() {
         (asset) =>
           asset.symbol.toLowerCase().includes(needle) ||
           asset.name.toLowerCase().includes(needle) ||
-          asset.id.toLowerCase().includes(needle),
+          asset.id.toLowerCase().includes(needle) ||
+          asset.issuerName.toLowerCase().includes(needle) ||
+          asset.assetClass.toLowerCase().includes(needle),
       )
       .slice(0, 6);
   }, [catalog, query]);
@@ -206,6 +208,19 @@ export function OverviewPage() {
   const liveSourceCount = summaries?.filter(
     (s) => dataStatus(s) === "LIVE",
   ).length;
+
+  // Overview is a focused operational view, not a dump of the whole real
+  // catalog (that's Explore's job) -- analyzed/verified assets surface
+  // first, since those are the ones ALIVE actually has something to say
+  // about, with the rest of the real catalog one click away.
+  const focusedSummaries = summaries
+    ? [...summaries]
+        .sort((left, right) => {
+          const rank = { VERIFIED: 0, NOT_ANALYZED: 1, UNVERIFIED: 2 } as const;
+          return rank[verificationStatus(left)] - rank[verificationStatus(right)];
+        })
+        .slice(0, 8)
+    : undefined;
 
   return (
     <div className={styles.page}>
@@ -339,10 +354,15 @@ export function OverviewPage() {
       </div>
 
       <div className={styles.section}>
-        <h2 className={styles.sectionHeading}>Catalog assets</h2>
+        <div className={styles.sectionHeaderRow}>
+          <h2 className={styles.sectionHeading}>Recently checked</h2>
+          <Link href="/explore" className={styles.exploreLink}>
+            Browse the full real-asset catalog →
+          </Link>
+        </div>
         <div className={styles.tableCard}>
           <AssetTable
-            summaries={summaries ?? []}
+            summaries={focusedSummaries ?? []}
             emptyLabel={summaries ? "No assets in the catalog yet." : "Loading…"}
           />
         </div>

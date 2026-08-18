@@ -141,28 +141,84 @@ describe("RWA asset provenance", () => {
     expect(parsed.extraction?.mode).toBe("DEMO_FIXTURE");
   });
 
-  // The catalog is a mixed SNAPSHOT, not a pure demo catalog: ttbill-b
-  // carries its real, sourced identity and dataMode LIVE from boot (no
-  // synthetic fallback), while every other entry stays an explicitly
-  // labelled DEMO fixture.
-  it("parses the catalog fixture: mixed real+demo, ttbill-b real and every other asset explicitly demo", () => {
+  // The catalog is a mixed SNAPSHOT, not a pure demo catalog. Three
+  // distinct groups: ttbill-b carries its real, sourced identity and
+  // dataMode LIVE from boot; a larger set of real-but-unanalyzed catalog
+  // assets carry a real source and no invented risk/liquidity/yield; and
+  // the legacy synthetic assets (Attack Lab harness included) stay
+  // explicitly labelled DEMO fixtures. REAL-ONLY != ALREADY-ANALYZED-ONLY.
+  const DEMO_ONLY_ASSET_IDS = new Set([
+    "tusdc",
+    "ttbill-a",
+    "ttbill-c",
+    "tgold",
+    "tsp500",
+    "tnvda",
+    "taapl",
+  ]);
+
+  it("parses the catalog fixture: real (live + unanalyzed) assets alongside explicitly demo assets", () => {
     const fixturePath = fileURLToPath(
       new URL("../../../data/rwa-catalog/catalog.demo.json", import.meta.url),
     );
     const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as unknown;
     const catalog = RwaCatalogSchema.parse(fixture);
     expect(catalog.dataMode).toBe("SNAPSHOT");
-    expect(catalog.assets.length).toBeGreaterThanOrEqual(8);
+    expect(catalog.assets.length).toBeGreaterThanOrEqual(20);
 
     const ttbillB = catalog.assets.find((asset) => asset.id === "ttbill-b");
     expect(ttbillB?.dataMode).toBe("LIVE");
     expect(ttbillB?.sources.some((source) => source.sourceType === "DEMO_FIXTURE")).toBe(false);
 
-    const otherAssets = catalog.assets.filter((asset) => asset.id !== "ttbill-b");
-    expect(otherAssets.length).toBeGreaterThanOrEqual(7);
-    for (const asset of otherAssets) {
+    const demoAssets = catalog.assets.filter((asset) => DEMO_ONLY_ASSET_IDS.has(asset.id));
+    expect(demoAssets.length).toBe(DEMO_ONLY_ASSET_IDS.size);
+    for (const asset of demoAssets) {
       expect(asset.dataMode).toBe("DEMO");
       expect(asset.sources.some((source) => source.sourceType === "DEMO_FIXTURE")).toBe(true);
     }
+
+    // Real, unanalyzed assets: real source, SNAPSHOT dataMode, no
+    // fabricated risk/liquidity score and no DEMO_FIXTURE source.
+    const unanalyzedRealAssets = catalog.assets.filter(
+      (asset) => asset.id !== "ttbill-b" && !DEMO_ONLY_ASSET_IDS.has(asset.id),
+    );
+    expect(unanalyzedRealAssets.length).toBeGreaterThanOrEqual(10);
+    for (const asset of unanalyzedRealAssets) {
+      expect(asset.dataMode).toBe("SNAPSHOT");
+      expect(asset.risk).toBeUndefined();
+      expect(asset.liquidity).toBeUndefined();
+      expect(asset.sources.some((source) => source.sourceType === "DEMO_FIXTURE")).toBe(false);
+      expect(
+        asset.sources.some((source) =>
+          ["ISSUER_DOCUMENTATION", "OFFICIAL_TOKEN_DOCUMENTATION", "OFFICIAL_PROTOCOL_API", "REGULATORY_FILING"].includes(
+            source.sourceType,
+          ),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("accepts a real asset with no risk/liquidity score (unanalyzed) alongside one that has them", () => {
+    const withoutScores = {
+      ...validDemoAsset(),
+      id: "real-unanalyzed",
+      symbol: "RUA",
+      liquidity: undefined,
+      risk: undefined,
+      sources: [
+        {
+          id: "issuer-doc-real-unanalyzed",
+          title: "Issuer product page",
+          sourceType: "ISSUER_DOCUMENTATION" as const,
+          sourceUrl: "https://example.com/product",
+          retrievedAt: "2026-08-18T00:00:00.000Z",
+          supportedFields: ["symbol", "name", "assetClass", "issuer", "issuerName", "underlying", "lastUpdatedAt"] as const,
+        },
+      ],
+      dataMode: "SNAPSHOT" as const,
+    };
+    const parsed = RwaAssetSchema.parse(withoutScores);
+    expect(parsed.risk).toBeUndefined();
+    expect(parsed.liquidity).toBeUndefined();
   });
 });

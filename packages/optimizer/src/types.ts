@@ -39,7 +39,8 @@ export type PolicyViolationCode =
   | "QUOTE_INVALID"
   | "QUOTE_FUTURE"
   | "QUOTE_STALE"
-  | "MARKET_UNAVAILABLE";
+  | "MARKET_UNAVAILABLE"
+  | "ASSET_NOT_ANALYZED";
 
 export type PolicyViolation = {
   code: PolicyViolationCode;

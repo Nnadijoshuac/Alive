@@ -12,11 +12,11 @@ import { formatPrice, formatRelativeAgo } from "@/lib/rwa-format";
 import styles from "./asset-table.module.css";
 
 function verificationPill(summary: AssetSummary) {
-  return verificationStatus(summary) === "VERIFIED" ? (
-    <span className={styles.pillEligible}>VERIFIED</span>
-  ) : (
-    <span className={styles.pillUnknown}>UNVERIFIED</span>
-  );
+  const status = verificationStatus(summary);
+  if (status === "VERIFIED") return <span className={styles.pillEligible}>VERIFIED</span>;
+  if (status === "NOT_ANALYZED")
+    return <span className={styles.pillUnknown}>NOT ANALYZED</span>;
+  return <span className={styles.pillUnknown}>UNVERIFIED</span>;
 }
 
 function eligibilityPill(summary: AssetSummary) {

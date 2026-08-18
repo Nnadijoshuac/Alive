@@ -3,6 +3,8 @@ import type {
   MarketQuote,
   PortfolioPolicy,
   RwaAsset,
+  RwaLiquidity,
+  RwaRisk,
 } from "@alive/shared";
 
 import type {
@@ -20,8 +22,23 @@ import type {
 
 const BPS_TOTAL = 10_000;
 
+/**
+ * A real catalog asset that has not yet been analyzed by ALIVE carries no
+ * ALIVE-computed risk/liquidity score (see the RWA catalog-expansion
+ * directive: unanalyzed assets must never have invented scores). The
+ * optimizer can only rank and allocate against assets that have one --
+ * `hasScoring` is the narrowing guard that keeps every downstream
+ * `asset.risk.score` / `asset.liquidity.score` access sound without a
+ * non-null assertion.
+ */
+type ScoredAsset = RwaAsset & { risk: RwaRisk; liquidity: RwaLiquidity };
+
+function hasScoring(asset: RwaAsset): asset is ScoredAsset {
+  return asset.risk !== undefined && asset.liquidity !== undefined;
+}
+
 type Candidate = {
-  asset: RwaAsset;
+  asset: ScoredAsset;
   quote: MarketQuote;
   rank: number;
 };
@@ -75,7 +92,7 @@ function estimatedAprBps(asset: RwaAsset): number {
 }
 
 function rankAsset(
-  asset: RwaAsset,
+  asset: ScoredAsset,
   policy: PortfolioPolicy,
   currentWeight: number,
 ): number {
@@ -148,6 +165,14 @@ function assetEligibility(
       message: `${asset.assetClass} is outside the approved asset classes.`,
       assetId: asset.id,
     });
+  }
+  if (asset.risk === undefined || asset.liquidity === undefined) {
+    violations.push({
+      code: "ASSET_NOT_ANALYZED",
+      message: `${asset.symbol} has not been analyzed by ALIVE yet; it has no risk/liquidity score to allocate against.`,
+      assetId: asset.id,
+    });
+    return violations;
   }
   if (asset.liquidity.score < policy.minimumLiquidityScore) {
     violations.push({
@@ -362,7 +387,14 @@ function computeMetrics(
 
   for (const allocation of allocations) {
     const asset = assetsById.get(allocation.assetId);
-    if (!asset || allocation.weightBps <= 0) continue;
+    if (
+      !asset ||
+      allocation.weightBps <= 0 ||
+      asset.risk === undefined ||
+      asset.liquidity === undefined
+    ) {
+      continue;
+    }
     total += allocation.weightBps;
     yieldNumerator += estimatedAprBps(asset) * allocation.weightBps;
     riskNumerator += asset.risk.score * allocation.weightBps;
@@ -516,7 +548,7 @@ export function evaluateAllocation(
   };
 }
 
-function allocationReasons(asset: RwaAsset, policy: PortfolioPolicy): string[] {
+function allocationReasons(asset: ScoredAsset, policy: PortfolioPolicy): string[] {
   const reasons = [
     `${asset.assetClass} is permitted by the approved policy.`,
     `Liquidity score ${asset.liquidity.score}/100 meets the ${policy.minimumLiquidityScore}/100 floor.`,
@@ -572,7 +604,7 @@ export function optimizePortfolio(input: OptimizationInput): PortfolioProposal {
   for (const asset of input.assets) {
     const quote = quotesById.get(asset.id);
     const reasons = assetEligibility(input.policy, asset, quote, asOfMs);
-    if (reasons.length > 0 || !quote) {
+    if (reasons.length > 0 || !quote || !hasScoring(asset)) {
       excludedAssets.push({ assetId: asset.id, symbol: asset.symbol, reasons });
       continue;
     }

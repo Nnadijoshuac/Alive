@@ -51,7 +51,7 @@ describe("loadAssetDocumentation", () => {
     expect(url.endsWith("/api/assets/ttbill-b/ingest")).toBe(false);
   });
 
-  it("falls back to the demo fixture only when the asset has no official sources registered", async () => {
+  it("falls back to the demo fixture only when explicitly opted in via allowDemoFixtureFallback", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -68,10 +68,10 @@ describe("loadAssetDocumentation", () => {
       .mockResolvedValueOnce(
         jsonResponse(
           {
-            sourceId: "demo-doc-tgold",
-            assetId: "tgold",
+            sourceId: "demo-doc-ttbill-a",
+            assetId: "ttbill-a",
             sourceType: "DEMO_FIXTURE",
-            title: "tGOLD fact sheet",
+            title: "tTBILL-A fact sheet",
             textHash: `0x${"33".repeat(32)}`,
             chunkCount: 1,
             retrievedAt: "2026-08-17T00:00:00.000Z",
@@ -81,15 +81,37 @@ describe("loadAssetDocumentation", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await loadAssetDocumentation("tgold", "tGOLD");
+    const result = await loadAssetDocumentation("ttbill-a", "tTBILL-A", {
+      allowDemoFixtureFallback: true,
+    });
 
     expect(result).toBe("demo-fixture");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [officialUrl] = fetchMock.mock.calls[0] as [string, unknown];
     const [fixtureUrl, fixtureInit] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(officialUrl).toContain("/ingest-official-sources");
-    expect(fixtureUrl).toContain("/api/assets/tgold/ingest");
+    expect(fixtureUrl).toContain("/api/assets/ttbill-a/ingest");
     expect(String(fixtureInit.body)).toContain('"kind":"fixture"');
+  });
+
+  it("fails honestly, without any demo fixture fallback, for a real catalog asset with no official sources registered yet", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "ASSET_HAS_NO_OFFICIAL_SOURCES",
+            message: "no official sources",
+          },
+        },
+        404,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(loadAssetDocumentation("ousg", "OUSG")).rejects.toThrow(
+      /not yet registered official documents/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not fall back to a demo fixture for a non-404 official-sources failure", async () => {
