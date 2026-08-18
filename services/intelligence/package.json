@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "probe:groq": "tsx scripts/groq-probe.ts",
-    "prove:ai": "tsx scripts/prove-ai-extraction.ts"
+    "prove:ai": "tsx scripts/prove-ai-extraction.ts",
+    "resolve:logos": "tsx scripts/resolve-token-logos.ts"
   },
   "dependencies": {
     "@alive/eligibility-engine": "workspace:*",

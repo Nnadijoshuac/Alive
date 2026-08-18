@@ -72,10 +72,10 @@
 .suggestionItem {
   display: flex;
   width: 100%;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   border: none;
-  padding: 10px 14px;
+  padding: 8px 14px;
   color: var(--ink);
   background: none;
   font-size: 13px;
@@ -84,11 +84,6 @@
 
 .suggestionItem:hover {
   background: var(--milk-deep);
-}
-
-.suggestionItem span {
-  color: var(--muted-2);
-  font-size: 12px;
 }
 
 .analyzeButton {

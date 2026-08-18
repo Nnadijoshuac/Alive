@@ -279,6 +279,48 @@ export const RwaExtractionMetadataSchema = z
   })
   .strict();
 
+export const LogoSourceSchema = z.enum([
+  "COINGECKO",
+  "TRUST_WALLET",
+  "OFFICIAL_ISSUER",
+  "OFFICIAL_PLATFORM",
+]);
+
+/**
+ * A token's logo is either RESOLVED against a verified identity (the
+ * requested network+contractAddress genuinely matched what the source
+ * returned, or the image came from a canonical ALIVE-trusted official
+ * source) or UNAVAILABLE. There is no third state that lets a caller claim
+ * a logo without also recording where it came from and when it was
+ * checked -- an "official-looking" image is worthless without that
+ * provenance, and a generated placeholder must never be able to satisfy
+ * this shape (a fallback badge is a UI decision made from UNAVAILABLE, not
+ * a kind of resolved logo).
+ *
+ * Like `extraction`, this is presentation/provenance metadata about how
+ * ALIVE renders an asset it already knows about, not a "fact" claimed
+ * about the issuer or product -- it is deliberately not subject to the
+ * sources[].supportedFields provenance-parity check below.
+ */
+export const RwaAssetVisualSchema = z.discriminatedUnion("logoStatus", [
+  z
+    .object({
+      logoStatus: z.literal("RESOLVED"),
+      logoUrl: z.string().url().max(2_048),
+      logoSource: LogoSourceSchema,
+      logoSourceId: knownText(160).optional(),
+      logoContractAddress: AddressSchema.optional(),
+      logoNetwork: knownText(60).optional(),
+      logoVerifiedAt: IsoDateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      logoStatus: z.literal("UNAVAILABLE"),
+    })
+    .strict(),
+]);
+
 const RwaAssetObjectSchema = z
   .object({
     id: AssetIdSchema,
@@ -313,6 +355,7 @@ const RwaAssetObjectSchema = z
     custody: knownText(300).optional(),
     documentEffectiveDate: IsoDateSchema.optional(),
     extraction: RwaExtractionMetadataSchema.optional(),
+    visual: RwaAssetVisualSchema.optional(),
     sources: z
       .array(AssetSourceSchema)
       .min(1)
@@ -535,5 +578,7 @@ export type RwaRedemption = z.infer<typeof RwaRedemptionSchema>;
 export type RwaExtractionMetadata = z.infer<
   typeof RwaExtractionMetadataSchema
 >;
+export type RwaAssetVisual = z.infer<typeof RwaAssetVisualSchema>;
+export type LogoSource = z.infer<typeof LogoSourceSchema>;
 export type RwaAsset = z.infer<typeof RwaAssetSchema>;
 export type RwaCatalog = z.infer<typeof RwaCatalogSchema>;

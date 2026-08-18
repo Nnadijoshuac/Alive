@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   RwaAssetSchema,
+  RwaAssetVisualSchema,
   RwaCatalogSchema,
   type AssetProvenanceField,
 } from "../src/index.js";
@@ -220,5 +221,48 @@ describe("RWA asset provenance", () => {
     const parsed = RwaAssetSchema.parse(withoutScores);
     expect(parsed.risk).toBeUndefined();
     expect(parsed.liquidity).toBeUndefined();
+  });
+});
+
+describe("RwaAssetVisualSchema", () => {
+  it("accepts UNAVAILABLE with no other fields", () => {
+    expect(RwaAssetVisualSchema.safeParse({ logoStatus: "UNAVAILABLE" }).success).toBe(true);
+  });
+
+  it("rejects UNAVAILABLE carrying a logoUrl -- there is no way to smuggle an image through the unresolved state", () => {
+    expect(
+      RwaAssetVisualSchema.safeParse({
+        logoStatus: "UNAVAILABLE",
+        logoUrl: "https://example.com/logo.png",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires logoUrl, logoSource, and logoVerifiedAt whenever logoStatus is RESOLVED", () => {
+    expect(
+      RwaAssetVisualSchema.safeParse({
+        logoStatus: "RESOLVED",
+        logoUrl: "https://example.com/logo.png",
+      }).success,
+    ).toBe(false);
+    expect(
+      RwaAssetVisualSchema.safeParse({
+        logoStatus: "RESOLVED",
+        logoUrl: "https://example.com/logo.png",
+        logoSource: "COINGECKO",
+        logoVerifiedAt: "2026-08-18T00:00:00.000Z",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a logoSource outside the known trusted set", () => {
+    expect(
+      RwaAssetVisualSchema.safeParse({
+        logoStatus: "RESOLVED",
+        logoUrl: "https://example.com/logo.png",
+        logoSource: "RANDOM_WEBSITE",
+        logoVerifiedAt: "2026-08-18T00:00:00.000Z",
+      }).success,
+    ).toBe(false);
   });
 });

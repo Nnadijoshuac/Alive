@@ -24,6 +24,7 @@ import {
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
 import { loadAssetDocumentation } from "@/lib/verify-flow";
+import { AssetHeroCard } from "./asset-hero-card";
 import {
   formatBps,
   formatFreshness,
@@ -205,13 +206,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 1. Header */}
       <header className={styles.header}>
         <div className={styles.headerIdentity}>
-          <div className={styles.eyebrowRow}>
-            <span>{asset.assetClass}</span>
-            <span>·</span>
-            <span>{asset.issuerName}</span>
-          </div>
-          <h1 className={styles.symbol}>{asset.symbol}</h1>
-          <p className={styles.assetName}>{asset.name}</p>
+          <AssetHeroCard asset={asset} />
           {displayVerdict ? (
             <span className={styles.statusPill} data-tone={verdictTone(displayVerdict.status)}>
               {verdictIcon(displayVerdict.status)} {displayVerdict.status}

@@ -29,6 +29,7 @@ import {
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
 import { recordActivity } from "@/lib/activity-log";
+import { AssetIdentity } from "./asset-identity";
 import type { EligibilityVerdict, RwaAsset } from "@alive/shared";
 import { AssetTable } from "./asset-table";
 import styles from "./overview.module.css";
@@ -261,8 +262,7 @@ export function OverviewPage() {
                     aria-selected={selected?.id === asset.id}
                     onClick={() => void runAnalysis(asset)}
                   >
-                    <strong>{asset.symbol}</strong>
-                    <span>{asset.name}</span>
+                    <AssetIdentity asset={asset} size={32} />
                   </button>
                 ))}
               </div>

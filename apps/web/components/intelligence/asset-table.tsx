@@ -9,6 +9,7 @@ import {
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
 import { formatPrice, formatRelativeAgo } from "@/lib/rwa-format";
+import { AssetIdentity } from "./asset-identity";
 import styles from "./asset-table.module.css";
 
 function verificationPill(summary: AssetSummary) {
@@ -97,10 +98,7 @@ export function AssetTable({
               </td>
             ) : null}
             <td>
-              <div className={styles.assetCell}>
-                <span className={styles.symbol}>{summary.asset.symbol}</span>
-                <span className={styles.assetName}>{summary.asset.name}</span>
-              </div>
+              <AssetIdentity asset={summary.asset} size={30} />
             </td>
             <td className={styles.muted}>{summary.asset.assetClass}</td>
             <td className={styles.muted}>{summary.asset.issuerName}</td>
