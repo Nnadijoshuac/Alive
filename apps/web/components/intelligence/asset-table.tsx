@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { StarIcon } from "@hugeicons/core-free-icons";
+import { FileSearchIcon, StarIcon } from "@hugeicons/core-free-icons";
+import { AliveIcon, AliveIconTile } from "@/components/ui/alive-icon";
 import {
   dataStatus,
   eligibilityStatus,
@@ -71,7 +71,12 @@ export function AssetTable({
   const router = useRouter();
 
   if (summaries.length === 0) {
-    return <div className={styles.empty}>{emptyLabel}</div>;
+    return (
+      <div className={styles.empty}>
+        <AliveIconTile icon={FileSearchIcon} tone="muted" />
+        <p>{emptyLabel}</p>
+      </div>
+    );
   }
 
   return (
@@ -115,7 +120,7 @@ export function AssetTable({
                       : `Add ${summary.asset.symbol} to watchlist`
                   }
                 >
-                  <HugeiconsIcon icon={StarIcon} size={15} strokeWidth={1.8} />
+                  <AliveIcon icon={StarIcon} size="sm" />
                 </button>
               </td>
             ) : null}
@@ -123,7 +128,11 @@ export function AssetTable({
               <AssetIdentity asset={summary.asset} size={30} />
             </td>
             <td className={styles.muted}>{summary.asset.assetClass}</td>
-            <td className={styles.muted}>{summary.asset.issuerName}</td>
+            <td>
+              <span className={styles.issuer} title={summary.asset.issuerName}>
+                {summary.asset.issuerName}
+              </span>
+            </td>
             <td>{backingLabel(summary)}</td>
             <td>{chainBadges(summary)}</td>
             <td className={styles.value}>

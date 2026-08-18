@@ -2,16 +2,29 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  BankIcon,
+  BlockchainIcon,
+  BuildingIcon,
   CancelCircleIcon,
+  ChartAverageIcon,
+  ChartLineIcon,
   CircleQuestionMarkIcon,
+  CoinsIcon,
+  CompassIcon,
+  File01Icon,
+  FlashIcon,
+  GlobeIcon,
   LinkSquare01Icon,
   Loading03Icon,
+  NewsIcon,
   Shield01Icon,
+  ShieldBlockchainIcon,
+  UserGroupIcon,
 } from "@hugeicons/core-free-icons";
+import { AliveIcon, AliveIconTile } from "@/components/ui/alive-icon";
 import type { EligibilityPolicy, EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
   extractAssetPassport,
@@ -44,10 +57,9 @@ function verdictTone(status: EligibilityVerdict["status"] | undefined) {
 }
 
 function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
-  if (status === "ELIGIBLE") return <HugeiconsIcon icon={Shield01Icon} size={13} strokeWidth={2} />;
-  if (status === "RESTRICTED")
-    return <HugeiconsIcon icon={CancelCircleIcon} size={13} strokeWidth={2} />;
-  return <HugeiconsIcon icon={CircleQuestionMarkIcon} size={13} strokeWidth={2} />;
+  if (status === "ELIGIBLE") return <AliveIcon icon={Shield01Icon} size="sm" />;
+  if (status === "RESTRICTED") return <AliveIcon icon={CancelCircleIcon} size="sm" />;
+  return <AliveIcon icon={CircleQuestionMarkIcon} size="sm" />;
 }
 
 /**
@@ -263,7 +275,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   return (
     <div className={styles.page}>
       <Link className={styles.backLink} href="/">
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={13} /> Back to Overview
+        <AliveIcon icon={ArrowLeft01Icon} size="sm" /> Back to Overview
       </Link>
 
       {/* 1. Header */}
@@ -292,11 +304,11 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   >
                     {analyzing ? (
                       <>
-                        <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> Analyzing…
+                        <AliveIcon icon={Loading03Icon} size="sm" className="spin" /> Analyzing…
                       </>
                     ) : (
                       <>
-                        Analyze asset <HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={2.2} />
+                        Analyze asset <AliveIcon icon={ArrowRight01Icon} size="sm" />
                       </>
                     )}
                   </button>
@@ -389,6 +401,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 2b. Backing */}
       <section className={styles.section} aria-labelledby="backing-title">
         <h2 className={styles.sectionHeading} id="backing-title">
+          <AliveIcon icon={Shield01Icon} size="lg" className={styles.sectionHeadingIcon} />
           Backing
         </h2>
         {backing ? (
@@ -449,15 +462,19 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             </dl>
           </div>
         ) : (
-          <p className={styles.emptyState}>
-            ALIVE has not classified how this asset is backed yet.
-          </p>
+          <div className={styles.emptyStateBlock}>
+            <AliveIconTile icon={Shield01Icon} tone="muted" />
+            <p className={styles.emptyState}>
+              ALIVE has not classified how this asset is backed yet.
+            </p>
+          </div>
         )}
       </section>
 
       {/* 2c. What could move this asset */}
       <section className={styles.section} aria-labelledby="risk-drivers-title">
         <h2 className={styles.sectionHeading} id="risk-drivers-title">
+          <AliveIcon icon={FlashIcon} size="lg" className={styles.sectionHeadingIcon} />
           What could move this asset
         </h2>
         {riskDrivers && riskDrivers.length > 0 ? (
@@ -490,6 +507,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 2d. Latest intelligence (news) */}
       <section className={styles.section} aria-labelledby="news-title">
         <h2 className={styles.sectionHeading} id="news-title">
+          <AliveIcon icon={NewsIcon} size="lg" className={styles.sectionHeadingIcon} />
           Latest intelligence
         </h2>
         {news && news.length > 0 ? (
@@ -503,19 +521,23 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                 <p>{item.summary}</p>
                 <p className={styles.sectionSub}>{item.reasoning}</p>
                 <a href={item.url} target="_blank" rel="noreferrer">
-                  Read source <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
+                  Read source <AliveIcon icon={LinkSquare01Icon} size="sm" />
                 </a>
               </article>
             ))}
           </div>
         ) : (
-          <p className={styles.emptyState}>No relevant news connected for this asset yet.</p>
+          <div className={styles.emptyStateBlock}>
+            <AliveIconTile icon={NewsIcon} tone="muted" />
+            <p className={styles.emptyState}>No relevant news connected for this asset yet.</p>
+          </div>
         )}
       </section>
 
       {/* 3. What ALIVE sees */}
       <section className={styles.section} aria-labelledby="signals-title">
         <h2 className={styles.sectionHeading} id="signals-title">
+          <AliveIcon icon={Shield01Icon} size="lg" className={styles.sectionHeadingIcon} />
           What ALIVE sees
         </h2>
         {status === "VERIFIED" ? (
@@ -560,17 +582,21 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             ) : null}
           </>
         ) : (
-          <p className={styles.emptyState}>
-            {status === "NOT_ANALYZED"
-              ? "ALIVE has not analyzed this asset yet -- run Analyze to extract and evaluate it against real documents."
-              : "This asset has no real, cited source and has not been evaluated."}
-          </p>
+          <div className={styles.emptyStateBlock}>
+            <AliveIconTile icon={CircleQuestionMarkIcon} tone="muted" />
+            <p className={styles.emptyState}>
+              {status === "NOT_ANALYZED"
+                ? "ALIVE has not analyzed this asset yet -- run Analyze to extract and evaluate it against real documents."
+                : "This asset has no real, cited source and has not been evaluated."}
+            </p>
+          </div>
         )}
       </section>
 
       {/* 4. Financials */}
       <section className={styles.section} aria-labelledby="financials-title">
         <h2 className={styles.sectionHeading} id="financials-title">
+          <AliveIcon icon={ChartLineIcon} size="lg" className={styles.sectionHeadingIcon} />
           Financials
         </h2>
         {financialFacts.length > 0 ? (
@@ -593,6 +619,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {source ? (
         <section className={styles.section} aria-labelledby="market-title">
           <h2 className={styles.sectionHeading} id="market-title">
+            <AliveIcon icon={CoinsIcon} size="lg" className={styles.sectionHeadingIcon} />
             Market
           </h2>
           <div className={styles.card}>
@@ -656,7 +683,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  View feed contract on Etherscan <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
+                  View feed contract on Etherscan <AliveIcon icon={LinkSquare01Icon} size="sm" />
                 </a>
               ) : null}
             </div>
@@ -665,6 +692,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       ) : (
         <section className={styles.section} aria-labelledby="market-title">
           <h2 className={styles.sectionHeading} id="market-title">
+            <AliveIcon icon={CoinsIcon} size="lg" className={styles.sectionHeadingIcon} />
             Market
           </h2>
           <p className={styles.emptyState}>
@@ -678,6 +706,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 6. Macro & benchmark */}
       <section className={styles.section} aria-labelledby="macro-title">
         <h2 className={styles.sectionHeading} id="macro-title">
+          <AliveIcon icon={GlobeIcon} size="lg" className={styles.sectionHeadingIcon} />
           Macro
         </h2>
         {macro && macro.length > 0 ? (
@@ -704,6 +733,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
 
       <section className={styles.section} aria-labelledby="benchmark-title">
         <h2 className={styles.sectionHeading} id="benchmark-title">
+          <AliveIcon icon={ChartAverageIcon} size="lg" className={styles.sectionHeadingIcon} />
           Benchmark
         </h2>
         {benchmark ? (
@@ -724,6 +754,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {fundFacts.length > 0 ? (
         <section className={styles.section} aria-labelledby="fund-title">
           <h2 className={styles.sectionHeading} id="fund-title">
+            <AliveIcon icon={BankIcon} size="lg" className={styles.sectionHeadingIcon} />
             Fund profile
           </h2>
           <div className={styles.card}>
@@ -742,6 +773,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {companyFacts.length > 0 ? (
         <section className={styles.section} aria-labelledby="company-title">
           <h2 className={styles.sectionHeading} id="company-title">
+            <AliveIcon icon={BuildingIcon} size="lg" className={styles.sectionHeadingIcon} />
             Company profile
           </h2>
           <div className={styles.card}>
@@ -760,6 +792,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {ownership && ownership.length > 0 ? (
         <section className={styles.section} aria-labelledby="ownership-title">
           <h2 className={styles.sectionHeading} id="ownership-title">
+            <AliveIcon icon={UserGroupIcon} size="lg" className={styles.sectionHeadingIcon} />
             Ownership
           </h2>
           <p className={styles.sectionSub}>
@@ -780,6 +813,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 6c. Outlook -- sentiment/evidence only, never BUY/SELL/price target, always separate from eligibility */}
       <section className={styles.section} aria-labelledby="outlook-title">
         <h2 className={styles.sectionHeading} id="outlook-title">
+          <AliveIcon icon={CompassIcon} size="lg" className={styles.sectionHeadingIcon} />
           Outlook
         </h2>
         {outlook ? (
@@ -826,6 +860,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 7. Documents -- real Groq AI extraction */}
       <section className={styles.section} aria-labelledby="documents-title">
         <h2 className={styles.sectionHeading} id="documents-title">
+          <AliveIcon icon={File01Icon} size="lg" className={styles.sectionHeadingIcon} />
           Documents
         </h2>
         {extraction ? (
@@ -876,6 +911,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 8. Sources */}
       <section className={styles.section} aria-labelledby="sources-title">
         <h2 className={styles.sectionHeading} id="sources-title">
+          <AliveIcon icon={File01Icon} size="lg" className={styles.sectionHeadingIcon} />
           Sources
         </h2>
         <p className={styles.sectionSub}>Every fact above traces back to one of these.</p>
@@ -892,7 +928,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                 <p>{sourceRecord.disclaimer}</p>
               ) : (
                 <a href={sourceRecord.sourceUrl} target="_blank" rel="noreferrer">
-                  Open primary source <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
+                  Open primary source <AliveIcon icon={LinkSquare01Icon} size="sm" />
                 </a>
               )}
             </article>
@@ -903,6 +939,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 8b. Networks / Deployments -- only VERIFIED deployments are shown (directive §27) */}
       <section className={styles.section} aria-labelledby="networks-title">
         <h2 className={styles.sectionHeading} id="networks-title">
+          <AliveIcon icon={BlockchainIcon} size="lg" className={styles.sectionHeadingIcon} />
           Networks
         </h2>
         {asset.deployments && asset.deployments.length > 0 ? (
@@ -920,7 +957,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   <p>Verified deployment</p>
                   {deployment.explorerUrl ? (
                     <a href={deployment.explorerUrl} target="_blank" rel="noreferrer">
-                      View on explorer <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
+                      View on explorer <AliveIcon icon={LinkSquare01Icon} size="sm" />
                     </a>
                   ) : null}
                 </article>
@@ -936,6 +973,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
       {/* 9. Onchain -- collapsed by default */}
       <section className={styles.section} aria-labelledby="onchain-title">
         <h2 className={styles.sectionHeading} id="onchain-title">
+          <AliveIcon icon={ShieldBlockchainIcon} size="lg" className={styles.sectionHeadingIcon} />
           Onchain
         </h2>
         <details className={styles.detailsBlock}>

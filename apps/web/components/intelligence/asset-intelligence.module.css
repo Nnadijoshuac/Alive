@@ -212,10 +212,30 @@
 }
 
 .sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   color: var(--ink);
   font-size: 15px;
   font-weight: 650;
+}
+
+.sectionHeadingIcon {
+  color: var(--muted-2);
+}
+
+.emptyStateBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.emptyStateBlock p {
+  margin: 0;
 }
 
 .sectionSub {

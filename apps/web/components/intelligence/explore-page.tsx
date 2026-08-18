@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon } from "@hugeicons/core-free-icons";
+import { FileSearchIcon, Search01Icon } from "@hugeicons/core-free-icons";
 import { publiclySelectableChains, type AssetClass, type BackingType } from "@alive/shared";
+import { AliveIcon, AliveIconTile } from "@/components/ui/alive-icon";
 import {
   dataStatus,
   listAssetSummaries,
@@ -163,7 +163,7 @@ export function ExplorePage() {
 
       <div className={styles.filterRow}>
         <div className={styles.searchBox}>
-          <HugeiconsIcon icon={Search01Icon} size={15} aria-hidden="true" />
+          <AliveIcon icon={Search01Icon} size="md" tone="muted" />
           <input
             type="text"
             inputMode="search"
@@ -263,6 +263,7 @@ export function ExplorePage() {
 
       {isXLayerZeroState ? (
         <div className={styles.emptyState}>
+          <AliveIconTile icon={FileSearchIcon} tone="muted" />
           <p>No verified X Layer RWA deployments are indexed yet.</p>
           <p className={styles.emptyStateSub}>ALIVE is actively indexing X Layer.</p>
         </div>

@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowRightIcon,
-  CheckCircleIcon,
+  ArrowRight01Icon,
+  CancelCircleIcon,
+  CheckmarkCircle01Icon,
   CircleIcon,
-  CircleNotchIcon,
-  MagnifyingGlassIcon,
-  XCircleIcon,
-} from "@phosphor-icons/react";
+  Loading03Icon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
+import { AliveIcon } from "@/components/ui/alive-icon";
 import {
   extractAssetPassport,
   getAssetEligibility,
@@ -235,7 +236,7 @@ export function OverviewPage() {
 
         <form className={styles.searchForm} onSubmit={handleSubmit}>
           <div className={styles.searchBox} ref={boxRef}>
-            <MagnifyingGlassIcon size={16} aria-hidden="true" />
+            <AliveIcon icon={Search01Icon} size="md" tone="muted" />
             <input
               type="text"
               inputMode="search"
@@ -271,11 +272,11 @@ export function OverviewPage() {
           <button className={styles.analyzeButton} type="submit" disabled={running}>
             {running ? (
               <>
-                <CircleNotchIcon size={16} className="spin" /> Analyzing…
+                <AliveIcon icon={Loading03Icon} size="md" className="spin" /> Analyzing…
               </>
             ) : (
               <>
-                Analyze asset <ArrowRightIcon size={15} weight="bold" />
+                Analyze asset <AliveIcon icon={ArrowRight01Icon} size="md" />
               </>
             )}
           </button>
@@ -288,13 +289,13 @@ export function OverviewPage() {
               return (
                 <li className={styles.stageRow} data-status={status} key={stage.key}>
                   {status === "done" ? (
-                    <CheckCircleIcon size={16} weight="fill" />
+                    <AliveIcon icon={CheckmarkCircle01Icon} size="md" tone="positive" />
                   ) : status === "active" ? (
-                    <CircleNotchIcon size={16} className="spin" />
+                    <AliveIcon icon={Loading03Icon} size="md" className="spin" />
                   ) : status === "error" ? (
-                    <XCircleIcon size={16} weight="fill" />
+                    <AliveIcon icon={CancelCircleIcon} size="md" tone="negative" />
                   ) : (
-                    <CircleIcon size={16} />
+                    <AliveIcon icon={CircleIcon} size="md" tone="muted" />
                   )}
                   {stage.label}
                   {stage.key === "extract" && extraction ? (
