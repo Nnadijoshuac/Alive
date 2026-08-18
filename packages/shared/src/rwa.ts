@@ -53,9 +53,7 @@ export const AssetProvenanceFieldSchema = z.enum([
   "issuer",
   "issuerName",
   "underlying",
-  "network",
-  "chainId",
-  "tokenAddress",
+  "deployments",
   "priceFeed.provider",
   "priceFeed.feedId",
   "priceFeed.type",
@@ -125,6 +123,17 @@ const AssetSourceBaseShape = {
   ),
 };
 
+/**
+ * Trust tiers for external sources (catalog-expansion directive §10-11).
+ * TIER 1 (PRIMARY) is the issuer/manager/platform/regulator itself.
+ * TIER 2 (CHAIN_EXPLORER) is a blockchain explorer or onchain contract
+ * state. TIER 3 (DISCOVERY) is an aggregator or metadata index -- it can
+ * discover a candidate asset, but alone it never promotes a catalog entry
+ * to VERIFIED. Optional (not every existing source has been back-tagged),
+ * but new sources should set it.
+ */
+export const SourceTierSchema = z.enum(["PRIMARY", "CHAIN_EXPLORER", "DISCOVERY"]);
+
 const ExternalAssetSourceSchema = z
   .object({
     ...AssetSourceBaseShape,
@@ -137,6 +146,7 @@ const ExternalAssetSourceSchema = z
       "REGULATORY_FILING",
     ]),
     sourceUrl: z.string().url().max(2_048),
+    sourceTier: SourceTierSchema.optional(),
   })
   .strict();
 
@@ -279,6 +289,76 @@ export const RwaExtractionMetadataSchema = z
   })
   .strict();
 
+/**
+ * Deployment status (catalog-expansion directive §6). Only VERIFIED
+ * deployments satisfy public chain filters (e.g. "X Layer") -- a
+ * DISCOVERED or UNVERIFIED deployment is a lead, not a fact ALIVE will
+ * assert. DEPRECATED marks a deployment ALIVE once verified but no
+ * longer trusts (e.g. a migrated contract).
+ */
+export const DeploymentStatusSchema = z.enum([
+  "VERIFIED",
+  "DISCOVERED",
+  "UNVERIFIED",
+  "DEPRECATED",
+]);
+
+/**
+ * A real financial product can have one canonical identity and several
+ * token deployments across chains (directive §4-5). `contractAddress` is
+ * deliberately a free-form string, not an EVM-only AddressSchema: ALIVE's
+ * chain model must not assume every future deployment is EVM-shaped
+ * (Solana program-derived addresses, for example, are not 0x-hex).
+ */
+export const RwaDeploymentSchema = z
+  .object({
+    chainId: z.number().int().positive().max(4_294_967_295),
+    chainName: knownText(60),
+    contractAddress: knownText(160),
+    tokenStandard: knownText(40),
+    deploymentStatus: DeploymentStatusSchema,
+    explorerUrl: z.string().url().max(2_048).optional(),
+    sourceIds: z.array(AssetIdSchema).optional(),
+    verifiedAt: IsoDateSchema.optional(),
+  })
+  .strict();
+
+/**
+ * Catalog inclusion is not the same claim as ALIVE verification (directive
+ * §2, §40): IDENTIFIED means ALIVE has enough evidence the product is
+ * real and sourced -- not that ALIVE has analyzed it. PENDING_IDENTITY is
+ * an internal discovery-pipeline state that should never be shown as a
+ * public catalog entry (directive §2). DEPRECATED marks an entry ALIVE no
+ * longer considers current (e.g. a fund that wound down).
+ */
+export const CatalogStatusSchema = z.enum(["IDENTIFIED", "PENDING_IDENTITY", "DEPRECATED"]);
+
+/**
+ * Whether ALIVE's Analyze pipeline can currently run for this asset
+ * (directive §18). READY means real official documents are registered for
+ * extraction (the ttbill-b/USTB path). SOURCE_DISCOVERY_REQUIRED means the
+ * asset's canonical identity is established but ALIVE has not yet
+ * registered documents to extract from -- Analyze should say why, never
+ * fabricate a result. UNSUPPORTED marks an asset class/source type ALIVE's
+ * extraction pipeline does not yet handle at all.
+ */
+export const AnalysisCapabilitySchema = z.enum([
+  "READY",
+  "SOURCE_DISCOVERY_REQUIRED",
+  "UNSUPPORTED",
+]);
+
+/**
+ * Separate from deployment chain (directive §9, §42-43): whether ALIVE's
+ * own eligibility-signing + onchain enforcement infrastructure exists for
+ * this asset on X Layer. An asset can be deployed on Ethereum with zero
+ * X Layer token deployment and still have enforcementCapability "X_LAYER"
+ * (ttbill-b: real Chainlink NAV, signed verdicts, and a proven X Layer
+ * Testnet gateway) -- enforcement capability is about ALIVE's own
+ * infrastructure, not about where the token contract lives.
+ */
+export const EnforcementCapabilitySchema = z.enum(["X_LAYER", "NONE"]);
+
 export const LogoSourceSchema = z.enum([
   "COINGECKO",
   "TRUST_WALLET",
@@ -336,9 +416,10 @@ const RwaAssetObjectSchema = z
     issuer: IssuerIdSchema,
     issuerName: knownText(200),
     underlying: knownText(500),
-    network: knownText(120).optional(),
-    chainId: z.number().int().positive().max(4_294_967_295).optional(),
-    tokenAddress: AddressSchema.optional(),
+    deployments: z.array(RwaDeploymentSchema).min(1).optional(),
+    catalogStatus: CatalogStatusSchema.optional(),
+    analysisCapability: AnalysisCapabilitySchema.optional(),
+    enforcementCapability: EnforcementCapabilitySchema.optional(),
     priceFeed: RwaPriceFeedSchema.optional(),
     yield: RwaYieldSchema.optional(),
     liquidity: RwaLiquiditySchema.optional(),
@@ -394,9 +475,7 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
     "lastUpdatedAt",
   ];
 
-  if (asset.network !== undefined) fields.push("network");
-  if (asset.chainId !== undefined) fields.push("chainId");
-  if (asset.tokenAddress !== undefined) fields.push("tokenAddress");
+  if (asset.deployments !== undefined) fields.push("deployments");
   if (asset.priceFeed !== undefined) {
     fields.push("priceFeed.provider", "priceFeed.type");
     if (asset.priceFeed.feedId !== undefined) fields.push("priceFeed.feedId");
@@ -456,16 +535,18 @@ function presentProvenanceFields(asset: RwaAssetCandidate): ProvenanceField[] {
 
 export const RwaAssetSchema = RwaAssetObjectSchema.superRefine(
   (asset, context) => {
-    const deploymentFields = [asset.network, asset.chainId, asset.tokenAddress];
-    const deploymentFieldCount = deploymentFields.filter(
-      (field) => field !== undefined,
-    ).length;
-    if (deploymentFieldCount !== 0 && deploymentFieldCount !== 3) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "network, chainId, and tokenAddress must either all be known or all be omitted",
-        path: ["network"],
+    if (asset.deployments) {
+      const seen = new Set<string>();
+      asset.deployments.forEach((deployment, index) => {
+        const key = `${deployment.chainId}:${deployment.contractAddress.toLowerCase()}`;
+        if (seen.has(key)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "An asset cannot list the same chain+contract deployment twice",
+            path: ["deployments", index],
+          });
+        }
+        seen.add(key);
       });
     }
 
@@ -580,5 +661,11 @@ export type RwaExtractionMetadata = z.infer<
 >;
 export type RwaAssetVisual = z.infer<typeof RwaAssetVisualSchema>;
 export type LogoSource = z.infer<typeof LogoSourceSchema>;
+export type RwaDeployment = z.infer<typeof RwaDeploymentSchema>;
+export type DeploymentStatus = z.infer<typeof DeploymentStatusSchema>;
+export type CatalogStatus = z.infer<typeof CatalogStatusSchema>;
+export type AnalysisCapability = z.infer<typeof AnalysisCapabilitySchema>;
+export type EnforcementCapability = z.infer<typeof EnforcementCapabilitySchema>;
+export type SourceTier = z.infer<typeof SourceTierSchema>;
 export type RwaAsset = z.infer<typeof RwaAssetSchema>;
 export type RwaCatalog = z.infer<typeof RwaCatalogSchema>;

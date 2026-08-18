@@ -135,6 +135,48 @@ A request such as `put 100% into tNVDA` may be interpreted and displayed, but a
 vault with a 20% single-asset cap must reject it. The rejection must be a real
 contract revert, not a frontend warning.
 
+## Global RWA catalog
+
+The catalog is ALIVE's front door, not the product: it answers "what real
+RWAs exist," while the rest of ALIVE answers "what can actually be proven
+about this one."
+
+```text
+GLOBAL RWA DISCOVERY
+-> CANONICAL ASSET IDENTITY
+-> OFFICIAL SOURCE DISCOVERY
+-> ALIVE AI ANALYSIS
+-> CITED / VALIDATED ASSET PASSPORT
+-> MARKET / ORACLE DATA
+-> DETERMINISTIC ELIGIBILITY
+-> X LAYER ENFORCEMENT
+```
+
+**Discovery and intelligence are multi-chain. Enforcement is X Layer.** These
+are deliberately not the same claim:
+
+- A real asset's **deployments** are the chains its token contract is
+  independently verified on (network + contract address, checked against
+  CoinGecko/Trust Wallet/an explorer -- never inferred from a ticker).
+- A real asset's **enforcement capability** is whether ALIVE's own signed
+  eligibility + onchain gate exists for it on X Layer. An asset can be
+  Ethereum-only and still have X Layer enforcement (ttbill-b: real
+  Chainlink NAV, a signed verdict, and a proven X Layer Testnet gateway --
+  with zero USTB token deployment on X Layer itself).
+
+Catalog inclusion ("ALIVE has enough evidence this product is real and
+sourced") is also not the same claim as **verification** ("ALIVE ran its
+extraction/citation pipeline against it"). A newly-indexed real asset is
+honestly `NOT ANALYZED` / `NOT EVALUATED` until a user clicks Analyze --
+never `RESTRICTED`, which is reserved for an asset ALIVE actually
+evaluated against a policy.
+
+See `packages/shared/src/rwa.ts` (`RwaDeploymentSchema`, `CatalogStatusSchema`,
+`AnalysisCapabilitySchema`, `EnforcementCapabilitySchema`) for the exact
+model, and `services/intelligence/src/data/catalog-providers/` for the
+discovery-provider interface a future aggregator/explorer-indexing source
+would implement alongside today's hand-researched seed provider.
+
 ## Trust model
 
 The product must visibly distinguish:

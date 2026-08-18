@@ -91,10 +91,65 @@ describe("RWA asset provenance", () => {
     ).toBe(false);
   });
 
-  it("rejects partial token deployment coordinates", () => {
+  it("rejects an unrecognized legacy network/chainId/tokenAddress field -- deployments[] is the only deployment model now", () => {
     expect(
       RwaAssetSchema.safeParse({ ...validDemoAsset(), network: "X Layer" })
         .success,
+    ).toBe(false);
+  });
+
+  it("accepts a real deployment and requires a source to support the deployments field", () => {
+    const asset = validDemoAsset();
+    asset.sources[0]!.supportedFields.push("deployments");
+    const parsed = RwaAssetSchema.parse({
+      ...asset,
+      deployments: [
+        {
+          chainId: 1,
+          chainName: "Ethereum",
+          contractAddress: "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
+          tokenStandard: "ERC-20",
+          deploymentStatus: "VERIFIED",
+        },
+      ],
+    });
+    expect(parsed.deployments).toHaveLength(1);
+    expect(parsed.deployments?.[0]?.deploymentStatus).toBe("VERIFIED");
+  });
+
+  it("rejects a deployments array claimed by no source (provenance parity)", () => {
+    const asset = validDemoAsset();
+    expect(
+      RwaAssetSchema.safeParse({
+        ...asset,
+        deployments: [
+          {
+            chainId: 1,
+            chainName: "Ethereum",
+            contractAddress: "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
+            tokenStandard: "ERC-20",
+            deploymentStatus: "VERIFIED",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects two deployments with the same chain + contract address", () => {
+    const asset = validDemoAsset();
+    asset.sources[0]!.supportedFields.push("deployments");
+    const duplicate = {
+      chainId: 1,
+      chainName: "Ethereum",
+      contractAddress: "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
+      tokenStandard: "ERC-20",
+      deploymentStatus: "VERIFIED" as const,
+    };
+    expect(
+      RwaAssetSchema.safeParse({
+        ...asset,
+        deployments: [duplicate, { ...duplicate }],
+      }).success,
     ).toBe(false);
   });
 
@@ -196,6 +251,41 @@ describe("RWA asset provenance", () => {
           ),
         ),
       ).toBe(true);
+    }
+
+    // X Layer honesty (directive §8, §26, §43, §52): the current real
+    // catalog has zero VERIFIED X Layer (chainId 196) token deployments --
+    // ttbill-b's Chainlink NAV feed and X Layer enforcement infrastructure
+    // do not constitute a token deployment on X Layer. The X Layer chain
+    // filter must return zero assets honestly, not infer one from
+    // enforcement capability or market-data availability.
+    const X_LAYER_CHAIN_ID = 196;
+    const xLayerDeployments = catalog.assets.flatMap((asset) =>
+      (asset.deployments ?? []).filter(
+        (deployment) =>
+          deployment.chainId === X_LAYER_CHAIN_ID && deployment.deploymentStatus === "VERIFIED",
+      ),
+    );
+    expect(xLayerDeployments).toHaveLength(0);
+
+    // Every real asset's deployment is genuinely VERIFIED Ethereum today --
+    // proving the deployment model works, not asserting a chain that was
+    // never actually checked.
+    for (const asset of unanalyzedRealAssets.concat(ttbillB ? [ttbillB] : [])) {
+      for (const deployment of asset.deployments ?? []) {
+        expect(deployment.deploymentStatus).toBe("VERIFIED");
+        expect(deployment.chainId).toBe(1);
+        expect(deployment.chainName).toBe("Ethereum");
+      }
+    }
+
+    // Enforcement capability is a distinct claim from deployment chain:
+    // only ttbill-b has ALIVE's own X Layer eligibility/enforcement
+    // infrastructure proven for it.
+    expect(ttbillB?.enforcementCapability).toBe("X_LAYER");
+    const otherReal = unanalyzedRealAssets;
+    for (const asset of otherReal) {
+      expect(asset.enforcementCapability).toBe("NONE");
     }
   });
 

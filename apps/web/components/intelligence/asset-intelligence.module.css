@@ -344,6 +344,12 @@
   font-weight: 600;
 }
 
+.mono {
+  overflow-wrap: anywhere;
+  font-family: var(--font-geist-mono), monospace !important;
+  font-size: 11px !important;
+}
+
 .detailsBlock {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);

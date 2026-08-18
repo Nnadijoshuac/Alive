@@ -214,22 +214,37 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           ) : null}
           {status === "NOT_ANALYZED" ? (
             <div className={styles.analyzeRow}>
-              <button
-                type="button"
-                className={styles.retryButton}
-                disabled={analyzing}
-                onClick={() => void runAnalyze()}
-              >
-                {analyzing ? (
-                  <>
-                    <CircleNotchIcon size={14} className="spin" /> Analyzing…
-                  </>
-                ) : (
-                  <>
-                    Analyze asset <ArrowRightIcon size={13} weight="bold" />
-                  </>
-                )}
-              </button>
+              {asset.analysisCapability === "UNSUPPORTED" ? (
+                <span className={styles.sectionSub}>
+                  ALIVE&apos;s Analyze pipeline does not yet support this asset&apos;s source
+                  type.
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.retryButton}
+                    disabled={analyzing}
+                    onClick={() => void runAnalyze()}
+                  >
+                    {analyzing ? (
+                      <>
+                        <CircleNotchIcon size={14} className="spin" /> Analyzing…
+                      </>
+                    ) : (
+                      <>
+                        Analyze asset <ArrowRightIcon size={13} weight="bold" />
+                      </>
+                    )}
+                  </button>
+                  {asset.analysisCapability === "SOURCE_DISCOVERY_REQUIRED" && !analyzeError ? (
+                    <span className={styles.sectionSub}>
+                      ALIVE has not yet registered official documents for this asset -- Analyze
+                      may report that honestly rather than extracting facts.
+                    </span>
+                  ) : null}
+                </>
+              )}
               {analyzeError ? (
                 <span className={styles.sectionSub}>
                   {analyzeError instanceof Error
@@ -556,6 +571,39 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             </article>
           ))}
         </div>
+      </section>
+
+      {/* 8b. Networks / Deployments -- only VERIFIED deployments are shown (directive §27) */}
+      <section className={styles.section} aria-labelledby="networks-title">
+        <h2 className={styles.sectionHeading} id="networks-title">
+          Networks
+        </h2>
+        {asset.deployments && asset.deployments.length > 0 ? (
+          <div className={styles.sourceGrid}>
+            {asset.deployments
+              .filter((deployment) => deployment.deploymentStatus === "VERIFIED")
+              .map((deployment) => (
+                <article
+                  className={styles.sourceCard}
+                  key={`${deployment.chainId}:${deployment.contractAddress}`}
+                >
+                  <span className={styles.sourceType}>{deployment.tokenStandard}</span>
+                  <h3>{deployment.chainName}</h3>
+                  <p className={styles.mono}>{deployment.contractAddress}</p>
+                  <p>Verified deployment</p>
+                  {deployment.explorerUrl ? (
+                    <a href={deployment.explorerUrl} target="_blank" rel="noreferrer">
+                      View on explorer <ArrowSquareOutIcon size={12} />
+                    </a>
+                  ) : null}
+                </article>
+              ))}
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            No verified token deployment confirmed for this asset yet.
+          </p>
+        )}
       </section>
 
       {/* 9. Onchain -- collapsed by default */}

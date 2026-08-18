@@ -34,15 +34,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = findRepoRoot(__dirname);
 const catalogPath = path.join(repoRoot, "data/rwa-catalog/catalog.demo.json");
 
+type CatalogDeployment = {
+  chainId: number;
+  chainName: string;
+  contractAddress: string;
+  deploymentStatus: string;
+};
+
 type CatalogAsset = {
   id: string;
   symbol: string;
-  network?: string;
-  tokenAddress?: string;
+  deployments?: CatalogDeployment[];
   sources: Array<{ sourceType: string }>;
   visual?: unknown;
   [key: string]: unknown;
 };
+
+/** Only a VERIFIED deployment is trustworthy enough to key a logo lookup off of. */
+function primaryDeployment(asset: CatalogAsset): CatalogDeployment | undefined {
+  return asset.deployments?.find((d) => d.deploymentStatus === "VERIFIED");
+}
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
@@ -62,17 +73,20 @@ async function main(): Promise<void> {
     const isReal = asset.sources.some((s) => s.sourceType !== "DEMO_FIXTURE");
     if (!isReal) continue; // never resolve/cache a logo for the synthetic demo catalog
 
-    if (!asset.network || !asset.tokenAddress) {
+    const deployment = primaryDeployment(asset);
+    if (!deployment) {
       report.push({
         asset: asset.id,
-        network: asset.network ?? "-",
-        contractAddress: asset.tokenAddress ?? "-",
+        network: "-",
+        contractAddress: "-",
         logoSource: "-",
         resolved: false,
         identityMatch: false,
       });
       continue;
     }
+    const network = deployment.chainName;
+    const tokenAddress = deployment.contractAddress;
 
     // Already resolved (and pointed at the same contract) from a prior
     // run: this is exactly the "resolve once, cache the result" behavior
@@ -86,12 +100,12 @@ async function main(): Promise<void> {
     if (
       !process.argv.includes("--force") &&
       cached?.logoStatus === "RESOLVED" &&
-      cached.logoContractAddress?.toLowerCase() === asset.tokenAddress.toLowerCase()
+      cached.logoContractAddress?.toLowerCase() === tokenAddress.toLowerCase()
     ) {
       report.push({
         asset: asset.id,
-        network: asset.network,
-        contractAddress: asset.tokenAddress,
+        network,
+        contractAddress: tokenAddress,
         logoSource: `${cached.logoSource ?? "?"} (cached)`,
         resolved: true,
         identityMatch: true,
@@ -105,16 +119,13 @@ async function main(): Promise<void> {
     // batch run from spending its retries before it even gets going.
     await new Promise((resolve) => setTimeout(resolve, 8_000));
 
-    const resolution = await resolveTokenLogo({
-      network: asset.network,
-      tokenAddress: asset.tokenAddress,
-    });
+    const resolution = await resolveTokenLogo({ network, tokenAddress });
 
     asset.visual = resolution;
     report.push({
       asset: asset.id,
-      network: asset.network,
-      contractAddress: asset.tokenAddress,
+      network,
+      contractAddress: tokenAddress,
       logoSource: resolution.logoStatus === "RESOLVED" ? resolution.logoSource : "-",
       resolved: resolution.logoStatus === "RESOLVED",
       // The resolver itself refuses to return RESOLVED on a mismatch, so

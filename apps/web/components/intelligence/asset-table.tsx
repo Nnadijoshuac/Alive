@@ -6,11 +6,26 @@ import {
   dataStatus,
   eligibilityStatus,
   verificationStatus,
+  verifiedChains,
   type AssetSummary,
 } from "@/lib/asset-intelligence-summary";
 import { formatPrice, formatRelativeAgo } from "@/lib/rwa-format";
 import { AssetIdentity } from "./asset-identity";
 import styles from "./asset-table.module.css";
+
+function chainBadges(summary: AssetSummary) {
+  const chains = verifiedChains(summary.asset);
+  if (chains.length === 0) return <span className={styles.muted}>—</span>;
+  return (
+    <span className={styles.chainBadges}>
+      {chains.map((chain) => (
+        <span className={styles.chainBadge} key={chain}>
+          {chain}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function verificationPill(summary: AssetSummary) {
   const status = verificationStatus(summary);
@@ -60,6 +75,7 @@ export function AssetTable({
           <th>Asset</th>
           <th>Type</th>
           <th>Issuer</th>
+          <th>Chains</th>
           <th>Value</th>
           <th>Verification</th>
           <th>Eligibility</th>
@@ -102,6 +118,7 @@ export function AssetTable({
             </td>
             <td className={styles.muted}>{summary.asset.assetClass}</td>
             <td className={styles.muted}>{summary.asset.issuerName}</td>
+            <td>{chainBadges(summary)}</td>
             <td className={styles.value}>
               {summary.quote ? formatPrice(summary.quote.price) : "—"}
             </td>

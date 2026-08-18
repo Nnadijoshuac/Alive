@@ -269,16 +269,86 @@ export async function buildIntelligenceApp(
     },
   }));
 
-  app.get("/api/assets", async () => ({
-    catalog: {
-      id: dependencies.catalog.catalogId,
-      label: dependencies.catalog.label,
-      dataMode: dependencies.catalog.dataMode,
-      asOf: dependencies.catalog.asOf,
-      disclaimer: dependencies.catalog.disclaimer,
-    },
-    assets: dependencies.repository.listAssets(),
-  }));
+  // Optional query-string filters over the catalog (directive: prepare the
+  // API contract for chain/class/issuer/verification/search filtering and
+  // pagination even while the catalog is small enough that filtering in
+  // React over one static payload would also "work" today). Every filter
+  // is optional and additive -- an unfiltered request behaves exactly as
+  // before, so existing callers (optimizer, policy compiler, tests) are
+  // unaffected.
+  const CatalogQuerySchema = z.object({
+    q: z.string().trim().min(1).max(200).optional(),
+    chainId: z.coerce.number().int().positive().optional(),
+    assetClass: z.string().trim().min(1).max(40).optional(),
+    issuer: z.string().trim().min(1).max(200).optional(),
+    verification: z.enum(["VERIFIED", "NOT_ANALYZED", "UNVERIFIED"]).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(500).optional(),
+  });
+
+  app.get("/api/assets", async (request) => {
+    const query = CatalogQuerySchema.parse(request.query);
+    let assets = dependencies.repository.listAssets();
+
+    const hasRealSource = (asset: (typeof assets)[number]) =>
+      asset.sources.some((source) => source.sourceType !== "DEMO_FIXTURE");
+    const verificationOf = (asset: (typeof assets)[number]) => {
+      if (!hasRealSource(asset)) return "UNVERIFIED" as const;
+      return asset.extraction !== undefined ? "VERIFIED" as const : "NOT_ANALYZED" as const;
+    };
+
+    if (query.q) {
+      const needle = query.q.toLowerCase();
+      assets = assets.filter(
+        (asset) =>
+          asset.symbol.toLowerCase().includes(needle) ||
+          asset.name.toLowerCase().includes(needle) ||
+          asset.issuerName.toLowerCase().includes(needle) ||
+          asset.assetClass.toLowerCase().includes(needle) ||
+          (asset.deployments ?? []).some((d) =>
+            d.contractAddress.toLowerCase().includes(needle),
+          ),
+      );
+    }
+    if (query.chainId !== undefined) {
+      assets = assets.filter((asset) =>
+        (asset.deployments ?? []).some(
+          (d) => d.chainId === query.chainId && d.deploymentStatus === "VERIFIED",
+        ),
+      );
+    }
+    if (query.assetClass) {
+      assets = assets.filter((asset) => asset.assetClass === query.assetClass);
+    }
+    if (query.issuer) {
+      const needle = query.issuer.toLowerCase();
+      assets = assets.filter(
+        (asset) =>
+          asset.issuer.toLowerCase() === needle ||
+          asset.issuerName.toLowerCase().includes(needle),
+      );
+    }
+    if (query.verification) {
+      assets = assets.filter((asset) => verificationOf(asset) === query.verification);
+    }
+
+    const totalCount = assets.length;
+    const limit = query.limit ?? totalCount;
+    const page = query.page ?? 1;
+    const paged = query.page || query.limit ? assets.slice((page - 1) * limit, page * limit) : assets;
+
+    return {
+      catalog: {
+        id: dependencies.catalog.catalogId,
+        label: dependencies.catalog.label,
+        dataMode: dependencies.catalog.dataMode,
+        asOf: dependencies.catalog.asOf,
+        disclaimer: dependencies.catalog.disclaimer,
+      },
+      assets: paged,
+      pagination: { totalCount, page, limit },
+    };
+  });
 
   app.get<{ Params: { assetId: string } }>(
     "/api/assets/:assetId",

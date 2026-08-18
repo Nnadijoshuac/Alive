@@ -98,6 +98,22 @@
   background: var(--warning-bg);
 }
 
+.chainBadges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chainBadge {
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--muted-2);
+  font: 620 10px/1.5 var(--font-geist-mono), monospace;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .watchButton {
   display: flex;
   align-items: center;

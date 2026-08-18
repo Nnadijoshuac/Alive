@@ -254,11 +254,33 @@ export async function getIntelligenceHealth() {
   return record(await request("/health"), "Health");
 }
 
-export async function listRwaAssets(): Promise<{
+export type RwaCatalogFilters = {
+  q?: string;
+  chainId?: number;
+  assetClass?: string;
+  issuer?: string;
+  verification?: "VERIFIED" | "NOT_ANALYZED" | "UNVERIFIED";
+  page?: number;
+  limit?: number;
+};
+
+export async function listRwaAssets(filters: RwaCatalogFilters = {}): Promise<{
   catalog: RwaCatalogSummary;
   assets: RwaAsset[];
+  totalCount: number;
 }> {
-  const payload = record(await request("/api/assets"), "Asset catalog");
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  const query = params.toString();
+  const payload = record(
+    await request(`/api/assets${query ? `?${query}` : ""}`),
+    "Asset catalog",
+  );
+  const pagination = payload.pagination
+    ? record(payload.pagination, "Pagination")
+    : undefined;
   const catalog = record(payload.catalog, "Catalog summary");
   return {
     catalog: {
@@ -269,6 +291,10 @@ export async function listRwaAssets(): Promise<{
       disclaimer: text(catalog.disclaimer, "Catalog disclaimer"),
     },
     assets: RwaAssetSchema.array().parse(payload.assets),
+    totalCount:
+      typeof pagination?.totalCount === "number"
+        ? pagination.totalCount
+        : RwaAssetSchema.array().parse(payload.assets).length,
   };
 }
 

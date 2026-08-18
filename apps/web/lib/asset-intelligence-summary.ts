@@ -107,3 +107,31 @@ export function dataStatus(summary: AssetSummary): DataStatus {
   if (!summary.quote) return "UNAVAILABLE";
   return summary.quote.dataMode === "LIVE" ? "LIVE" : "DEMO";
 }
+
+/**
+ * Only VERIFIED deployments are real claims (catalog-expansion directive
+ * §6-7): a DISCOVERED/UNVERIFIED lead is not something ALIVE asserts to
+ * the user as "this asset exists on this chain." Deduplicated by chain
+ * name since one asset can (rarely) carry more than one deployment on the
+ * same chain across token standards.
+ */
+export function verifiedChains(asset: RwaAsset): string[] {
+  const names = (asset.deployments ?? [])
+    .filter((deployment) => deployment.deploymentStatus === "VERIFIED")
+    .map((deployment) => deployment.chainName);
+  return Array.from(new Set(names));
+}
+
+/**
+ * The X Layer chain filter must answer exactly "does this asset have a
+ * VERIFIED token deployment on chain 196" -- not "can ALIVE analyze it,"
+ * not "does it have a Chainlink feed," and not "can ALIVE enforce it
+ * onchain." Those are the deployment-chain, analysis, market-data, and
+ * enforcement-capability questions respectively, and conflating them was
+ * explicitly called out as a mistake to avoid.
+ */
+export function hasVerifiedDeploymentOnChain(asset: RwaAsset, chainId: number): boolean {
+  return (asset.deployments ?? []).some(
+    (deployment) => deployment.chainId === chainId && deployment.deploymentStatus === "VERIFIED",
+  );
+}

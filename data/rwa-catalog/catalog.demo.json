@@ -163,9 +163,6 @@
         "Transfers of Shares are subject to consent requirements and, for Tokenized Shares, automated smart contract controls.",
         "Tokenized Shares are not listed on any exchange or trading system and may only be transferred through limited peer-to-peer transactions, subject to restrictions."
       ],
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
       "sources": [
         {
           "id": "superstate-catalog-seed-issuer-doc",
@@ -182,7 +179,8 @@
             "underlying",
             "restrictions",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "alive-methodology-ttbill-b",
@@ -210,10 +208,9 @@
           "sourceUrl": "https://etherscan.io/token/0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
@@ -226,7 +223,24 @@
         "logoContractAddress": "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:17:28.384Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x43415eb6ff9db7e26a15b704e7a3edce97d31c4e",
+          "sourceIds": [
+            "etherscan-token-identity-ttbill-b"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "READY",
+      "enforcementCapability": "X_LAYER"
     },
     {
       "id": "ousg",
@@ -236,9 +250,6 @@
       "issuer": "ondo-finance",
       "issuerName": "Ondo Finance",
       "underlying": "Short-term US Treasury bonds, held via BlackRock's BUIDL fund",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
       "sources": [
         {
           "id": "ondo-docs-ousg-overview",
@@ -254,7 +265,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-ousg",
@@ -263,10 +275,9 @@
           "sourceUrl": "https://etherscan.io/token/0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -279,7 +290,24 @@
         "logoContractAddress": "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:17:37.706Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x1b19c19393e2d034d8ff31ff34c81252fcbbee92",
+          "sourceIds": [
+            "etherscan-token-identity-ousg"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "usdy",
@@ -289,9 +317,6 @@
       "issuer": "ondo-finance",
       "issuerName": "Ondo Finance",
       "underlying": "Short-term US Treasuries and bank demand deposits",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x96f6ef951840721adbf46ac996b59e0235cb985c",
       "sources": [
         {
           "id": "ondo-usdy-product-page",
@@ -307,7 +332,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-usdy",
@@ -316,10 +342,9 @@
           "sourceUrl": "https://etherscan.io/token/0x96f6ef951840721adbf46ac996b59e0235cb985c",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -332,7 +357,24 @@
         "logoContractAddress": "0x96f6ef951840721adbf46ac996b59e0235cb985c",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:17:46.422Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x96f6ef951840721adbf46ac996b59e0235cb985c",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x96f6ef951840721adbf46ac996b59e0235cb985c",
+          "sourceIds": [
+            "etherscan-token-identity-usdy"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "benji-fobxx",
@@ -342,9 +384,6 @@
       "issuer": "franklin-templeton",
       "issuerName": "Franklin Templeton",
       "underlying": "US Treasury securities, repurchase agreements, and cash",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x3ddc84940ab509c11b20b76b466933f40b750dc9",
       "sources": [
         {
           "id": "franklin-templeton-benji-page",
@@ -360,7 +399,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-benji",
@@ -369,10 +409,9 @@
           "sourceUrl": "https://etherscan.io/token/0x3ddc84940ab509c11b20b76b466933f40b750dc9",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -385,7 +424,24 @@
         "logoContractAddress": "0x3ddc84940ab509c11b20b76b466933f40b750dc9",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:17:55.105Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x3ddc84940ab509c11b20b76b466933f40b750dc9",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x3ddc84940ab509c11b20b76b466933f40b750dc9",
+          "sourceIds": [
+            "etherscan-token-identity-benji"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "buidl",
@@ -395,9 +451,6 @@
       "issuer": "blackrock",
       "issuerName": "BlackRock Financial Management, Inc. (tokenized by Securitize)",
       "underlying": "Cash, US Treasury bills, and repurchase agreements",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x7712c34205737192402172409a8f7ccef8aa2aec",
       "sources": [
         {
           "id": "securitize-buidl-page",
@@ -413,7 +466,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-buidl",
@@ -422,10 +476,9 @@
           "sourceUrl": "https://etherscan.io/token/0x7712c34205737192402172409a8f7ccef8aa2aec",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -438,7 +491,24 @@
         "logoContractAddress": "0x7712c34205737192402172409a8f7ccef8aa2aec",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:18:03.868Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x7712c34205737192402172409a8f7ccef8aa2aec",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x7712c34205737192402172409a8f7ccef8aa2aec",
+          "sourceIds": [
+            "etherscan-token-identity-buidl"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "openeden-tbill",
@@ -448,9 +518,6 @@
       "issuer": "openeden",
       "issuerName": "OpenEden",
       "underlying": "Short-dated US Treasury Bills, managed and custodied by BNY",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0xdd50c053c096cb04a3e3362e2b622529ec5f2e8a",
       "sources": [
         {
           "id": "openeden-tbill-docs",
@@ -466,7 +533,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-tbill",
@@ -475,10 +543,9 @@
           "sourceUrl": "https://etherscan.io/token/0xdd50c053c096cb04a3e3362e2b622529ec5f2e8a",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -491,7 +558,24 @@
         "logoContractAddress": "0xdd50c053c096cb04a3e3362e2b622529ec5f2e8a",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:18:12.553Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0xdd50c053c096cb04a3e3362e2b622529ec5f2e8a",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0xdd50c053c096cb04a3e3362e2b622529ec5f2e8a",
+          "sourceIds": [
+            "etherscan-token-identity-tbill"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "backed-bib01",
@@ -501,9 +585,6 @@
       "issuer": "backed-finance",
       "issuerName": "Backed Finance AG",
       "underlying": "iShares $ Treasury Bond 0-1yr UCITS ETF (tracker certificate)",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0xca30c93b02514f86d5c86a6e375e3a330b435fb5",
       "sources": [
         {
           "id": "backed-assets-bib01-page",
@@ -519,7 +600,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-bib01",
@@ -528,10 +610,9 @@
           "sourceUrl": "https://etherscan.io/token/0xca30c93b02514f86d5c86a6e375e3a330b435fb5",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -544,7 +625,24 @@
         "logoContractAddress": "0xca30c93b02514f86d5c86a6e375e3a330b435fb5",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:18:21.217Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0xca30c93b02514f86d5c86a6e375e3a330b435fb5",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0xca30c93b02514f86d5c86a6e375e3a330b435fb5",
+          "sourceIds": [
+            "etherscan-token-identity-bib01"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "backed-bcspx",
@@ -554,9 +652,6 @@
       "issuer": "backed-finance",
       "issuerName": "Backed Finance AG",
       "underlying": "iShares Core S&P 500 UCITS ETF (CSPX, tracker certificate)",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x1e2c4fb7ede391d116e6b41cd0608260e8801d59",
       "sources": [
         {
           "id": "backed-assets-bcspx-page",
@@ -572,7 +667,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-bcspx",
@@ -581,10 +677,9 @@
           "sourceUrl": "https://etherscan.io/token/0x1e2c4fb7ede391d116e6b41cd0608260e8801d59",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -597,7 +692,24 @@
         "logoContractAddress": "0x1e2c4fb7ede391d116e6b41cd0608260e8801d59",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:18:29.944Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x1e2c4fb7ede391d116e6b41cd0608260e8801d59",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x1e2c4fb7ede391d116e6b41cd0608260e8801d59",
+          "sourceIds": [
+            "etherscan-token-identity-bcspx"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "jtrsy",
@@ -607,9 +719,6 @@
       "issuer": "anemoy",
       "issuerName": "Anemoy Capital Ltd. (sub-advised by Janus Henderson Investors)",
       "underlying": "Short-duration US Treasury bills (0-3 month maturities)",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
       "sources": [
         {
           "id": "anemoy-jtrsy-fund-page",
@@ -625,7 +734,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-jtrsy",
@@ -634,10 +744,9 @@
           "sourceUrl": "https://etherscan.io/token/0x8c213ee79581ff4984583c6a801e5263418c4b86",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -650,7 +759,24 @@
         "logoContractAddress": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:21:25.737Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x8c213ee79581ff4984583c6a801e5263418c4b86",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x8c213ee79581ff4984583c6a801e5263418c4b86",
+          "sourceIds": [
+            "etherscan-token-identity-jtrsy"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "acred",
@@ -660,9 +786,6 @@
       "issuer": "apollo-global-management",
       "issuerName": "Apollo Global Management (tokenized by Securitize)",
       "underlying": "Corporate direct lending, asset-backed lending, and structured credit",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x17418038ecf73ba4026c4f428547bf099706f27b",
       "sources": [
         {
           "id": "securitize-acred-primary-market-page",
@@ -678,7 +801,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-acred",
@@ -687,10 +811,9 @@
           "sourceUrl": "https://etherscan.io/token/0x17418038ecf73ba4026c4f428547bf099706f27b",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -703,7 +826,24 @@
         "logoContractAddress": "0x17418038ecf73ba4026c4f428547bf099706f27b",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:21:34.445Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x17418038ecf73ba4026c4f428547bf099706f27b",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x17418038ecf73ba4026c4f428547bf099706f27b",
+          "sourceIds": [
+            "etherscan-token-identity-acred"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "uscc",
@@ -713,9 +853,6 @@
       "issuer": "bitwise-asset-management",
       "issuerName": "Bitwise Asset Management (tokenized via Superstate)",
       "underlying": "Crypto basis (spot/futures) strategies across Bitcoin and Ether, plus US Treasuries",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
       "sources": [
         {
           "id": "bitwise-uscc-product-page",
@@ -731,7 +868,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-uscc",
@@ -740,10 +878,9 @@
           "sourceUrl": "https://etherscan.io/token/0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -756,7 +893,24 @@
         "logoContractAddress": "0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:19:59.382Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x14d60e7fdc0d71d8611742720e4c50e7a974020c",
+          "sourceIds": [
+            "etherscan-token-identity-uscc"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "wisdomtree-wtgxx",
@@ -766,9 +920,6 @@
       "issuer": "wisdomtree",
       "issuerName": "WisdomTree",
       "underlying": "US government securities, cash, and fully-collateralized repurchase agreements",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x1fecf3d9d4fee7f2c02917a66028a48c6706c179",
       "sources": [
         {
           "id": "wisdomtree-connect-wtgxx-page",
@@ -784,7 +935,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-wtgxx",
@@ -793,10 +945,9 @@
           "sourceUrl": "https://etherscan.io/token/0x1fecf3d9d4fee7f2c02917a66028a48c6706c179",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -809,7 +960,24 @@
         "logoContractAddress": "0x1fecf3d9d4fee7f2c02917a66028a48c6706c179",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:20:08.171Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x1fecf3d9d4fee7f2c02917a66028a48c6706c179",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x1fecf3d9d4fee7f2c02917a66028a48c6706c179",
+          "sourceIds": [
+            "etherscan-token-identity-wtgxx"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "usyc",
@@ -819,9 +987,6 @@
       "issuer": "hashnote",
       "issuerName": "Hashnote International Short Duration Fund Ltd. (a Circle company)",
       "underlying": "US Treasury bills and reverse repurchase agreements",
-      "network": "Ethereum",
-      "chainId": 1,
-      "tokenAddress": "0x136471a34f6ef19fe571effc1ca711fdb8e49f2b",
       "sources": [
         {
           "id": "circle-usyc-page",
@@ -837,7 +1002,8 @@
             "issuerName",
             "underlying",
             "lastUpdatedAt"
-          ]
+          ],
+          "sourceTier": "PRIMARY"
         },
         {
           "id": "etherscan-token-identity-usyc",
@@ -846,10 +1012,9 @@
           "sourceUrl": "https://etherscan.io/token/0x136471a34f6ef19fe571effc1ca711fdb8e49f2b",
           "retrievedAt": "2026-08-18T00:00:00.000Z",
           "supportedFields": [
-            "network",
-            "chainId",
-            "tokenAddress"
-          ]
+            "deployments"
+          ],
+          "sourceTier": "CHAIN_EXPLORER"
         }
       ],
       "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
@@ -862,7 +1027,24 @@
         "logoContractAddress": "0x136471a34f6ef19fe571effc1ca711fdb8e49f2b",
         "logoNetwork": "Ethereum",
         "logoVerifiedAt": "2026-08-18T08:20:16.880Z"
-      }
+      },
+      "deployments": [
+        {
+          "chainId": 1,
+          "chainName": "Ethereum",
+          "contractAddress": "0x136471a34f6ef19fe571effc1ca711fdb8e49f2b",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://etherscan.io/token/0x136471a34f6ef19fe571effc1ca711fdb8e49f2b",
+          "sourceIds": [
+            "etherscan-token-identity-usyc"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE"
     },
     {
       "id": "ttbill-c",
