@@ -177,6 +177,117 @@ model, and `services/intelligence/src/data/catalog-providers/` for the
 discovery-provider interface a future aggregator/explorer-indexing source
 would implement alongside today's hand-researched seed provider.
 
+## RWA Intelligence Terminal
+
+The full pipeline, front to back:
+
+```text
+GLOBAL RWA CATALOG
+   ↓
+CANONICAL PRODUCT IDENTITY
+   ↓
+VERIFIED MULTI-CHAIN DEPLOYMENTS
+   ↓
+BACKING CLASSIFICATION
+   ↓
+AI DOCUMENT VERIFICATION
+   ↓
+COMPANY / FUND INTELLIGENCE
+   ↓
+NEWS + EVENTS
+   ↓
+MACRO + BENCHMARK
+   ↓
+MARKET DATA
+   ↓
+RISK DRIVERS + OUTLOOK
+   ↓
+DETERMINISTIC ELIGIBILITY
+   ↓
+X LAYER ENFORCEMENT
+```
+
+Each stage is independently labelled real/demo/not-yet-connected below --
+a gap in one stage (e.g. no News for an asset) never blocks or fabricates
+another (e.g. Eligibility still evaluates correctly).
+
+### Backing classification
+
+Every catalog asset can carry a `backing` profile (`DIRECT_CLAIM`,
+`RESERVE_BACKED`, `COLLATERAL_BACKED`, `FUND_SHARE`, `DEBT_CLAIM`,
+`SYNTHETIC_EXPOSURE`, `HYBRID`, or the honest `UNKNOWN`), sourced from real
+issuer/legal documentation, never guessed from marketing language.
+`SYNTHETIC_EXPOSURE` is a first-class, non-pejorative category --
+synthetic does not mean fake, and `COLLATERAL_BACKED`/`RESERVE_BACKED` say
+nothing about quality on their own. Backing is structurally independent of
+both deployment verification and eligibility: the eligibility engine
+(`packages/eligibility-engine`) has no dependency on `BackingType` at all,
+so a classification can never gate a verdict.
+
+### X Layer Mainnet RWA discovery
+
+X Layer (chain `196`, native token OKB) is a first-class discovery target,
+independent of X Layer Testnet (chain `1952`, the Attack Lab's harness
+chain -- the two are never conflated, and the Testnet harness never
+appears in a Mainnet catalog result). X Layer always appears in Explore's
+chain filter, whether or not any verified deployment currently exists
+there -- a zero-result filter is an honest empty state, not a reason to
+hide the option.
+
+A real discovery pass against X Layer Mainnet's public token list found
+zero RWAs in the narrow default wallet-import list; a second, deeper pass
+against X Layer's fuller token index found candidate xStocks
+(Backed Finance-issued tokenized equities), each of which was
+independently re-verified with direct onchain RPC reads (`symbol()`,
+`name()`, contract bytecode) before being trusted -- contract addresses
+are never guessed or taken on faith from a scraped list. **7 xStocks are
+currently confirmed on X Layer Mainnet**, each `COLLATERAL_BACKED` per
+xStocks' own legal documentation (1:1 collateral held by regulated Swiss
+custodians under a three-party Account Control Agreement), with 6 of the
+7 carrying real, contract-address-verified CoinGecko logos and the 7th
+(`WMETAX`) honestly showing no resolvable logo rather than reusing an
+unrelated token's image.
+
+A tokenized-stock's **product identity** (issuer, tokenization provider,
+custodian, legal claim) and its **underlying company's identity**
+(fundamentals, leadership, news, benchmark) are deliberately kept
+separate on the Asset Intelligence page -- the token is issued by Backed
+Assets (JE) Limited, not by the company whose share price it tracks, and
+the UI never implies otherwise.
+
+### Deep intelligence (Company / Fund, News, Macro, Benchmark, Risk Drivers, Outlook)
+
+`RwaIntelligenceProfile` (`packages/shared/src/intelligence-profile.ts`)
+is a separate domain object from the catalog/eligibility asset record --
+overloading one object with both would conflate "what ALIVE needs to
+evaluate eligibility" with "what ALIVE has learned about this asset's
+broader context." Every module (`fundProfile`, `companyProfile`,
+`ownership`, `news`, `macro`, `benchmark`, `riskDrivers`, `outlook`) is
+independently `AVAILABLE`/`UNAVAILABLE`/`FAILED`/`NOT_APPLICABLE`, so a
+failure or absence in one module can never take down another or block
+Eligibility.
+
+Two reference assets currently have real, researched, cited deep
+intelligence populated: `ttbill-b` (Treasury/fund reference -- real Fed
+funds rate, real 3-month T-bill yield, real Invesco/Superstate transition
+coverage) and `meta-xstock` (equity/tokenized-stock reference -- real Q2
+2026 Meta earnings, real stock-price-reaction news, real ongoing
+litigation coverage, plus a tokenization/collateral-structure risk driver
+distinct from Meta's own business risk). Every other catalog asset
+honestly shows "Not evaluated" / "No relevant news connected yet" rather
+than a fabricated placeholder. **Outlook is never a trading signal** --
+no buy/sell action or price target exists anywhere in the schema, and it
+is fully independent of the deterministic eligibility verdict (an asset
+can be `ELIGIBLE` with a `NEGATIVE` outlook, or vice versa).
+
+**Not yet implemented:** a generalized, live OKX Market API catalog sync.
+`OkxRwaCatalogProvider` (`services/intelligence/src/data/catalog-providers/okx-provider.ts`)
+exists and fails closed (returns `[]`, never fabricates) because no
+dedicated "OKX RWA catalog" API was found to exist publicly -- only a
+general Market/Trade API requiring paid credentials not configured in
+this environment. The 7 X Layer xStocks above were verified through
+independent onchain reads instead, not through this provider.
+
 ## Trust model
 
 The product must visibly distinguish:
