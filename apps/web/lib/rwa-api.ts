@@ -4,12 +4,14 @@ import {
   MarketQuoteSchema,
   PortfolioPolicySchema,
   RwaAssetSchema,
+  RwaIntelligenceProfileSchema,
   type AssetClass,
   type EligibilityPolicy,
   type EligibilityVerdict,
   type MarketQuote,
   type PortfolioPolicy,
   type RwaAsset,
+  type RwaIntelligenceProfile,
 } from "@alive/shared";
 
 const INTELLIGENCE_URL = (
@@ -746,6 +748,24 @@ export async function getAssetEligibility(assetId: string): Promise<{
     policy: EligibilityPolicySchema.parse(payload.policy),
     disclaimer: text(payload.disclaimer, "Asset disclaimer"),
   };
+}
+
+/**
+ * Deep intelligence (news/macro/ownership/fund-or-company profile/risk
+ * drivers/outlook) is genuinely absent for most catalog assets today --
+ * `available: false` is an honest, expected response, not an error.
+ */
+export async function getAssetIntelligenceProfile(
+  assetId: string,
+): Promise<{ available: false; reason: string } | { available: true; profile: RwaIntelligenceProfile }> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/intelligence-profile`),
+    "Intelligence profile",
+  );
+  if (payload.available === true) {
+    return { available: true, profile: RwaIntelligenceProfileSchema.parse(payload.profile) };
+  }
+  return { available: false, reason: text(payload.reason, "Unavailable reason") };
 }
 
 export type PublishedVerdict = {

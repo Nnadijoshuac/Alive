@@ -1,13 +1,141 @@
-.filterRow {
+/*
+ * Explore is deliberately its own visual register within ALIVE: near-black,
+ * dense, institutional -- an OKX-style market terminal, not the milk
+ * editorial surface the rest of the product uses. This is achieved by
+ * redefining the SAME design-token custom properties (--paper-2, --ink,
+ * --hairline, --muted-2, --milk-deep, etc.) locally on `.page`, so every
+ * shared component rendered inside it (AssetTable, AssetIdentity,
+ * AssetAvatar) re-themes automatically via CSS cascade -- no component
+ * code changes, no visual system fork.
+ */
+.page {
+  --ink: #eef1ec;
+  --ink-soft: #b7bdb4;
+  --muted-2: #8a9086;
+  --faint: #5c625a;
+  --milk: #0a0c0a;
+  --milk-deep: #14170f;
+  --paper-2: #111411;
+  --hairline: rgb(238 241 236 / 0.1);
+  --hairline-strong: rgb(238 241 236 / 0.2);
+  --positive: #6fd394;
+  --positive-bg: rgb(111 211 148 / 0.12);
+  --negative: #e08a72;
+  --negative-bg: rgb(224 138 114 / 0.12);
+  --warning: #e0c072;
+  --warning-bg: rgb(224 192 114 / 0.12);
+
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1280px;
+  margin: -8px -8px 0;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--milk);
+  color: var(--ink);
 }
 
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--muted-2);
+  font: 650 11px/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heading {
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.subheading {
+  margin: 0;
+  max-width: 640px;
+  color: var(--muted-2);
+  font-size: 13px;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filterRow input,
 .filterRow select {
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
   padding: 7px 10px;
   color: var(--ink);
   background: var(--paper-2);
+  font-size: 12.5px;
+}
+
+.searchBox {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 7px;
+  min-width: 200px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  padding: 0 10px;
+  color: var(--faint);
+  background: var(--paper-2);
+}
+
+.searchBox input {
+  flex: 1;
+  border: none;
+  padding: 7px 0;
+  background: transparent;
+}
+
+.filterRow input {
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+
+.searchBox input::placeholder,
+.filterRow input::placeholder {
+  color: var(--faint);
+}
+
+.resultSummary {
+  margin: 0;
+  color: var(--muted-2);
+  font: 620 11px/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tableCard {
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  padding: 40px 20px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.emptyState p {
+  margin: 0;
+}
+
+.emptyStateSub {
+  color: var(--muted-2);
   font-size: 12.5px;
 }

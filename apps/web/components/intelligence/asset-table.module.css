@@ -98,6 +98,14 @@
   background: var(--warning-bg);
 }
 
+.backingBadge {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 550;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .chainBadges {
   display: inline-flex;
   flex-wrap: wrap;
@@ -126,6 +134,10 @@
 
 .watchButton:hover {
   color: var(--ink);
+}
+
+.watchButton[data-watched="true"] {
+  color: var(--warning);
 }
 
 .empty {

@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  ArrowSquareOutIcon,
-  CircleNotchIcon,
-  ProhibitIcon,
-  QuestionIcon,
-  ShieldCheckIcon,
-} from "@phosphor-icons/react";
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  CancelCircleIcon,
+  CircleQuestionMarkIcon,
+  LinkSquare01Icon,
+  Loading03Icon,
+  Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import type { EligibilityPolicy, EligibilityVerdict, RwaAsset } from "@alive/shared";
 import {
   extractAssetPassport,
   getAssetEligibility,
   getAssetExtraction,
+  getAssetIntelligenceProfile,
   getAssetMonitor,
   getRwaAsset,
   listRwaMarkets,
@@ -23,6 +25,7 @@ import {
   type AssetMonitorStatus,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
+import type { RwaIntelligenceProfile } from "@alive/shared";
 import { loadAssetDocumentation } from "@/lib/verify-flow";
 import { AssetHeroCard } from "./asset-hero-card";
 import {
@@ -41,9 +44,10 @@ function verdictTone(status: EligibilityVerdict["status"] | undefined) {
 }
 
 function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
-  if (status === "ELIGIBLE") return <ShieldCheckIcon size={13} weight="fill" />;
-  if (status === "RESTRICTED") return <ProhibitIcon size={13} weight="fill" />;
-  return <QuestionIcon size={13} weight="fill" />;
+  if (status === "ELIGIBLE") return <HugeiconsIcon icon={Shield01Icon} size={13} strokeWidth={2} />;
+  if (status === "RESTRICTED")
+    return <HugeiconsIcon icon={CancelCircleIcon} size={13} strokeWidth={2} />;
+  return <HugeiconsIcon icon={CircleQuestionMarkIcon} size={13} strokeWidth={2} />;
 }
 
 /**
@@ -80,6 +84,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   const [policy, setPolicy] = useState<EligibilityPolicy>();
   const [monitor, setMonitor] = useState<AssetMonitorStatus>();
   const [extraction, setExtraction] = useState<AssetExtractionStatus>();
+  const [profile, setProfile] = useState<RwaIntelligenceProfile>();
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<unknown>();
 
@@ -113,6 +118,12 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         setExtraction(await getAssetExtraction(passport.asset.id));
       } catch {
         setExtraction(undefined);
+      }
+      try {
+        const result = await getAssetIntelligenceProfile(passport.asset.id);
+        setProfile(result.available ? result.profile : undefined);
+      } catch {
+        setProfile(undefined);
       }
     } catch (requestError) {
       setError(requestError);
@@ -197,10 +208,62 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   if (asset.eligibleInvestors)
     financialFacts.push({ label: "Eligible investors", value: asset.eligibleInvestors });
 
+  const backing = asset.backing;
+  const riskDrivers = profile?.riskDrivers?.status === "AVAILABLE" ? profile.riskDrivers.data : undefined;
+  const news = profile?.news?.status === "AVAILABLE" ? profile.news.data : undefined;
+  const outlook = profile?.outlook?.status === "AVAILABLE" ? profile.outlook.data : undefined;
+  const fundProfile =
+    profile?.fundProfile?.status === "AVAILABLE" ? profile.fundProfile.data : undefined;
+  const companyProfile =
+    profile?.companyProfile?.status === "AVAILABLE" ? profile.companyProfile.data : undefined;
+  const ownership = profile?.ownership?.status === "AVAILABLE" ? profile.ownership.data : undefined;
+  const macro = profile?.macro?.status === "AVAILABLE" ? profile.macro.data : undefined;
+  const benchmark =
+    profile?.benchmark?.status === "AVAILABLE" ? profile.benchmark.data : undefined;
+
+  const fundFacts: Array<{ label: string; value: string }> = [];
+  if (fundProfile?.aum) fundFacts.push({ label: "AUM", value: fundProfile.aum });
+  if (fundProfile?.nav) fundFacts.push({ label: "NAV", value: fundProfile.nav });
+  if (fundProfile?.yield) fundFacts.push({ label: "Yield", value: fundProfile.yield });
+  if (fundProfile?.managementFeeBps !== undefined)
+    fundFacts.push({ label: "Management fee", value: formatBps(fundProfile.managementFeeBps) });
+  if (fundProfile?.manager) fundFacts.push({ label: "Manager", value: fundProfile.manager });
+  if (fundProfile?.custodian) fundFacts.push({ label: "Custodian", value: fundProfile.custodian });
+  if (fundProfile?.administrator)
+    fundFacts.push({ label: "Administrator", value: fundProfile.administrator });
+  if (fundProfile?.redemption) fundFacts.push({ label: "Redemption", value: fundProfile.redemption });
+  if (fundProfile?.subscription)
+    fundFacts.push({ label: "Subscription", value: fundProfile.subscription });
+  if (fundProfile?.eligibleInvestors)
+    fundFacts.push({ label: "Eligible investors", value: fundProfile.eligibleInvestors });
+  if (fundProfile?.holdingsSummary)
+    fundFacts.push({ label: "Holdings", value: fundProfile.holdingsSummary });
+  if (fundProfile?.durationDays !== undefined)
+    fundFacts.push({ label: "Duration", value: `${fundProfile.durationDays} days` });
+
+  const companyFacts: Array<{ label: string; value: string }> = [];
+  if (companyProfile?.revenue) companyFacts.push({ label: "Revenue", value: companyProfile.revenue });
+  if (companyProfile?.revenueGrowth)
+    companyFacts.push({ label: "Revenue growth", value: companyProfile.revenueGrowth });
+  if (companyProfile?.earnings) companyFacts.push({ label: "Earnings", value: companyProfile.earnings });
+  if (companyProfile?.margins) companyFacts.push({ label: "Margins", value: companyProfile.margins });
+  if (companyProfile?.cash) companyFacts.push({ label: "Cash", value: companyProfile.cash });
+  if (companyProfile?.debt) companyFacts.push({ label: "Debt", value: companyProfile.debt });
+  if (companyProfile?.marketCap)
+    companyFacts.push({ label: "Market cap", value: companyProfile.marketCap });
+  if (companyProfile?.leadership)
+    companyFacts.push({ label: "Leadership", value: companyProfile.leadership });
+  if (companyProfile?.headcount)
+    companyFacts.push({ label: "Headcount", value: companyProfile.headcount });
+  if (companyProfile?.headcountTrend)
+    companyFacts.push({ label: "Headcount trend", value: companyProfile.headcountTrend });
+  if (companyProfile?.creditRating)
+    companyFacts.push({ label: "Credit rating", value: companyProfile.creditRating });
+
   return (
     <div className={styles.page}>
       <Link className={styles.backLink} href="/">
-        <ArrowLeftIcon size={13} /> Back to Overview
+        <HugeiconsIcon icon={ArrowLeft01Icon} size={13} /> Back to Overview
       </Link>
 
       {/* 1. Header */}
@@ -229,11 +292,11 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   >
                     {analyzing ? (
                       <>
-                        <CircleNotchIcon size={14} className="spin" /> Analyzing…
+                        <HugeiconsIcon icon={Loading03Icon} size={14} className="spin" /> Analyzing…
                       </>
                     ) : (
                       <>
-                        Analyze asset <ArrowRightIcon size={13} weight="bold" />
+                        Analyze asset <HugeiconsIcon icon={ArrowRight01Icon} size={13} strokeWidth={2.2} />
                       </>
                     )}
                   </button>
@@ -298,22 +361,157 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           </span>
         </div>
         <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Financial health</span>
-          <span className={styles.summaryValueMuted}>Not evaluated</span>
-        </div>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Market conditions</span>
-          <span className={styles.summaryValueMuted}>Not evaluated</span>
+          <span className={styles.summaryLabel}>Backing</span>
+          {backing ? (
+            <span className={styles.summaryValue}>{backing.backingType.replaceAll("_", " ")}</span>
+          ) : (
+            <span className={styles.summaryValueMuted}>Not classified</span>
+          )}
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Event risk</span>
-          <span className={styles.summaryValueMuted}>Not evaluated</span>
+          {riskDrivers && riskDrivers.length > 0 ? (
+            <span className={styles.summaryValue}>{riskDrivers.length} tracked</span>
+          ) : (
+            <span className={styles.summaryValueMuted}>Not evaluated</span>
+          )}
         </div>
         <div className={styles.summaryCell}>
           <span className={styles.summaryLabel}>Outlook</span>
-          <span className={styles.summaryValueMuted}>Not evaluated</span>
+          {outlook ? (
+            <span className={styles.summaryValue}>{outlook.sentiment.replaceAll("_", " ")}</span>
+          ) : (
+            <span className={styles.summaryValueMuted}>Not evaluated</span>
+          )}
         </div>
       </div>
+
+      {/* 2b. Backing */}
+      <section className={styles.section} aria-labelledby="backing-title">
+        <h2 className={styles.sectionHeading} id="backing-title">
+          Backing
+        </h2>
+        {backing ? (
+          <div className={styles.card}>
+            <dl className={styles.factGrid}>
+              <div className={styles.factRow}>
+                <dt>Backing type</dt>
+                <dd>{backing.backingType.replaceAll("_", " ")}</dd>
+              </div>
+              {backing.directLegalClaim !== undefined ? (
+                <div className={styles.factRow}>
+                  <dt>Direct legal claim</dt>
+                  <dd>{backing.directLegalClaim ? "Yes" : "No"}</dd>
+                </div>
+              ) : null}
+              {backing.redemptionIntoUnderlying !== undefined ? (
+                <div className={styles.factRow}>
+                  <dt>Redeemable into underlying</dt>
+                  <dd>
+                    {backing.redemptionIntoUnderlying === "unknown"
+                      ? "UNKNOWN"
+                      : backing.redemptionIntoUnderlying
+                        ? "Yes"
+                        : "No"}
+                  </dd>
+                </div>
+              ) : null}
+              {backing.custodian ? (
+                <div className={styles.factRow}>
+                  <dt>Custodian</dt>
+                  <dd>{backing.custodian}</dd>
+                </div>
+              ) : null}
+              {backing.reserveManager ? (
+                <div className={styles.factRow}>
+                  <dt>Reserve manager</dt>
+                  <dd>{backing.reserveManager}</dd>
+                </div>
+              ) : null}
+              {backing.collateralDescription ? (
+                <div className={styles.factRow}>
+                  <dt>Collateral</dt>
+                  <dd>{backing.collateralDescription}</dd>
+                </div>
+              ) : null}
+              {backing.collateralizationRatio !== undefined ? (
+                <div className={styles.factRow}>
+                  <dt>Collateralization ratio</dt>
+                  <dd>{backing.collateralizationRatio}x</dd>
+                </div>
+              ) : null}
+              {backing.proofOfReserveAvailable !== undefined ? (
+                <div className={styles.factRow}>
+                  <dt>Proof of reserve</dt>
+                  <dd>{backing.proofOfReserveAvailable ? "Available" : "Not available"}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            ALIVE has not classified how this asset is backed yet.
+          </p>
+        )}
+      </section>
+
+      {/* 2c. What could move this asset */}
+      <section className={styles.section} aria-labelledby="risk-drivers-title">
+        <h2 className={styles.sectionHeading} id="risk-drivers-title">
+          What could move this asset
+        </h2>
+        {riskDrivers && riskDrivers.length > 0 ? (
+          <div className={styles.signalsGrid}>
+            {riskDrivers.map((driver) => (
+              <div className={styles.card} key={driver.name}>
+                <p className={styles.signalColumnHeading}>
+                  {driver.name}{" "}
+                  <span className={styles.detailsBadge}>{driver.direction}</span>
+                </p>
+                <p className={styles.sectionSub}>{driver.currentState}</p>
+                <p className={styles.sectionSub}>{driver.explanation}</p>
+                <ul className={styles.signalList}>
+                  {driver.evidence.map((item, index) => (
+                    <li className={styles.signalItem} key={index}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            ALIVE has not identified specific risk drivers for this asset yet.
+          </p>
+        )}
+      </section>
+
+      {/* 2d. Latest intelligence (news) */}
+      <section className={styles.section} aria-labelledby="news-title">
+        <h2 className={styles.sectionHeading} id="news-title">
+          Latest intelligence
+        </h2>
+        {news && news.length > 0 ? (
+          <div className={styles.sourceGrid}>
+            {news.map((item) => (
+              <article className={styles.sourceCard} key={item.url}>
+                <span className={styles.sourceType}>
+                  {item.impactDirection} · {item.publisher}
+                </span>
+                <h3>{item.headline}</h3>
+                <p>{item.summary}</p>
+                <p className={styles.sectionSub}>{item.reasoning}</p>
+                <a href={item.url} target="_blank" rel="noreferrer">
+                  Read source <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.emptyState}>No relevant news connected for this asset yet.</p>
+        )}
+      </section>
 
       {/* 3. What ALIVE sees */}
       <section className={styles.section} aria-labelledby="signals-title">
@@ -458,7 +656,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  View feed contract on Etherscan <ArrowSquareOutIcon size={12} />
+                  View feed contract on Etherscan <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
                 </a>
               ) : null}
             </div>
@@ -477,23 +675,152 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         </section>
       )}
 
-      {/* 6. Macro / Events -- honest empty states, no backend source exists yet */}
+      {/* 6. Macro & benchmark */}
       <section className={styles.section} aria-labelledby="macro-title">
         <h2 className={styles.sectionHeading} id="macro-title">
-          Economy
+          Macro
         </h2>
-        <p className={styles.emptyState}>
-          No macroeconomic signals connected for this asset yet.
-        </p>
+        {macro && macro.length > 0 ? (
+          <div className={styles.card}>
+            <dl className={styles.factGrid}>
+              {macro.map((signal) => (
+                <div className={styles.factRow} key={signal.name}>
+                  <dt>{signal.name}</dt>
+                  <dd>
+                    {signal.value}
+                    <br />
+                    <span className={styles.sectionSub}>{signal.relevance}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            No macroeconomic signals connected for this asset yet.
+          </p>
+        )}
       </section>
 
-      <section className={styles.section} aria-labelledby="events-title">
-        <h2 className={styles.sectionHeading} id="events-title">
-          Events &amp; news
+      <section className={styles.section} aria-labelledby="benchmark-title">
+        <h2 className={styles.sectionHeading} id="benchmark-title">
+          Benchmark
         </h2>
-        <p className={styles.emptyState}>
-          No relevant events or news connected for this asset yet.
-        </p>
+        {benchmark ? (
+          <div className={styles.card}>
+            <dl className={styles.factGrid}>
+              <div className={styles.factRow}>
+                <dt>{benchmark.name}</dt>
+                <dd>{benchmark.value ?? benchmark.benchmarkType}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>No asset-class-appropriate benchmark connected yet.</p>
+        )}
+      </section>
+
+      {/* 6b. Fund / Company profile -- kept distinct, never forced onto each other */}
+      {fundFacts.length > 0 ? (
+        <section className={styles.section} aria-labelledby="fund-title">
+          <h2 className={styles.sectionHeading} id="fund-title">
+            Fund profile
+          </h2>
+          <div className={styles.card}>
+            <dl className={styles.factGrid}>
+              {fundFacts.map((fact) => (
+                <div className={styles.factRow} key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+      ) : null}
+
+      {companyFacts.length > 0 ? (
+        <section className={styles.section} aria-labelledby="company-title">
+          <h2 className={styles.sectionHeading} id="company-title">
+            Company profile
+          </h2>
+          <div className={styles.card}>
+            <dl className={styles.factGrid}>
+              {companyFacts.map((fact) => (
+                <div className={styles.factRow} key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+      ) : null}
+
+      {ownership && ownership.length > 0 ? (
+        <section className={styles.section} aria-labelledby="ownership-title">
+          <h2 className={styles.sectionHeading} id="ownership-title">
+            Ownership
+          </h2>
+          <p className={styles.sectionSub}>
+            Issuer/company shareholders and backers -- distinct from onchain token holders.
+          </p>
+          <div className={styles.sourceGrid}>
+            {ownership.map((entry) => (
+              <article className={styles.sourceCard} key={entry.name}>
+                <span className={styles.sourceType}>{entry.relationship.replaceAll("_", " ")}</span>
+                <h3>{entry.name}</h3>
+                {entry.detail ? <p>{entry.detail}</p> : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {/* 6c. Outlook -- sentiment/evidence only, never BUY/SELL/price target, always separate from eligibility */}
+      <section className={styles.section} aria-labelledby="outlook-title">
+        <h2 className={styles.sectionHeading} id="outlook-title">
+          Outlook
+        </h2>
+        {outlook ? (
+          <div className={styles.card}>
+            <p className={styles.signalColumnHeading}>
+              {outlook.sentiment.replaceAll("_", " ")}{" "}
+              <span className={styles.detailsBadge}>{outlook.horizon}</span>
+            </p>
+            <p className={styles.sectionSub}>{outlook.summary}</p>
+            <div className={styles.signalsGrid}>
+              <div className={styles.signalColumn}>
+                <p className={styles.signalColumnHeading}>Positive drivers</p>
+                <ul className={styles.signalList}>
+                  {outlook.positiveDrivers.map((item, index) => (
+                    <li className={styles.signalItem} key={index}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className={styles.signalColumn}>
+                <p className={styles.signalColumnHeading}>Negative drivers</p>
+                <ul className={styles.signalList}>
+                  {outlook.negativeDrivers.map((item, index) => (
+                    <li className={styles.signalItem} key={index}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <p className={styles.policyNote}>
+              This is ALIVE&apos;s research outlook, not investment advice -- never a buy/sell
+              signal or price target, and entirely separate from the eligibility verdict above.
+            </p>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>
+            ALIVE has not formed an outlook for this asset yet.
+          </p>
+        )}
       </section>
 
       {/* 7. Documents -- real Groq AI extraction */}
@@ -565,7 +892,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                 <p>{sourceRecord.disclaimer}</p>
               ) : (
                 <a href={sourceRecord.sourceUrl} target="_blank" rel="noreferrer">
-                  Open primary source <ArrowSquareOutIcon size={12} />
+                  Open primary source <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
                 </a>
               )}
             </article>
@@ -593,7 +920,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                   <p>Verified deployment</p>
                   {deployment.explorerUrl ? (
                     <a href={deployment.explorerUrl} target="_blank" rel="noreferrer">
-                      View on explorer <ArrowSquareOutIcon size={12} />
+                      View on explorer <HugeiconsIcon icon={LinkSquare01Icon} size={12} />
                     </a>
                   ) : null}
                 </article>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { AssetClass } from "@alive/shared";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon } from "@hugeicons/core-free-icons";
+import { publiclySelectableChains, type AssetClass, type BackingType } from "@alive/shared";
 import {
   dataStatus,
   listAssetSummaries,
@@ -12,8 +14,7 @@ import {
 } from "@/lib/asset-intelligence-summary";
 import { getWatchlist, toggleWatch } from "@/lib/watchlist-state";
 import { AssetTable } from "./asset-table";
-import styles from "./overview.module.css";
-import filterStyles from "./explore.module.css";
+import styles from "./explore.module.css";
 
 const VERIFICATION_FILTERS = ["ALL", "VERIFIED", "NOT_ANALYZED", "UNVERIFIED"] as const;
 const VERIFICATION_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {
@@ -31,13 +32,32 @@ const MARKET_DATA_LABELS: Record<(typeof MARKET_DATA_FILTERS)[number], string> =
   UNAVAILABLE: "Unavailable",
 };
 
-/** LIVE/AVAILABLE/UNAVAILABLE (directive §19, §44) mapped onto the existing DataStatus enum -- "DEMO" is the generic "some real, non-live-monitored source" bucket, never actually reachable for today's real catalog (no real asset has a non-Chainlink feed yet), kept as an option so the architecture doesn't need to change again once one exists. */
+const BACKING_FILTERS = ["ALL", "UNCLASSIFIED"] as const;
+const BACKING_TYPES: BackingType[] = [
+  "DIRECT_CLAIM",
+  "RESERVE_BACKED",
+  "COLLATERAL_BACKED",
+  "FUND_SHARE",
+  "DEBT_CLAIM",
+  "SYNTHETIC_EXPOSURE",
+  "HYBRID",
+  "UNKNOWN",
+];
+
+/** LIVE/AVAILABLE/UNAVAILABLE mapped onto the existing DataStatus enum -- "DEMO" is the generic "some real, non-live-monitored source" bucket, never actually reachable for today's real catalog, kept as an option so the architecture doesn't need to change again once one exists. */
 function marketDataBucket(summary: AssetSummary): (typeof MARKET_DATA_FILTERS)[number] {
   const status = dataStatus(summary);
   if (status === "LIVE") return "LIVE";
   if (status === "DEMO") return "AVAILABLE";
   return "UNAVAILABLE";
 }
+
+// X Layer mandate §1: the chain filter is always seeded from ALIVE's own
+// canonical chain registry, never derived solely from which chains the
+// catalog currently happens to have deployments on -- X Layer must never
+// disappear from the product merely because a given catalog snapshot has
+// zero (or, as of this pass, seven) verified deployments there.
+const REGISTRY_CHAIN_NAMES = publiclySelectableChains().map((c) => c.chainName);
 
 export function ExplorePage() {
   const [summaries, setSummaries] = useState<AssetSummary[]>();
@@ -49,6 +69,7 @@ export function ExplorePage() {
     useState<(typeof VERIFICATION_FILTERS)[number]>("ALL");
   const [marketDataFilter, setMarketDataFilter] =
     useState<(typeof MARKET_DATA_FILTERS)[number]>("ALL");
+  const [backingFilter, setBackingFilter] = useState<string>("ALL");
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -63,11 +84,11 @@ export function ExplorePage() {
     return () => window.removeEventListener("alive:watchlist-changed", onChange);
   }, []);
 
-  // Every filter option is seeded from what the catalog actually contains
-  // (directive §7: "the UI should display only chains that currently have
-  // relevant catalog entries") -- never a hardcoded chain/issuer list.
+  // Chains: the full registry (X Layer always included), plus any
+  // additional chain a real deployment turns up that isn't registered yet
+  // -- never fewer than the registry, only ever more.
   const chains = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(REGISTRY_CHAIN_NAMES);
     for (const summary of summaries ?? []) {
       for (const chain of verifiedChains(summary.asset)) set.add(chain);
     }
@@ -102,13 +123,32 @@ export function ExplorePage() {
       if (marketDataFilter !== "ALL" && marketDataBucket(summary) !== marketDataFilter) {
         return false;
       }
+      if (backingFilter === "UNCLASSIFIED" && asset.backing) return false;
+      if (
+        backingFilter !== "ALL" &&
+        backingFilter !== "UNCLASSIFIED" &&
+        asset.backing?.backingType !== backingFilter
+      ) {
+        return false;
+      }
       if (needle) {
         const haystack = `${asset.symbol} ${asset.name} ${asset.issuerName} ${asset.assetClass} ${(asset.deployments ?? []).map((d) => d.contractAddress).join(" ")}`.toLowerCase();
         if (!haystack.includes(needle)) return false;
       }
       return true;
     });
-  }, [summaries, chainFilter, assetClassFilter, issuerFilter, verificationFilter, marketDataFilter, query]);
+  }, [
+    summaries,
+    chainFilter,
+    assetClassFilter,
+    issuerFilter,
+    verificationFilter,
+    marketDataFilter,
+    backingFilter,
+    query,
+  ]);
+
+  const isXLayerZeroState = chainFilter === "X Layer" && summaries && filtered.length === 0;
 
   return (
     <div className={styles.page}>
@@ -117,20 +157,23 @@ export function ExplorePage() {
         <h1 className={styles.heading}>The real RWA universe ALIVE has indexed.</h1>
         <p className={styles.subheading}>
           Search by symbol, product, issuer, category, or contract address. Filter by chain,
-          asset class, issuer, verification, and market data.
+          asset class, issuer, backing, verification, and market data.
         </p>
       </div>
 
-      <div className={filterStyles.filterRow}>
-        <input
-          type="text"
-          inputMode="search"
-          autoComplete="off"
-          placeholder="Search symbol, product, issuer, category, or contract address"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="Search all indexed RWAs"
-        />
+      <div className={styles.filterRow}>
+        <div className={styles.searchBox}>
+          <HugeiconsIcon icon={Search01Icon} size={15} aria-hidden="true" />
+          <input
+            type="text"
+            inputMode="search"
+            autoComplete="off"
+            placeholder="Search symbol, product, issuer, category, or contract address"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search all indexed RWAs"
+          />
+        </div>
         <select
           value={chainFilter}
           onChange={(event) => setChainFilter(event.target.value)}
@@ -168,6 +211,23 @@ export function ExplorePage() {
           ))}
         </select>
         <select
+          value={backingFilter}
+          onChange={(event) => setBackingFilter(event.target.value)}
+          aria-label="Filter by backing classification"
+        >
+          <option value="ALL">All backing types</option>
+          {BACKING_FILTERS.filter((v) => v !== "ALL").map((v) => (
+            <option key={v} value={v}>
+              Unclassified
+            </option>
+          ))}
+          {BACKING_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type.replaceAll("_", " ")}
+            </option>
+          ))}
+        </select>
+        <select
           value={verificationFilter}
           onChange={(event) =>
             setVerificationFilter(event.target.value as (typeof VERIFICATION_FILTERS)[number])
@@ -195,14 +255,27 @@ export function ExplorePage() {
         </select>
       </div>
 
-      <div className={styles.tableCard}>
-        <AssetTable
-          summaries={filtered}
-          emptyLabel={summaries ? "No assets match these filters." : "Loading…"}
-          watchedIds={watchedIds}
-          onToggleWatch={(assetId) => toggleWatch(assetId)}
-        />
-      </div>
+      {chainFilter !== "ALL" ? (
+        <p className={styles.resultSummary}>
+          {chainFilter.toUpperCase()} -- indexed verified deployments: {filtered.length}
+        </p>
+      ) : null}
+
+      {isXLayerZeroState ? (
+        <div className={styles.emptyState}>
+          <p>No verified X Layer RWA deployments are indexed yet.</p>
+          <p className={styles.emptyStateSub}>ALIVE is actively indexing X Layer.</p>
+        </div>
+      ) : (
+        <div className={styles.tableCard}>
+          <AssetTable
+            summaries={filtered}
+            emptyLabel={summaries ? "No assets match these filters." : "Loading…"}
+            watchedIds={watchedIds}
+            onToggleWatch={(assetId) => toggleWatch(assetId)}
+          />
+        </div>
+      )}
     </div>
   );
 }

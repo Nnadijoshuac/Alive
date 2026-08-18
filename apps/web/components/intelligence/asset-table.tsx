@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { StarIcon } from "@phosphor-icons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { StarIcon } from "@hugeicons/core-free-icons";
 import {
   dataStatus,
   eligibilityStatus,
@@ -12,6 +13,12 @@ import {
 import { formatPrice, formatRelativeAgo } from "@/lib/rwa-format";
 import { AssetIdentity } from "./asset-identity";
 import styles from "./asset-table.module.css";
+
+function backingLabel(summary: AssetSummary) {
+  const backing = summary.asset.backing;
+  if (!backing) return <span className={styles.muted}>—</span>;
+  return <span className={styles.backingBadge}>{backing.backingType.replaceAll("_", " ")}</span>;
+}
 
 function chainBadges(summary: AssetSummary) {
   const chains = verifiedChains(summary.asset);
@@ -75,6 +82,7 @@ export function AssetTable({
           <th>Asset</th>
           <th>Type</th>
           <th>Issuer</th>
+          <th>Backing</th>
           <th>Chains</th>
           <th>Value</th>
           <th>Verification</th>
@@ -100,16 +108,14 @@ export function AssetTable({
                 <button
                   type="button"
                   className={styles.watchButton}
+                  data-watched={watchedIds?.has(summary.asset.id) ? "true" : "false"}
                   aria-label={
                     watchedIds?.has(summary.asset.id)
                       ? `Remove ${summary.asset.symbol} from watchlist`
                       : `Add ${summary.asset.symbol} to watchlist`
                   }
                 >
-                  <StarIcon
-                    size={15}
-                    weight={watchedIds?.has(summary.asset.id) ? "fill" : "regular"}
-                  />
+                  <HugeiconsIcon icon={StarIcon} size={15} strokeWidth={1.8} />
                 </button>
               </td>
             ) : null}
@@ -118,6 +124,7 @@ export function AssetTable({
             </td>
             <td className={styles.muted}>{summary.asset.assetClass}</td>
             <td className={styles.muted}>{summary.asset.issuerName}</td>
+            <td>{backingLabel(summary)}</td>
             <td>{chainBadges(summary)}</td>
             <td className={styles.value}>
               {summary.quote ? formatPrice(summary.quote.price) : "—"}
