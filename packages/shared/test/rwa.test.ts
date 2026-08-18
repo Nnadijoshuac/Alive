@@ -238,7 +238,7 @@ describe("RWA asset provenance", () => {
     const unanalyzedRealAssets = catalog.assets.filter(
       (asset) => asset.id !== "ttbill-b" && !DEMO_ONLY_ASSET_IDS.has(asset.id),
     );
-    expect(unanalyzedRealAssets.length).toBeGreaterThanOrEqual(10);
+    expect(unanalyzedRealAssets.length).toBeGreaterThanOrEqual(17);
     for (const asset of unanalyzedRealAssets) {
       expect(asset.dataMode).toBe("SNAPSHOT");
       expect(asset.risk).toBeUndefined();
@@ -253,12 +253,14 @@ describe("RWA asset provenance", () => {
       ).toBe(true);
     }
 
-    // X Layer honesty (directive §8, §26, §43, §52): the current real
-    // catalog has zero VERIFIED X Layer (chainId 196) token deployments --
-    // ttbill-b's Chainlink NAV feed and X Layer enforcement infrastructure
-    // do not constitute a token deployment on X Layer. The X Layer chain
-    // filter must return zero assets honestly, not infer one from
-    // enforcement capability or market-data availability.
+    // X Layer honesty (directive §8, §26, §43, §52, and the X Layer
+    // discovery follow-on): a real discovery pass against X Layer Mainnet
+    // -- OKLink's X Layer explorer token list, independently verified
+    // onchain via symbol()/name()/bytecode reads -- found 7 genuine
+    // xStocks tokenized-equity deployments. ttbill-b's Chainlink NAV feed
+    // and X Layer enforcement infrastructure still do NOT themselves
+    // constitute a token deployment on X Layer -- these 7 are counted
+    // because their contracts were actually checked, not inferred.
     const X_LAYER_CHAIN_ID = 196;
     const xLayerDeployments = catalog.assets.flatMap((asset) =>
       (asset.deployments ?? []).filter(
@@ -266,16 +268,23 @@ describe("RWA asset provenance", () => {
           deployment.chainId === X_LAYER_CHAIN_ID && deployment.deploymentStatus === "VERIFIED",
       ),
     );
-    expect(xLayerDeployments).toHaveLength(0);
+    expect(xLayerDeployments).toHaveLength(7);
+    expect(catalog.assets.find((asset) => asset.id === "meta-xstock")).toBeDefined();
 
-    // Every real asset's deployment is genuinely VERIFIED Ethereum today --
-    // proving the deployment model works, not asserting a chain that was
-    // never actually checked.
+    // ttbill-b's Chainlink/enforcement story stays exactly what it always
+    // was: X Layer enforcement capability without an X Layer token
+    // deployment -- the two remain independent claims.
+    expect(ttbillB?.enforcementCapability).toBe("X_LAYER");
+    expect(ttbillB?.deployments?.some((d) => d.chainId === X_LAYER_CHAIN_ID)).toBe(false);
+
+    // Every real asset's deployment is genuinely VERIFIED, on either
+    // Ethereum or X Layer today -- proving the deployment model works,
+    // not asserting a chain that was never actually checked.
     for (const asset of unanalyzedRealAssets.concat(ttbillB ? [ttbillB] : [])) {
       for (const deployment of asset.deployments ?? []) {
         expect(deployment.deploymentStatus).toBe("VERIFIED");
-        expect(deployment.chainId).toBe(1);
-        expect(deployment.chainName).toBe("Ethereum");
+        expect([1, X_LAYER_CHAIN_ID]).toContain(deployment.chainId);
+        expect(["Ethereum", "X Layer"]).toContain(deployment.chainName);
       }
     }
 

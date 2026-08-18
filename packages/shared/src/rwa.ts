@@ -359,6 +359,49 @@ export const AnalysisCapabilitySchema = z.enum([
  */
 export const EnforcementCapabilitySchema = z.enum(["X_LAYER", "NONE"]);
 
+/**
+ * How an asset's value is actually claimed to be connected to the real
+ * world (catalog-expansion follow-on directive, "Backing/Synthetic
+ * classification"). Never inferred from marketing language -- only set
+ * when a real source states the mechanism. "Synthetic != fake, backed !=
+ * safe": SYNTHETIC_EXPOSURE is an honest, first-class category, not a
+ * red flag, and RESERVE_BACKED/COLLATERAL_BACKED say nothing about
+ * quality on their own.
+ */
+export const BackingTypeSchema = z.enum([
+  "DIRECT_CLAIM",
+  "RESERVE_BACKED",
+  "COLLATERAL_BACKED",
+  "FUND_SHARE",
+  "DEBT_CLAIM",
+  "SYNTHETIC_EXPOSURE",
+  "HYBRID",
+  "UNKNOWN",
+]);
+
+/**
+ * Self-contained provenance (its own `sourceIds`/`asOf`), like `visual` --
+ * ALIVE's own classification of already-sourced facts, not itself subject
+ * to the sources[].supportedFields provenance-parity check. Every field
+ * beyond `backingType` is optional: an unknown detail stays absent, never
+ * guessed.
+ */
+export const BackingProfileSchema = z
+  .object({
+    backingType: BackingTypeSchema,
+    underlyingAssets: knownText(500).optional(),
+    directLegalClaim: z.boolean().optional(),
+    redemptionIntoUnderlying: z.union([z.boolean(), z.literal("unknown")]).optional(),
+    custodian: knownText(200).optional(),
+    reserveManager: knownText(200).optional(),
+    collateralDescription: knownText(500).optional(),
+    collateralizationRatio: z.number().nonnegative().optional(),
+    proofOfReserveAvailable: z.boolean().optional(),
+    sourceIds: z.array(AssetIdSchema).min(1),
+    asOf: IsoDateSchema,
+  })
+  .strict();
+
 export const LogoSourceSchema = z.enum([
   "COINGECKO",
   "TRUST_WALLET",
@@ -437,6 +480,7 @@ const RwaAssetObjectSchema = z
     documentEffectiveDate: IsoDateSchema.optional(),
     extraction: RwaExtractionMetadataSchema.optional(),
     visual: RwaAssetVisualSchema.optional(),
+    backing: BackingProfileSchema.optional(),
     sources: z
       .array(AssetSourceSchema)
       .min(1)
@@ -667,5 +711,7 @@ export type CatalogStatus = z.infer<typeof CatalogStatusSchema>;
 export type AnalysisCapability = z.infer<typeof AnalysisCapabilitySchema>;
 export type EnforcementCapability = z.infer<typeof EnforcementCapabilitySchema>;
 export type SourceTier = z.infer<typeof SourceTierSchema>;
+export type BackingType = z.infer<typeof BackingTypeSchema>;
+export type BackingProfile = z.infer<typeof BackingProfileSchema>;
 export type RwaAsset = z.infer<typeof RwaAssetSchema>;
 export type RwaCatalog = z.infer<typeof RwaCatalogSchema>;

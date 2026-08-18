@@ -191,7 +191,7 @@ describe("intelligence API", () => {
       // real, sourced identity from boot, the rest remain synthetic demo
       // fixtures. Each asset's own dataMode is authoritative, not the
       // catalog-wide label.
-      catalog: { assetCount: 20, dataMode: "SNAPSHOT" },
+      catalog: { assetCount: 27, dataMode: "SNAPSHOT" },
     });
 
     const compile = await app.inject({

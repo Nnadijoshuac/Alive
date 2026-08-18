@@ -3,6 +3,8 @@ export * from "./asset-id.js";
 export * from "./authorization.js";
 export * from "./canonical.js";
 export * from "./chains.js";
+export * from "./chain-registry.js";
+export * from "./intelligence-profile.js";
 export * from "./market.js";
 export * from "./policy.js";
 export * from "./rwa.js";

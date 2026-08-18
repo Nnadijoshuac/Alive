@@ -85,14 +85,19 @@ describe("GET /api/assets query filters", () => {
     await app.close();
   });
 
-  // The X Layer filter must answer honestly: ALIVE has zero verified
-  // token deployments on chain 196 today. It must not be filled in with
-  // enforcement-capable assets (ttbill-b) or Chainlink-mapped assets.
-  it("chainId=196 (X Layer) returns zero assets -- no token deployment evidence exists", async () => {
+  // The X Layer filter must answer honestly from real discovery evidence:
+  // a live pass against X Layer Mainnet's token list, independently
+  // verified onchain, found 7 genuine xStocks deployments -- and it must
+  // NOT include ttbill-b, which has X Layer enforcement capability but no
+  // X Layer token deployment.
+  it("chainId=196 (X Layer) returns exactly the onchain-verified xStocks deployments, never ttbill-b", async () => {
     const app = await buildApp();
     const response = await app.inject({ method: "GET", url: "/api/assets?chainId=196" });
-    const body = response.json() as { assets: unknown[] };
-    expect(body.assets).toHaveLength(0);
+    const body = response.json() as { assets: { id: string }[] };
+    const ids = body.assets.map((a) => a.id);
+    expect(ids).toHaveLength(7);
+    expect(ids).toContain("meta-xstock");
+    expect(ids).not.toContain("ttbill-b");
     await app.close();
   });
 

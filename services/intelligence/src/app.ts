@@ -31,6 +31,7 @@ import {
 import { compileMandate } from "./compiler.js";
 import type { IntelligenceConfig } from "./config.js";
 import { officialSourcesForAsset } from "./data/official-sources.js";
+import { getIntelligenceProfile } from "./data/intelligence-profiles.js";
 import {
   createDemoEligibilityPolicy,
   evaluateEligibility,
@@ -364,6 +365,36 @@ export async function buildIntelligenceApp(
         };
       }
       return { asset, disclaimer: dependencies.catalog.disclaimer };
+    },
+  );
+
+  // Deep, editorial intelligence (news/macro/ownership/company-or-fund
+  // profile/risk drivers/outlook) is a separate domain object from the
+  // asset passport (see @alive/shared's RwaIntelligenceProfile doc
+  // comment) -- it can be entirely absent for an asset without that
+  // meaning anything is wrong with the asset itself.
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/intelligence-profile",
+    async (request, reply) => {
+      const asset = dependencies.repository.getAsset(request.params.assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+      const profile = getIntelligenceProfile(request.params.assetId);
+      if (!profile) {
+        return {
+          assetId: request.params.assetId,
+          available: false,
+          reason: "ALIVE has not yet researched deep intelligence for this asset.",
+        };
+      }
+      return { assetId: request.params.assetId, available: true, profile };
     },
   );
 

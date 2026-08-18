@@ -240,7 +240,18 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "READY",
-      "enforcementCapability": "X_LAYER"
+      "enforcementCapability": "X_LAYER",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Short-duration U.S. Treasury Bills held by the fund",
+        "directLegalClaim": true,
+        "redemptionIntoUnderlying": false,
+        "custodian": "The Bank of New York Mellon",
+        "sourceIds": [
+          "superstate-catalog-seed-issuer-doc"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "ousg",
@@ -307,7 +318,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Short-term US Treasury bonds, held via BlackRock's BUIDL fund",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "ondo-docs-ousg-overview"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "usdy",
@@ -374,7 +394,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "DEBT_CLAIM",
+        "underlyingAssets": "Short-term US Treasuries and bank demand deposits",
+        "collateralDescription": "USDY is issued as a tokenized note (a debt instrument) secured by short-term US Treasuries and bank demand deposits, not a direct fund share.",
+        "sourceIds": [
+          "ondo-usdy-product-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "benji-fobxx",
@@ -441,7 +470,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "US Treasury securities, repurchase agreements, and cash",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "franklin-templeton-benji-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "buidl",
@@ -508,7 +546,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Cash, US Treasury bills, and repurchase agreements",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "securitize-buidl-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "openeden-tbill",
@@ -575,7 +622,17 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "RESERVE_BACKED",
+        "underlyingAssets": "Short-dated US Treasury Bills and a small US Dollar cash buffer",
+        "collateralDescription": "TBILL is described by OpenEden as backed 1:1 by short-dated US T-Bills and a small portion of US Dollar, held via a smart contract vault.",
+        "proofOfReserveAvailable": true,
+        "sourceIds": [
+          "openeden-tbill-docs"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "backed-bib01",
@@ -642,7 +699,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "SYNTHETIC_EXPOSURE",
+        "underlyingAssets": "iShares $ Treasury Bond 0-1yr UCITS ETF",
+        "collateralDescription": "bIB01 is issued as a tracker certificate reflecting the price of the iShares ETF -- synthetic price exposure, not a direct fund share.",
+        "sourceIds": [
+          "backed-assets-bib01-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "backed-bcspx",
@@ -709,7 +775,17 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "iShares Core S&P 500 UCITS ETF (CSPX)",
+        "collateralDescription": "bCSPX is described by Backed as 1:1 backed by the underlying ETF shares, held by Swiss third-party custodians.",
+        "proofOfReserveAvailable": true,
+        "sourceIds": [
+          "backed-assets-bcspx-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "jtrsy",
@@ -776,7 +852,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Short-duration US Treasury bills (0-3 month maturities)",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "anemoy-jtrsy-fund-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "acred",
@@ -843,7 +928,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Corporate direct lending, asset-backed lending, and structured credit (via the Apollo Diversified Credit Fund feeder structure)",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "securitize-acred-primary-market-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "uscc",
@@ -910,7 +1004,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "Crypto basis (spot/futures) strategies across Bitcoin and Ether, plus US Treasuries",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "bitwise-uscc-product-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "wisdomtree-wtgxx",
@@ -977,7 +1080,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "US government securities, cash, and fully-collateralized repurchase agreements",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "wisdomtree-connect-wtgxx-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "usyc",
@@ -1044,7 +1156,16 @@
       ],
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
-      "enforcementCapability": "NONE"
+      "enforcementCapability": "NONE",
+      "backing": {
+        "backingType": "FUND_SHARE",
+        "underlyingAssets": "US Treasury bills and reverse repurchase agreements",
+        "directLegalClaim": true,
+        "sourceIds": [
+          "circle-usyc-page"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      }
     },
     {
       "id": "ttbill-c",
@@ -1390,6 +1511,560 @@
       ],
       "lastUpdatedAt": "2026-08-14T12:00:00.000Z",
       "dataMode": "DEMO"
+    },
+    {
+      "id": "spyx-xstock",
+      "symbol": "SPYX",
+      "name": "SP500 xStock",
+      "assetClass": "ETF",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "SPDR S&P 500 ETF Trust (SPY) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+          "sourceIds": [
+            "xlayer-onchain-verified-spyx-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "SPDR S&P 500 ETF Trust (SPY) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-spyx-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-spyx-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-spyx-xstock",
+          "title": "SP500 xStock (SPYX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/66695/large/Ticker_SPX__Company_Name_SP500__size_200x200_2x.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "sp500-xstock",
+        "logoContractAddress": "0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "qqqx-xstock",
+      "symbol": "QQQX",
+      "name": "Nasdaq xStock",
+      "assetClass": "ETF",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "Invesco QQQ Trust (QQQ) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xa753a7395cae905cd615da0b82a53e0560f250af",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xa753a7395cae905cd615da0b82a53e0560f250af",
+          "sourceIds": [
+            "xlayer-onchain-verified-qqqx-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Invesco QQQ Trust (QQQ) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-qqqx-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-qqqx-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-qqqx-xstock",
+          "title": "Nasdaq xStock (QQQX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xa753a7395cae905cd615da0b82a53e0560f250af",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/66696/large/QQQx.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "nasdaq-xstock",
+        "logoContractAddress": "0xa753a7395cae905cd615da0b82a53e0560f250af",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "asml-xstock",
+      "symbol": "ASMLX",
+      "name": "ASML xStock",
+      "assetClass": "EQUITY",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "ASML Holding N.V. (NASDAQ: ASML) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xc0b417e7f83db438631eb5e096684dd742e5294f",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xc0b417e7f83db438631eb5e096684dd742e5294f",
+          "sourceIds": [
+            "xlayer-onchain-verified-asml-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "ASML Holding N.V. (NASDAQ: ASML) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-asml-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-asml-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-asml-xstock",
+          "title": "ASML xStock (ASMLX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xc0b417e7f83db438631eb5e096684dd742e5294f",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/69643/large/Ticker_ASMLx__Company_Name_ASML_xStock__size_200x200.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "asml-xstock",
+        "logoContractAddress": "0xc0b417e7f83db438631eb5e096684dd742e5294f",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "micron-xstock",
+      "symbol": "MUX",
+      "name": "Micron Technology xStock",
+      "assetClass": "EQUITY",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "Micron Technology, Inc. (NASDAQ: MU) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xf6a873bae4ba1b304e45df52a4b7d176e1c6a8c4",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xf6a873bae4ba1b304e45df52a4b7d176e1c6a8c4",
+          "sourceIds": [
+            "xlayer-onchain-verified-micron-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Micron Technology, Inc. (NASDAQ: MU) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-micron-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-micron-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-micron-xstock",
+          "title": "Micron Technology xStock (MUX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xf6a873bae4ba1b304e45df52a4b7d176e1c6a8c4",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/69649/large/Ticker_MUx__Company_Name_Micron_Technology__size_200x200.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "micron-technology-xstock",
+        "logoContractAddress": "0xf6a873bae4ba1b304e45df52a4b7d176e1c6a8c4",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "sandisk-xstock",
+      "symbol": "SNDKX",
+      "name": "Sandisk Corporation xStock",
+      "assetClass": "EQUITY",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "Sandisk Corporation shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xb63efbc28860c8097e341de1fcf59456161e9d98",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xb63efbc28860c8097e341de1fcf59456161e9d98",
+          "sourceIds": [
+            "xlayer-onchain-verified-sandisk-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Sandisk Corporation shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-sandisk-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-sandisk-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-sandisk-xstock",
+          "title": "Sandisk Corporation xStock (SNDKX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xb63efbc28860c8097e341de1fcf59456161e9d98",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/102172849/large/sndkx.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "sandisk-corporation-xstock",
+        "logoContractAddress": "0xb63efbc28860c8097e341de1fcf59456161e9d98",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "meta-xstock",
+      "symbol": "WMETAX",
+      "name": "Wrapped Meta xStock",
+      "assetClass": "EQUITY",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "Meta Platforms, Inc. (NASDAQ: META) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
+          "sourceIds": [
+            "xlayer-onchain-verified-meta-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Meta Platforms, Inc. (NASDAQ: META) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-meta-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-meta-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-meta-xstock",
+          "title": "Wrapped Meta xStock (WMETAX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "UNAVAILABLE"
+      }
+    },
+    {
+      "id": "alphabet-xstock",
+      "symbol": "WGOOGLX",
+      "name": "Wrapped Alphabet xStock",
+      "assetClass": "EQUITY",
+      "issuer": "backed-assets-je",
+      "issuerName": "Backed Assets (JE) Limited (Backed Finance AG / Kraken-affiliated SPV)",
+      "underlying": "Alphabet Inc. (NASDAQ: GOOGL) shares, held 1:1 by a regulated custodian",
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer",
+          "contractAddress": "0xf8c5308f80e459bb53d9ebe689854d9cbb2caa6f",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0xf8c5308f80e459bb53d9ebe689854d9cbb2caa6f",
+          "sourceIds": [
+            "xlayer-onchain-verified-alphabet-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Alphabet Inc. (NASDAQ: GOOGL) shares, held 1:1 by a regulated custodian",
+        "directLegalClaim": false,
+        "redemptionIntoUnderlying": "unknown",
+        "custodian": "Regulated Swiss custodians (InCore Bank, Maerki Baumann) under a three-party Account Control Agreement with an independent Security Agent",
+        "collateralDescription": "xStocks are issued by Backed Assets (JE) Limited under a Liechtenstein prospectus (FMA-regulated), backed 1:1 by the real underlying security held with regulated third-party custodians in segregated sub-accounts.",
+        "collateralizationRatio": 1,
+        "sourceIds": [
+          "xstocks-legal-overview-alphabet-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
+      },
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "SOURCE_DISCOVERY_REQUIRED",
+      "enforcementCapability": "NONE",
+      "sources": [
+        {
+          "id": "xstocks-legal-overview-alphabet-xstock",
+          "title": "xStocks Product Legal Overview",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-alphabet-xstock",
+          "title": "Wrapped Alphabet xStock (WGOOGLX) | X Layer Mainnet -- ALIVE-verified via onchain symbol()/name()/bytecode read",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0xf8c5308f80e459bb53d9ebe689854d9cbb2caa6f",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "SNAPSHOT",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/55796/large/Ticker_GOOG__Company_Name_Alphabet_Inc.__size_200x200_2x.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "wrapped-alphabet-xstock",
+        "logoContractAddress": "0xf8c5308f80e459bb53d9ebe689854d9cbb2caa6f",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
     }
   ]
 }
