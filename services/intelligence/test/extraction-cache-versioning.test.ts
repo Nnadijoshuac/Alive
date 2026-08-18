@@ -124,6 +124,39 @@ describe("extraction cache versioning", () => {
     await app.close();
   });
 
+  it("a cache-hit re-extract still persists the passport -- surviving a catalog reload that wiped the asset's analyzed state", async () => {
+    const catalog = await loadRwaCatalog(catalogPath);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    const llm = mockGroqProvider(() => tusdcWireResponse());
+    const app = await buildIntelligenceApp(baseConfig(), {
+      repository,
+      catalog,
+      llm,
+      marketData: new DemoMarketDataProvider(undefined, () => NOW),
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+
+    const first = await ingestAndExtractOnce(app);
+    expect(first.statusCode).toBe(201);
+    expect(repository.getAsset("tusdc")?.extraction).toBeDefined();
+
+    // Simulate what a real service restart does: reload the static catalog
+    // file, which has no `.extraction` baked in, overwriting the analyzed
+    // state on the asset row while the extraction_runs history (and its
+    // cache) survives untouched.
+    repository.replaceCatalog(catalog.assets);
+    expect(repository.getAsset("tusdc")?.extraction).toBeUndefined();
+
+    const second = await app.inject({ method: "POST", url: "/api/assets/tusdc/extract" });
+    expect(second.statusCode).toBe(200);
+    expect(llm.calls).toHaveLength(1); // still a cache hit, no second AI call
+    expect(repository.getAsset("tusdc")?.extraction).toBeDefined();
+
+    await app.close();
+  });
+
   it("same document + stale prompt version on the stored run -> re-extracts", async () => {
     const catalog = await loadRwaCatalog(catalogPath);
     const repository = new IntelligenceRepository(":memory:");

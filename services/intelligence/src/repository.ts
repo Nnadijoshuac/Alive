@@ -534,41 +534,71 @@ export class IntelligenceRepository {
     }
   }
 
-  replaceCatalog(assets: readonly RwaAsset[]): void {
-    const insertAsset = this.#database.prepare(`
+  #upsertAssetRow(asset: RwaAsset): void {
+    this.#database
+      .prepare(
+        `
       INSERT INTO assets (id, schema_json, data_mode, last_updated_at)
       VALUES (@id, @schemaJson, @dataMode, @lastUpdatedAt)
       ON CONFLICT(id) DO UPDATE SET
         schema_json = excluded.schema_json,
         data_mode = excluded.data_mode,
         last_updated_at = excluded.last_updated_at
-    `);
-    const deleteSources = this.#database.prepare(
-      "DELETE FROM asset_sources WHERE asset_id = ?",
-    );
+    `,
+      )
+      .run({
+        id: asset.id,
+        schemaJson: JSON.stringify(asset),
+        dataMode: asset.dataMode,
+        lastUpdatedAt: asset.lastUpdatedAt,
+      });
+    this.#database
+      .prepare("DELETE FROM asset_sources WHERE asset_id = ?")
+      .run(asset.id);
     const insertSource = this.#database.prepare(`
       INSERT INTO asset_sources (asset_id, source_id, source_json, retrieved_at)
       VALUES (?, ?, ?, ?)
     `);
+    for (const source of asset.sources) {
+      insertSource.run(asset.id, source.id, JSON.stringify(source), source.retrievedAt);
+    }
+  }
+
+  /**
+   * Full bulk replacement, used once at startup with the entire catalog
+   * file: the file is the source of truth for "what's in the catalog
+   * today," so any id that used to be here (renamed, deprecated, replaced)
+   * is removed rather than surviving forever in a persisted database
+   * across restarts. ON DELETE CASCADE on asset_sources handles that
+   * table; the remaining per-asset tables (source_documents,
+   * extraction_runs, market_observations, published_verdicts)
+   * intentionally have no FK to assets(id) and are left as an audit
+   * trail, not orphan-cleaned here.
+   *
+   * Never call this with a partial asset list for a single-asset update --
+   * use `upsertAsset` for that, which touches only the one row.
+   */
+  replaceCatalog(assets: readonly RwaAsset[]): void {
+    const existingIds = this.#database
+      .prepare("SELECT id FROM assets")
+      .all() as { id: string }[];
+    const incomingIds = new Set(assets.map((asset) => asset.id));
+    const deleteAsset = this.#database.prepare("DELETE FROM assets WHERE id = ?");
     this.#database.transaction(() => {
-      for (const candidate of assets) {
-        const asset = RwaAssetSchema.parse(candidate);
-        insertAsset.run({
-          id: asset.id,
-          schemaJson: JSON.stringify(asset),
-          dataMode: asset.dataMode,
-          lastUpdatedAt: asset.lastUpdatedAt,
-        });
-        deleteSources.run(asset.id);
-        for (const source of asset.sources) {
-          insertSource.run(
-            asset.id,
-            source.id,
-            JSON.stringify(source),
-            source.retrievedAt,
-          );
-        }
+      for (const { id } of existingIds) {
+        if (!incomingIds.has(id)) deleteAsset.run(id);
       }
+      for (const candidate of assets) {
+        this.#upsertAssetRow(RwaAssetSchema.parse(candidate));
+      }
+    })();
+  }
+
+  /** Persists one asset's update (e.g. after extraction) without touching any other catalog row. Accepts `unknown` since callers may be re-persisting a stored (JSON-round-tripped) passport, not always a freshly-typed RwaAsset. */
+  upsertAsset(asset: RwaAsset | unknown): void {
+    const parsed = RwaAssetSchema.parse(asset);
+    this.#database.transaction(() => {
+      this.#upsertAssetRow(parsed);
     })();
   }
 

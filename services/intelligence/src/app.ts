@@ -545,6 +545,15 @@ export async function buildIntelligenceApp(
         previousRun.promptVersion === PASSPORT_EXTRACTION_PROMPT_VERSION &&
         previousRun.pipelineVersion === PASSPORT_EXTRACTION_PROMPT_VERSION;
       if (cacheHit && previousRun) {
+        // The cache avoids a redundant AI call, not a redundant persist: a
+        // catalog reload (e.g. a service restart re-reading the static
+        // catalog file) overwrites the assets table row with the seed
+        // definition, which has no `.extraction` -- serving the cached
+        // facts back to the caller without also re-persisting them would
+        // leave the asset stuck showing "Not analyzed" forever, even
+        // though a real extraction genuinely happened and its result is
+        // being served right now.
+        dependencies.repository.upsertAsset(previousRun.passport);
         reply.status(200);
         return {
           passport: previousRun.passport,
@@ -580,7 +589,7 @@ export async function buildIntelligenceApp(
       });
       const passport = promoteAssetIfGenuinelyLive(merged, extraction);
       const summary = summarizeExtractedFacts(facts);
-      dependencies.repository.replaceCatalog([passport]);
+      dependencies.repository.upsertAsset(passport);
       dependencies.repository.saveExtractionRun({
         id: randomUUID(),
         assetId,

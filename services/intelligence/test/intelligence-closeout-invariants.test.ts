@@ -157,6 +157,25 @@ describe("Outlook is fully independent of the deterministic eligibility verdict"
   });
 });
 
+describe("IntelligenceRepository.replaceCatalog removes assets no longer in the catalog file", () => {
+  it("a persisted repository never keeps a stale asset id forever -- replaceCatalog with a new asset list drops what's no longer present", async () => {
+    const catalog = await loadRwaCatalog(catalogPath, () => NOW);
+    const repository = new IntelligenceRepository(":memory:");
+    repository.replaceCatalog(catalog.assets);
+    expect(repository.getAsset("ttbill-b")).toBeDefined();
+
+    // Simulate a catalog revision that drops one asset entirely (e.g. a
+    // renamed or deprecated id) -- a real scenario for a long-running,
+    // persisted (non-:memory:) deployment across restarts.
+    const trimmed = catalog.assets.filter((asset) => asset.id !== "ttbill-a");
+    repository.replaceCatalog(trimmed);
+
+    expect(repository.getAsset("ttbill-a")).toBeUndefined();
+    expect(repository.getAsset("ttbill-b")).toBeDefined();
+    expect(repository.listAssets()).toHaveLength(trimmed.length);
+  });
+});
+
 describe("Ownership module semantics (structural check -- no reference asset currently populates it)", () => {
   it("neither reference profile confuses onchain deployment sourceIds with an ownership/shareholder claim -- ownership is a distinct, currently-unpopulated module for both", () => {
     const ustb = getIntelligenceProfile("ttbill-b");
