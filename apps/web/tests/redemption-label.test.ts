@@ -1,59 +1,24 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  DIRECT_REDEMPTION_TOOLTIP,
-  formatDirectRedemptionLabel,
-  formatDirectRedemptionValue,
-} from "@/lib/rwa-format";
 import type { RwaAsset } from "@alive/shared";
 
-describe("Direct Underlying Redemption Terminology", () => {
-  it("renders 'Redeemable for underlying shares' for EQUITY / tokenized stock assets", () => {
-    expect(formatDirectRedemptionLabel("EQUITY")).toBe(
-      "Redeemable for underlying shares",
+describe("Removal of Direct Underlying Redemption from UI", () => {
+  it("does NOT render 'Direct redemption into underlying' or 'Redeemable for underlying shares' in Asset Intelligence", () => {
+    const assetPagePath = path.resolve(
+      __dirname,
+      "../components/intelligence/asset-intelligence-page.tsx",
     );
+    const content = fs.readFileSync(assetPagePath, "utf-8");
+
+    expect(content).not.toContain("Direct redemption into underlying");
+    expect(content).not.toContain("Redeemable for underlying shares");
+    expect(content).not.toContain("DIRECT_REDEMPTION_TOOLTIP");
+    expect(content).not.toContain("formatDirectRedemptionLabel");
+    expect(content).not.toContain("formatDirectRedemptionValue");
   });
 
-  it("renders 'Direct redemption into underlying' for non-equity asset classes", () => {
-    expect(formatDirectRedemptionLabel("TREASURY")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("FUND")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("CREDIT")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("ETF")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("COMMODITY")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("GOLD")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel("CASH")).toBe(
-      "Direct redemption into underlying",
-    );
-    expect(formatDirectRedemptionLabel(undefined)).toBe(
-      "Direct redemption into underlying",
-    );
-  });
-
-  it("formats boolean values correctly without altering true/false/unknown semantics", () => {
-    expect(formatDirectRedemptionValue(false)).toBe("No");
-    expect(formatDirectRedemptionValue(true)).toBe("Yes");
-    expect(formatDirectRedemptionValue("unknown")).toBe("UNKNOWN");
-    expect(formatDirectRedemptionValue(undefined)).toBe("UNKNOWN");
-  });
-
-  it("preserves exact clarifying supporting text and tooltip", () => {
-    expect(DIRECT_REDEMPTION_TOOLTIP).toBe(
-      "The token may still be tradable or redeemable through supported issuer or market mechanisms. This field only indicates whether holders can directly redeem the token for the underlying security.",
-    );
-  });
-
-  it("does not mutate underlying asset or backing profile data structure", () => {
+  it("preserves underlying passport and backing data model integrity", () => {
     const assetMock: Partial<RwaAsset> = {
       id: "meta-xstock",
       symbol: "WMETAX",
@@ -66,13 +31,19 @@ describe("Direct Underlying Redemption Terminology", () => {
       },
     };
 
-    const label = formatDirectRedemptionLabel(assetMock.assetClass);
-    const value = formatDirectRedemptionValue(
-      assetMock.backing?.redemptionIntoUnderlying,
-    );
-
-    expect(label).toBe("Redeemable for underlying shares");
-    expect(value).toBe("No");
+    // The data model still holds the property accurately without altering true/false
     expect(assetMock.backing?.redemptionIntoUnderlying).toBe(false);
+  });
+
+  it("ensures no orphaned tooltip text is exposed to users in the UI", () => {
+    const assetPagePath = path.resolve(
+      __dirname,
+      "../components/intelligence/asset-intelligence-page.tsx",
+    );
+    const content = fs.readFileSync(assetPagePath, "utf-8");
+
+    expect(content).not.toContain(
+      "This field only indicates whether holders can directly redeem the token for the underlying security.",
+    );
   });
 });

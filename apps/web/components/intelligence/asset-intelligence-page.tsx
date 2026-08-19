@@ -49,9 +49,6 @@ import {
   formatPrice,
   formatRelativeAgo,
   formatTimestamp,
-  formatDirectRedemptionLabel,
-  formatDirectRedemptionValue,
-  DIRECT_REDEMPTION_TOOLTIP,
 } from "@/lib/rwa-format";
 import styles from "./asset-intelligence.module.css";
 
@@ -426,21 +423,6 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                 <div className={styles.factRow}>
                   <dt>Direct legal claim</dt>
                   <dd>{backing.directLegalClaim ? "Yes" : "No"}</dd>
-                </div>
-              ) : null}
-              {backing.redemptionIntoUnderlying !== undefined ? (
-                <div className={styles.factRow}>
-                  <dt title={DIRECT_REDEMPTION_TOOLTIP}>
-                    {formatDirectRedemptionLabel(asset.assetClass)}
-                  </dt>
-                  <dd>
-                    <div>
-                      {formatDirectRedemptionValue(backing.redemptionIntoUnderlying)}
-                    </div>
-                    <p className={styles.factHint}>
-                      {DIRECT_REDEMPTION_TOOLTIP}
-                    </p>
-                  </dd>
                 </div>
               ) : null}
               {backing.custodian ? (

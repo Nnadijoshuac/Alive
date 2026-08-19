@@ -122,25 +122,5 @@ export function allocationTotal(
   );
 }
 
-export const DIRECT_REDEMPTION_TOOLTIP =
-  "The token may still be tradable or redeemable through supported issuer or market mechanisms. This field only indicates whether holders can directly redeem the token for the underlying security.";
-
-/**
- * Returns the human-readable label for direct underlying redemption.
- * For tokenized equities / xStocks, returns "Redeemable for underlying shares".
- * For funds / non-equity assets, returns "Direct redemption into underlying".
- */
-export function formatDirectRedemptionLabel(assetClass: string | undefined): string {
-  return assetClass === "EQUITY"
-    ? "Redeemable for underlying shares"
-    : "Direct redemption into underlying";
-}
-
-export function formatDirectRedemptionValue(
-  value: boolean | "unknown" | undefined,
-): string {
-  if (value === undefined || value === "unknown") return "UNKNOWN";
-  return value ? "Yes" : "No";
-}
 
 
