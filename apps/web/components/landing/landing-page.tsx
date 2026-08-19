@@ -37,53 +37,26 @@ export function LandingPage() {
 
       {/* Header Topbar */}
       <header className={styles.topbar}>
-        <Link href="/" className={styles.brand} aria-label="Home">
-          <svg
-            viewBox="0 0 31.5 48.5"
-            width="31.5"
-            height="48.5"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <linearGradient
-                id="bg1"
-                x1="8"
-                y1="0"
-                x2="34.1"
-                y2="28.9"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop offset="0" stopColor="#9e9e9e" />
-                <stop offset="0.28" stopColor="#a6a6a6" />
-                <stop offset="0.34" stopColor="#a3a3a3" />
-                <stop offset="0.40" stopColor="#3a3a3a" />
-                <stop offset="0.55" stopColor="#414141" />
-                <stop offset="0.60" stopColor="#7a7a7a" />
-                <stop offset="0.68" stopColor="#8e8e8e" />
-                <stop offset="0.80" stopColor="#a9a9a9" />
-                <stop offset="0.95" stopColor="#c4c4c4" />
-                <stop offset="1" stopColor="#cccccc" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z"
-              fill="url(#bg1)"
-            />
-            <rect x="0.5" y="18.5" width="9" height="10" fill="#fdfdfd" />
-            <rect x="22" y="19.5" width="9.5" height="9.5" fill="#fdfdfd" />
-          </svg>
+        <Link href="/" className={styles.brand} aria-label="ALIVE">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/assets/logo.webp"
+            alt="ALIVE"
+            className={styles.brandImg}
+            width={38}
+            height={38}
+          />
         </Link>
 
         <nav className={styles.links} aria-label="Primary">
-          <Link href="/explore">About</Link>
-          <Link href="/explore">Features</Link>
-          <Link href="/protocol">FAQ</Link>
-          <Link href="/overview">Contact</Link>
+          <Link href="/explore">Explore</Link>
+          <Link href="/overview">Intelligence</Link>
+          <Link href="/protocol">How It Works</Link>
+          <Link href="/protocol#about">About</Link>
         </nav>
 
         <Link href="/explore" className={`${styles.pill} ${styles.pillNav}`}>
-          <span>Get Started</span>
+          <span>Launch ALIVE</span>
         </Link>
 
         <button
@@ -106,22 +79,22 @@ export function LandingPage() {
           <ul className={styles.menuList}>
             <li>
               <Link href="/explore" onClick={() => setIsOpen(false)}>
-                About
-              </Link>
-            </li>
-            <li>
-              <Link href="/explore" onClick={() => setIsOpen(false)}>
-                Features
-              </Link>
-            </li>
-            <li>
-              <Link href="/protocol" onClick={() => setIsOpen(false)}>
-                FAQ
+                Explore
               </Link>
             </li>
             <li>
               <Link href="/overview" onClick={() => setIsOpen(false)}>
-                Contact
+                Intelligence
+              </Link>
+            </li>
+            <li>
+              <Link href="/protocol" onClick={() => setIsOpen(false)}>
+                How It Works
+              </Link>
+            </li>
+            <li>
+              <Link href="/protocol#about" onClick={() => setIsOpen(false)}>
+                About
               </Link>
             </li>
           </ul>
@@ -131,14 +104,14 @@ export function LandingPage() {
               className={`${styles.pill} ${styles.pillMenu}`}
               onClick={() => setIsOpen(false)}
             >
-              <span>Get Started</span>
+              <span>Launch ALIVE</span>
             </Link>
             <Link
-              href="/explore"
+              href="/protocol"
               className={styles.ghostMenu}
               onClick={() => setIsOpen(false)}
             >
-              View Architecture
+              How ALIVE Works
             </Link>
           </div>
         </div>
@@ -147,54 +120,32 @@ export function LandingPage() {
       {/* Main Hero */}
       <main className={styles.hero}>
         <h1 className={styles.headline}>
-          <span>The Next Layer</span>
-          <span>of Intelligence</span>
+          <span>Know What’s</span>
+          <span>Behind The Token</span>
         </h1>
         <p className={styles.sub}>
-          <span>A unified infrastructure platform to help teams build,</span>
-          <span>ship, and scale AI systems with confidence.</span>
+          <span>Verify the backing, understand what could move it,</span>
+          <span>and see whether it still meets the rules.</span>
         </p>
         <div className={styles.actions}>
           <Link href="/explore" className={`${styles.pill} ${styles.pillCta}`}>
-            <span>Get Started</span>
+            <span>Explore RWAs</span>
           </Link>
-          <Link href="/explore" className={styles.ghost}>
-            View Architecture
+          <Link href="/protocol" className={styles.ghost}>
+            How ALIVE Works
           </Link>
         </div>
       </main>
 
-      {/* Partner Logos */}
+      {/* Infrastructure Technology Strip */}
       <div className={styles.logos}>
-        {/* X LAYER */}
-        <div className={`${styles.lg} ${styles.lg1}`}>
-          <svg viewBox="0 0 32 32" fill="currentColor">
-            <rect x="2" y="2" width="8" height="8" rx="2" />
-            <rect x="22" y="2" width="8" height="8" rx="2" />
-            <rect x="12" y="12" width="8" height="8" rx="2" />
-            <rect x="2" y="22" width="8" height="8" rx="2" />
-            <rect x="22" y="22" width="8" height="8" rx="2" />
-          </svg>
-          <span className={styles.lgWord}>X LAYER</span>
-        </div>
-
-        {/* ALIVE */}
-        <div className={`${styles.lg} ${styles.lg2}`}>
-          <svg viewBox="0 0 32 49" fill="currentColor">
-            <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" />
-            <rect x="0.5" y="18.5" width="9" height="10" />
-            <rect x="22" y="19.5" width="9.5" height="9.5" />
-          </svg>
-          <span className={styles.lgWord}>ALIVE</span>
-        </div>
-
         {/* CHAINLINK */}
-        <div className={`${styles.lg} ${styles.lg3}`}>
+        <div className={`${styles.lg} ${styles.lg1}`}>
           <svg
             viewBox="0 0 28 32"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.8"
+            strokeWidth="2.6"
             strokeLinejoin="round"
           >
             <path d="M14 2 L26 8.9 L26 23.1 L14 30 L2 23.1 L2 8.9 Z" />
@@ -204,7 +155,37 @@ export function LandingPage() {
               stroke="none"
             />
           </svg>
-          <span className={styles.lgWord}>CHAINLINK</span>
+          <div className={styles.lgText}>
+            <span className={styles.lgWord}>CHAINLINK</span>
+            <span className={styles.lgSub}>Live oracle data</span>
+          </div>
+        </div>
+
+        {/* X LAYER */}
+        <div className={`${styles.lg} ${styles.lg2}`}>
+          <svg viewBox="0 0 32 32" fill="currentColor">
+            <rect x="2" y="2" width="8" height="8" rx="2" />
+            <rect x="22" y="2" width="8" height="8" rx="2" />
+            <rect x="12" y="12" width="8" height="8" rx="2" />
+            <rect x="2" y="22" width="8" height="8" rx="2" />
+            <rect x="22" y="22" width="8" height="8" rx="2" />
+          </svg>
+          <div className={styles.lgText}>
+            <span className={styles.lgWord}>X LAYER</span>
+            <span className={styles.lgSub}>Onchain enforcement</span>
+          </div>
+        </div>
+
+        {/* GROQ */}
+        <div className={`${styles.lg} ${styles.lg3}`}>
+          <svg viewBox="0 0 32 32" fill="currentColor">
+            <path d="M16 4C9.37 4 4 9.37 4 16s5.37 12 12 12c5.96 0 10.9-4.35 11.82-10.08h-4.14c-.84 3.48-3.99 6.08-7.68 6.08-4.41 0-8-3.59-8-8s3.59-8 8-8c3.69 0 6.84 2.6 7.68 6.08h4.14C26.9 8.35 21.96 4 16 4z" />
+            <rect x="18" y="14" width="10" height="4" rx="2" />
+          </svg>
+          <div className={styles.lgText}>
+            <span className={styles.lgWord}>GROQ</span>
+            <span className={styles.lgSub}>AI document intelligence</span>
+          </div>
         </div>
 
         {/* OKX */}
@@ -214,7 +195,10 @@ export function LandingPage() {
             <rect x="12.5" y="3" width="7" height="26" rx="2" />
             <rect x="22" y="3" width="7" height="26" rx="2" />
           </svg>
-          <span className={styles.lgWord}>OKX</span>
+          <div className={styles.lgText}>
+            <span className={styles.lgWord}>OKX</span>
+            <span className={styles.lgSub}>X Layer trading</span>
+          </div>
         </div>
       </div>
     </div>

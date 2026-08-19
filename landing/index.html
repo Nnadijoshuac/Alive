@@ -104,27 +104,33 @@
           #050505 calc(50% - calc(746 * var(--u))),
           transparent calc(50% - calc(676 * var(--u))),
           transparent calc(50% + calc(676 * var(--u))),
-          #050505 calc(50% + calc(746 * var(--u)))
         );
+      pointer-events: none;
     }
 
-    /* ================================================================
-       HEADER & NAVIGATION (DESKTOP ABSOLUTE)
-       ================================================================ */
+    /* Topbar Navigation */
+    .topbar {
+      position: static;
+    }
+
+    /* Brand Mark (Logo) */
     .brand {
       position: absolute;
-      left: calc(75 * var(--u));
+      left: calc(75.5 * var(--u));
       top: calc(27 * var(--u));
-      width: calc(31.5 * var(--u));
-      height: calc(48.5 * var(--u));
+      width: calc(44 * var(--u));
+      height: calc(44 * var(--u));
       z-index: 20;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-decoration: none;
     }
 
-    .brand svg {
+    .brand-img {
       width: 100%;
       height: 100%;
+      object-fit: contain;
       display: block;
     }
 
@@ -152,32 +158,38 @@
       color: #ffffff;
     }
 
-    .links a:nth-child(1) { margin-right: calc(24.5 * var(--u)); }
-    .links a:nth-child(2) { margin-right: calc(23.5 * var(--u)); }
-    .links a:nth-child(3) { margin-right: calc(26.0 * var(--u)); }
+    .links a:nth-child(1) { margin-right: calc(30.6 * var(--u)); }
+    .links a:nth-child(2) { margin-right: calc(33.6 * var(--u)); }
+    .links a:nth-child(3) { margin-right: calc(33.6 * var(--u)); }
+    .links a:nth-child(4) { margin-right: 0; }
 
+    /* White Pill CTA Base */
     .pill {
-      background: var(--pill);
-      color: var(--pill-ink);
-      border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      background: var(--pill);
+      color: var(--pill-ink);
+      border-radius: 999px;
       text-decoration: none;
-      border: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
       cursor: pointer;
-      white-space: nowrap;
-      transition: transform 0.2s ease, opacity 0.2s ease;
     }
 
     .pill:hover {
-      transform: scale(1.02);
-      opacity: 0.95;
+      opacity: 0.94;
+      transform: scale(1.015);
+      box-shadow: 0 6px 26px rgba(255, 255, 255, 0.12);
+    }
+
+    .pill:active {
+      transform: scale(0.985);
     }
 
     .pill-nav {
       position: absolute;
-      right: calc(75.4 * var(--u));
+      left: calc(1237 * var(--u));
       top: calc(27 * var(--u));
       width: calc(175 * var(--u));
       height: calc(49 * var(--u));
@@ -199,9 +211,7 @@
       display: none;
     }
 
-    /* ================================================================
-       HERO TYPOGRAPHY & ACTIONS (DESKTOP ABSOLUTE)
-       ================================================================ */
+    /* Headline */
     .headline {
       position: absolute;
       left: calc(75.5 * var(--u));
@@ -220,6 +230,7 @@
       display: block;
     }
 
+    /* Subcopy */
     .sub {
       position: absolute;
       left: calc(75.5 * var(--u));
@@ -271,9 +282,7 @@
       opacity: 0.8;
     }
 
-    /* ================================================================
-       PARTNER STRIP (DESKTOP ABSOLUTE)
-       ================================================================ */
+    /* Partner Logos / Infrastructure Technologies */
     .logos {
       position: absolute;
       left: 50%;
@@ -288,6 +297,16 @@
     .lg {
       display: flex;
       align-items: center;
+      color: var(--strip);
+      opacity: 0.9;
+      transition: opacity 0.2s ease, color 0.2s ease;
+    }
+
+    .lg-text {
+      display: flex;
+      flex-direction: column;
+      margin-left: calc(8 * var(--u));
+      line-height: 1.18;
     }
 
     .lg-word {
@@ -296,62 +315,66 @@
       color: var(--strip);
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      font-size: calc(13.8 * var(--u));
+      transition: color 0.2s ease;
+    }
+
+    .lg-sub {
+      font-family: 'Manrope', 'Inter', -apple-system, sans-serif;
+      font-weight: 500;
+      color: #646464;
+      font-size: calc(10.5 * var(--u));
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      transition: color 0.2s ease;
+    }
+
+    .lg:hover .lg-word {
+      color: #ffffff;
+    }
+
+    .lg:hover .lg-sub {
+      color: #a0a0a0;
     }
 
     .lg1 {
       position: absolute;
       left: calc(-0.5 * var(--u));
-      top: calc(994.7 * var(--u));
+      top: calc(990 * var(--u));
     }
     .lg1 svg {
-      width: calc(26 * var(--u));
-      height: calc(26 * var(--u));
-    }
-    .lg1 .lg-word {
-      margin-left: calc(8 * var(--u));
-      font-size: calc(16 * var(--u));
+      width: calc(24 * var(--u));
+      height: calc(27 * var(--u));
     }
 
     .lg2 {
       position: absolute;
       left: calc(206.5 * var(--u));
-      top: calc(995.7 * var(--u));
+      top: calc(990 * var(--u));
     }
     .lg2 svg {
-      width: calc(18 * var(--u));
-      height: calc(28 * var(--u));
-    }
-    .lg2 .lg-word {
-      margin-left: calc(8 * var(--u));
-      font-size: calc(16 * var(--u));
+      width: calc(24 * var(--u));
+      height: calc(24 * var(--u));
     }
 
     .lg3 {
       position: absolute;
       left: calc(416.5 * var(--u));
-      top: calc(996.7 * var(--u));
+      top: calc(990 * var(--u));
     }
     .lg3 svg {
       width: calc(24 * var(--u));
-      height: calc(27 * var(--u));
-    }
-    .lg3 .lg-word {
-      margin-left: calc(8 * var(--u));
-      font-size: calc(15 * var(--u));
+      height: calc(24 * var(--u));
     }
 
     .lg4 {
       position: absolute;
       left: calc(620.5 * var(--u));
-      top: calc(998.7 * var(--u));
+      top: calc(990 * var(--u));
     }
     .lg4 svg {
       width: calc(24 * var(--u));
       height: calc(24 * var(--u));
-    }
-    .lg4 .lg-word {
-      margin-left: calc(8 * var(--u));
-      font-size: calc(15 * var(--u));
     }
 
     /* ================================================================
@@ -766,37 +789,19 @@
 
     <!-- Header Topbar -->
     <header class="topbar">
-      <a href="/" class="brand" aria-label="Home">
-        <svg viewBox="0 0 31.5 48.5" width="31.5" height="48.5" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="bg1" x1="8" y1="0" x2="34.1" y2="28.9" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#9e9e9e" />
-              <stop offset="0.28" stop-color="#a6a6a6" />
-              <stop offset="0.34" stop-color="#a3a3a3" />
-              <stop offset="0.40" stop-color="#3a3a3a" />
-              <stop offset="0.55" stop-color="#414141" />
-              <stop offset="0.60" stop-color="#7a7a7a" />
-              <stop offset="0.68" stop-color="#8e8e8e" />
-              <stop offset="0.80" stop-color="#a9a9a9" />
-              <stop offset="0.95" stop-color="#c4c4c4" />
-              <stop offset="1" stop-color="#cccccc" />
-            </linearGradient>
-          </defs>
-          <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" fill="url(#bg1)" />
-          <rect x="0.5" y="18.5" width="9" height="10" fill="#fdfdfd" />
-          <rect x="22" y="19.5" width="9.5" height="9.5" fill="#fdfdfd" />
-        </svg>
+      <a href="/" class="brand" aria-label="ALIVE">
+        <img src="assets/logo.webp" alt="ALIVE" class="brand-img" width="38" height="38" />
       </a>
 
       <nav class="links" aria-label="Primary">
-        <a href="/explore">About</a>
-        <a href="/explore">Features</a>
-        <a href="/protocol">FAQ</a>
-        <a href="/overview">Contact</a>
+        <a href="/explore">Explore</a>
+        <a href="/overview">Intelligence</a>
+        <a href="/protocol">How It Works</a>
+        <a href="/protocol#about">About</a>
       </nav>
 
       <a href="/explore" class="pill pill-nav">
-        <span>Get Started</span>
+        <span>Launch ALIVE</span>
       </a>
 
       <button type="button" class="burger" id="burger" aria-label="Toggle menu" aria-expanded="false" aria-controls="menu">
@@ -810,14 +815,14 @@
       <div class="menu-inner">
         <p class="menu-eyebrow">Menu</p>
         <ul class="menu-list">
-          <li><a href="/explore">About</a></li>
-          <li><a href="/explore">Features</a></li>
-          <li><a href="/protocol">FAQ</a></li>
-          <li><a href="/overview">Contact</a></li>
+          <li><a href="/explore">Explore</a></li>
+          <li><a href="/overview">Intelligence</a></li>
+          <li><a href="/protocol">How It Works</a></li>
+          <li><a href="/protocol#about">About</a></li>
         </ul>
         <div class="menu-foot">
-          <a href="/explore" class="pill pill-menu"><span>Get Started</span></a>
-          <a href="/explore" class="ghost ghost-menu">View Architecture</a>
+          <a href="/explore" class="pill pill-menu"><span>Launch ALIVE</span></a>
+          <a href="/protocol" class="ghost ghost-menu">How ALIVE Works</a>
         </div>
       </div>
     </nav>
@@ -825,25 +830,37 @@
     <!-- Main Hero -->
     <main class="hero">
       <h1 class="headline">
-        <span>The Next Layer</span>
-        <span>of Intelligence</span>
+        <span>Know What’s</span>
+        <span>Behind The Token</span>
       </h1>
       <p class="sub">
-        <span>A unified infrastructure platform to help teams build,</span>
-        <span>ship, and scale AI systems with confidence.</span>
+        <span>Verify the backing, understand what could move it,</span>
+        <span>and see whether it still meets the rules.</span>
       </p>
       <div class="actions">
         <a href="/explore" class="pill pill-cta">
-          <span>Get Started</span>
+          <span>Explore RWAs</span>
         </a>
-        <a href="/explore" class="ghost">View Architecture</a>
+        <a href="/protocol" class="ghost">How ALIVE Works</a>
       </div>
     </main>
 
-    <!-- Partner Logos -->
+    <!-- Infrastructure Technology Strip -->
     <div class="logos">
-      <!-- X LAYER -->
+      <!-- CHAINLINK -->
       <div class="lg lg1">
+        <svg viewBox="0 0 28 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round">
+          <path d="M14 2 L26 8.9 L26 23.1 L14 30 L2 23.1 L2 8.9 Z" />
+          <path d="M14 9 L20 12.5 L20 19.5 L14 23 L8 19.5 L8 12.5 Z" fill="currentColor" stroke="none" />
+        </svg>
+        <div class="lg-text">
+          <span class="lg-word">CHAINLINK</span>
+          <span class="lg-sub">Live oracle data</span>
+        </div>
+      </div>
+
+      <!-- X LAYER -->
+      <div class="lg lg2">
         <svg viewBox="0 0 32 32" fill="currentColor">
           <rect x="2" y="2" width="8" height="8" rx="2" />
           <rect x="22" y="2" width="8" height="8" rx="2" />
@@ -851,26 +868,22 @@
           <rect x="2" y="22" width="8" height="8" rx="2" />
           <rect x="22" y="22" width="8" height="8" rx="2" />
         </svg>
-        <span class="lg-word">X LAYER</span>
+        <div class="lg-text">
+          <span class="lg-word">X LAYER</span>
+          <span class="lg-sub">Onchain enforcement</span>
+        </div>
       </div>
 
-      <!-- ALIVE -->
-      <div class="lg lg2">
-        <svg viewBox="0 0 32 49" fill="currentColor">
-          <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" />
-          <rect x="0.5" y="18.5" width="9" height="10" />
-          <rect x="22" y="19.5" width="9.5" height="9.5" />
-        </svg>
-        <span class="lg-word">ALIVE</span>
-      </div>
-
-      <!-- CHAINLINK -->
+      <!-- GROQ -->
       <div class="lg lg3">
-        <svg viewBox="0 0 28 32" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linejoin="round">
-          <path d="M14 2 L26 8.9 L26 23.1 L14 30 L2 23.1 L2 8.9 Z" />
-          <path d="M14 9 L20 12.5 L20 19.5 L14 23 L8 19.5 L8 12.5 Z" fill="currentColor" stroke="none" />
+        <svg viewBox="0 0 32 32" fill="currentColor">
+          <path d="M16 4C9.37 4 4 9.37 4 16s5.37 12 12 12c5.96 0 10.9-4.35 11.82-10.08h-4.14c-.84 3.48-3.99 6.08-7.68 6.08-4.41 0-8-3.59-8-8s3.59-8 8-8c3.69 0 6.84 2.6 7.68 6.08h4.14C26.9 8.35 21.96 4 16 4z" />
+          <rect x="18" y="14" width="10" height="4" rx="2" />
         </svg>
-        <span class="lg-word">CHAINLINK</span>
+        <div class="lg-text">
+          <span class="lg-word">GROQ</span>
+          <span class="lg-sub">AI document intelligence</span>
+        </div>
       </div>
 
       <!-- OKX -->
@@ -880,7 +893,10 @@
           <rect x="12.5" y="3" width="7" height="26" rx="2" />
           <rect x="22" y="3" width="7" height="26" rx="2" />
         </svg>
-        <span class="lg-word">OKX</span>
+        <div class="lg-text">
+          <span class="lg-word">OKX</span>
+          <span class="lg-sub">X Layer trading</span>
+        </div>
       </div>
     </div>
   </div>

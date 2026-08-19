@@ -80,18 +80,21 @@
 /* Brand */
 .brand {
   position: absolute;
-  left: calc(75 * var(--u));
+  left: calc(75.5 * var(--u));
   top: calc(27 * var(--u));
-  width: calc(31.5 * var(--u));
-  height: calc(48.5 * var(--u));
+  width: calc(44 * var(--u));
+  height: calc(44 * var(--u));
   z-index: 20;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
 }
 
-.brand svg {
+.brandImg {
   width: 100%;
   height: 100%;
+  object-fit: contain;
   display: block;
 }
 
@@ -120,9 +123,10 @@
   color: #ffffff;
 }
 
-.links a:nth-child(1) { margin-right: calc(24.5 * var(--u)); }
-.links a:nth-child(2) { margin-right: calc(23.5 * var(--u)); }
-.links a:nth-child(3) { margin-right: calc(26.0 * var(--u)); }
+.links a:nth-child(1) { margin-right: calc(30.6 * var(--u)); }
+.links a:nth-child(2) { margin-right: calc(33.6 * var(--u)); }
+.links a:nth-child(3) { margin-right: calc(33.6 * var(--u)); }
+.links a:nth-child(4) { margin-right: 0; }
 
 /* Pills */
 .pill {
@@ -239,7 +243,7 @@
   opacity: 0.8;
 }
 
-/* Partner Logos */
+/* Partner Logos / Infrastructure Technologies */
 .logos {
   position: absolute;
   left: 50%;
@@ -254,6 +258,16 @@
 .lg {
   display: flex;
   align-items: center;
+  color: var(--strip);
+  opacity: 0.9;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.lgText {
+  display: flex;
+  flex-direction: column;
+  margin-left: calc(8 * var(--u));
+  line-height: 1.18;
 }
 
 .lgWord {
@@ -262,62 +276,66 @@
   color: var(--strip);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-size: calc(13.8 * var(--u));
+  transition: color 0.2s ease;
+}
+
+.lgSub {
+  font-family: 'Manrope', 'Inter', -apple-system, sans-serif;
+  font-weight: 500;
+  color: #646464;
+  font-size: calc(10.5 * var(--u));
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.lg:hover .lgWord {
+  color: #ffffff;
+}
+
+.lg:hover .lgSub {
+  color: #a0a0a0;
 }
 
 .lg1 {
   position: absolute;
   left: calc(-0.5 * var(--u));
-  top: calc(994.7 * var(--u));
+  top: calc(990 * var(--u));
 }
 .lg1 svg {
-  width: calc(26 * var(--u));
-  height: calc(26 * var(--u));
-}
-.lg1 .lgWord {
-  margin-left: calc(8 * var(--u));
-  font-size: calc(16 * var(--u));
+  width: calc(24 * var(--u));
+  height: calc(27 * var(--u));
 }
 
 .lg2 {
   position: absolute;
   left: calc(206.5 * var(--u));
-  top: calc(995.7 * var(--u));
+  top: calc(990 * var(--u));
 }
 .lg2 svg {
-  width: calc(18 * var(--u));
-  height: calc(28 * var(--u));
-}
-.lg2 .lgWord {
-  margin-left: calc(8 * var(--u));
-  font-size: calc(16 * var(--u));
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
 }
 
 .lg3 {
   position: absolute;
   left: calc(416.5 * var(--u));
-  top: calc(996.7 * var(--u));
+  top: calc(990 * var(--u));
 }
 .lg3 svg {
   width: calc(24 * var(--u));
-  height: calc(27 * var(--u));
-}
-.lg3 .lgWord {
-  margin-left: calc(8 * var(--u));
-  font-size: calc(15 * var(--u));
+  height: calc(24 * var(--u));
 }
 
 .lg4 {
   position: absolute;
   left: calc(620.5 * var(--u));
-  top: calc(998.7 * var(--u));
+  top: calc(990 * var(--u));
 }
 .lg4 svg {
   width: calc(24 * var(--u));
   height: calc(24 * var(--u));
-}
-.lg4 .lgWord {
-  margin-left: calc(8 * var(--u));
-  font-size: calc(15 * var(--u));
 }
 
 /* Animations */
