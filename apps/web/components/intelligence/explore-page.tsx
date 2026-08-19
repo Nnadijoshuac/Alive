@@ -16,6 +16,8 @@ import { getWatchlist, toggleWatch } from "@/lib/watchlist-state";
 import { AssetTable } from "./asset-table";
 import styles from "./explore.module.css";
 
+export const EXPLORE_PAGE_SIZE = 8;
+
 const VERIFICATION_FILTERS = ["ALL", "VERIFIED", "NOT_ANALYZED", "UNVERIFIED"] as const;
 const VERIFICATION_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {
   ALL: "All verification states",
@@ -59,6 +61,33 @@ function marketDataBucket(summary: AssetSummary): (typeof MARKET_DATA_FILTERS)[n
 // zero (or, as of this pass, seven) verified deployments there.
 const REGISTRY_CHAIN_NAMES = publiclySelectableChains().map((c) => c.chainName);
 
+/**
+ * Computes compact pagination page numbers and ellipses.
+ * Examples:
+ * - Total <= 7: [1, 2, 3] or [1, 2, 3, 4, 5, 6, 7]
+ * - Beginning: [1, 2, 3, "…", 18]
+ * - Middle: [1, "…", 8, 9, 10, "…", 18]
+ * - End: [1, "…", 16, 17, 18]
+ */
+export function getPaginationItems(currentPage: number, totalPages: number): (number | "…")[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  // Beginning: 1 2 3 … 18
+  if (currentPage <= 3) {
+    return [1, 2, 3, "…", totalPages];
+  }
+
+  // End: 1 … 16 17 18
+  if (currentPage >= totalPages - 2) {
+    return [1, "…", totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  // Middle: 1 … 8 9 10 … 18
+  return [1, "…", currentPage - 1, currentPage, currentPage + 1, "…", totalPages];
+}
+
 export function ExplorePage() {
   const [summaries, setSummaries] = useState<AssetSummary[]>();
   const [query, setQuery] = useState("");
@@ -71,6 +100,7 @@ export function ExplorePage() {
     useState<(typeof MARKET_DATA_FILTERS)[number]>("ALL");
   const [backingFilter, setBackingFilter] = useState<string>("ALL");
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     setWatchedIds(new Set(getWatchlist()));
@@ -147,6 +177,27 @@ export function ExplorePage() {
     backingFilter,
     query,
   ]);
+
+  // Reset page to 1 whenever any filter or search query changes
+  useEffect(() => {
+    setPage(1);
+  }, [
+    query,
+    chainFilter,
+    assetClassFilter,
+    issuerFilter,
+    verificationFilter,
+    marketDataFilter,
+    backingFilter,
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / EXPLORE_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  const paginatedSummaries = useMemo(() => {
+    const start = (safePage - 1) * EXPLORE_PAGE_SIZE;
+    return filtered.slice(start, start + EXPLORE_PAGE_SIZE);
+  }, [filtered, safePage]);
 
   const isXLayerZeroState = chainFilter === "X Layer" && summaries && filtered.length === 0;
 
@@ -270,11 +321,61 @@ export function ExplorePage() {
       ) : (
         <div className={styles.tableCard}>
           <AssetTable
-            summaries={filtered}
+            summaries={paginatedSummaries}
             emptyLabel={summaries ? "No assets match these filters." : "Loading…"}
             watchedIds={watchedIds}
             onToggleWatch={(assetId) => toggleWatch(assetId)}
           />
+          {filtered.length > EXPLORE_PAGE_SIZE ? (
+            <nav className={styles.paginationRow} aria-label="Explore assets pagination">
+              <span className={styles.paginationInfo}>
+                Showing {(safePage - 1) * EXPLORE_PAGE_SIZE + 1}–
+                {Math.min(safePage * EXPLORE_PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className={styles.paginationControls}>
+                <button
+                  type="button"
+                  className={styles.pageNavButton}
+                  disabled={safePage === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  aria-label="Previous page"
+                >
+                  ←
+                </button>
+                {getPaginationItems(safePage, totalPages).map((item, idx) =>
+                  item === "…" ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      className={styles.paginationEllipsis}
+                      aria-hidden="true"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      className={styles.pageButton}
+                      aria-current={item === safePage ? "page" : undefined}
+                      aria-label={`Page ${item}`}
+                      onClick={() => setPage(item)}
+                    >
+                      {item}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  className={styles.pageNavButton}
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  aria-label="Next page"
+                >
+                  →
+                </button>
+              </div>
+            </nav>
+          ) : null}
         </div>
       )}
     </div>

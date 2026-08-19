@@ -35,13 +35,13 @@ function readComponentSource(relativePath: string): string {
   );
 }
 
-describe("Explore product-name 2-line clamp", () => {
-  it("asset-identity.module.css clamps the product name to exactly 2 lines using -webkit-line-clamp", () => {
+describe("Explore product-name 1-line clamp", () => {
+  it("asset-identity.module.css clamps the product name to a single line using CSS ellipsis", () => {
     const css = readComponentSource("intelligence/asset-identity.module.css");
     const nameBlock = css.slice(css.indexOf(".name {"));
-    expect(nameBlock).toMatch(/-webkit-line-clamp:\s*2;/);
-    expect(nameBlock).toMatch(/-webkit-box-orient:\s*vertical;/);
-    expect(nameBlock).toMatch(/display:\s*-webkit-box;/);
+    expect(nameBlock).toMatch(/white-space:\s*nowrap;/);
+    expect(nameBlock).toMatch(/text-overflow:\s*ellipsis;/);
+    expect(nameBlock).toMatch(/overflow:\s*hidden;/);
   });
 
   it("does not manually slice or truncate the asset name string in JavaScript -- the full value is passed through to the DOM", () => {
