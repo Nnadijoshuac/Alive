@@ -166,67 +166,55 @@ export function LandingPage() {
 
       {/* Partner Logos */}
       <div className={styles.logos}>
-        {/* lg1 */}
+        {/* X LAYER */}
         <div className={`${styles.lg} ${styles.lg1}`}>
-          <svg viewBox="0 0 30 31" fill="currentColor">
-            <mask id="lg1-mask-react">
-              <rect width="30" height="31" fill="#fff" />
-              <circle cx="19.5" cy="10.5" r="5.1" fill="#000" />
-            </mask>
-            <rect width="30" height="31" rx="6" mask="url(#lg1-mask-react)" />
-            <circle cx="19.5" cy="10.5" r="3.2" />
+          <svg viewBox="0 0 32 32" fill="currentColor">
+            <rect x="2" y="2" width="8" height="8" rx="2" />
+            <rect x="22" y="2" width="8" height="8" rx="2" />
+            <rect x="12" y="12" width="8" height="8" rx="2" />
+            <rect x="2" y="22" width="8" height="8" rx="2" />
+            <rect x="22" y="22" width="8" height="8" rx="2" />
           </svg>
-          <span className={styles.lgWord}>logoipsum</span>
+          <span className={styles.lgWord}>X LAYER</span>
         </div>
 
-        {/* lg2 */}
+        {/* ALIVE */}
         <div className={`${styles.lg} ${styles.lg2}`}>
-          <svg viewBox="0 0 25 30" fill="currentColor">
-            <rect x="0" y="0" width="8" height="30" rx="4" />
-            <circle cx="17" cy="15" r="8" />
+          <svg viewBox="0 0 32 49" fill="currentColor">
+            <path d="M21.5 0 L21.5 19.5 L31.5 19.5 L31.5 29 L10 48.5 L10 28.5 L0.5 28.5 L0.5 18.5 Z" />
+            <rect x="0.5" y="18.5" width="9" height="10" />
+            <rect x="22" y="19.5" width="9.5" height="9.5" />
           </svg>
-          <span className={styles.lgWord}>
-            logoipsum<span className={styles.dot}></span>
-          </span>
+          <span className={styles.lgWord}>ALIVE</span>
         </div>
 
-        {/* lg3 */}
+        {/* CHAINLINK */}
         <div className={`${styles.lg} ${styles.lg3}`}>
-          <svg viewBox="0 0 28 28" fill="none" stroke="currentColor">
-            <circle cx="14" cy="14" r="12.35" strokeWidth="3.1" />
+          <svg
+            viewBox="0 0 28 32"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2 L26 8.9 L26 23.1 L14 30 L2 23.1 L2 8.9 Z" />
             <path
-              d="M14 6c4 0 6 3 6 8s-2 8-6 8"
-              strokeWidth="3.1"
-              strokeLinecap="round"
-            />
-            <path
-              d="M14 10c2 0 3 2 3 4s-1 4-3 4"
-              strokeWidth="3.1"
-              strokeLinecap="round"
+              d="M14 9 L20 12.5 L20 19.5 L14 23 L8 19.5 L8 12.5 Z"
+              fill="currentColor"
+              stroke="none"
             />
           </svg>
-          <span className={styles.lgWord}>logoipsum</span>
+          <span className={styles.lgWord}>CHAINLINK</span>
         </div>
 
-        {/* lg4 */}
+        {/* OKX */}
         <div className={`${styles.lg} ${styles.lg4}`}>
-          <svg viewBox="0 0 28 25.5" fill="none" stroke="currentColor">
-            <path
-              d="M2 13c3-5 8-7 12-7s9 2 12 7c-3 3-7 4.5-12 4.5S5 16 2 13z"
-              fill="currentColor"
-            />
-            <path
-              d="M4 19.5c3 2 6 3 10 3s7-1 10-3"
-              strokeWidth="3.05"
-              strokeLinecap="round"
-            />
-            <path
-              d="M7 23.5c2 1 4 1.5 7 1.5s5-.5 7-1.5"
-              strokeWidth="3.05"
-              strokeLinecap="round"
-            />
+          <svg viewBox="0 0 32 32" fill="currentColor">
+            <rect x="3" y="3" width="7" height="26" rx="2" />
+            <rect x="12.5" y="3" width="7" height="26" rx="2" />
+            <rect x="22" y="3" width="7" height="26" rx="2" />
           </svg>
-          <span className={styles.lgWord}>logoipsum</span>
+          <span className={styles.lgWord}>OKX</span>
         </div>
       </div>
     </div>
