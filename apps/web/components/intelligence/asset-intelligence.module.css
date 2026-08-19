@@ -317,6 +317,14 @@
   font-size: 13px;
 }
 
+.factHint {
+  margin: 4px 0 0;
+  color: var(--muted-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+
 .sourceGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

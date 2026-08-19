@@ -47,6 +47,9 @@ import {
   formatPrice,
   formatRelativeAgo,
   formatTimestamp,
+  formatDirectRedemptionLabel,
+  formatDirectRedemptionValue,
+  DIRECT_REDEMPTION_TOOLTIP,
 } from "@/lib/rwa-format";
 import styles from "./asset-intelligence.module.css";
 
@@ -419,13 +422,16 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
               ) : null}
               {backing.redemptionIntoUnderlying !== undefined ? (
                 <div className={styles.factRow}>
-                  <dt>Redeemable into underlying</dt>
+                  <dt title={DIRECT_REDEMPTION_TOOLTIP}>
+                    {formatDirectRedemptionLabel(asset.assetClass)}
+                  </dt>
                   <dd>
-                    {backing.redemptionIntoUnderlying === "unknown"
-                      ? "UNKNOWN"
-                      : backing.redemptionIntoUnderlying
-                        ? "Yes"
-                        : "No"}
+                    <div>
+                      {formatDirectRedemptionValue(backing.redemptionIntoUnderlying)}
+                    </div>
+                    <p className={styles.factHint}>
+                      {DIRECT_REDEMPTION_TOOLTIP}
+                    </p>
                   </dd>
                 </div>
               ) : null}
