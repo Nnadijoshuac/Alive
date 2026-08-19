@@ -1,26 +1,56 @@
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+.tableWrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 999px;
+}
+
 .table {
   width: 100%;
+  min-width: 940px;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: auto;
 }
 
 .table thead th {
-  padding: 8px 12px;
+  padding: 10px 14px;
   color: var(--muted-2);
   font: 650 10px/1 var(--font-geist-mono), monospace;
   letter-spacing: 0.06em;
   text-align: left;
   text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-2);
 }
 
-.table thead th:last-child,
-.table td:last-child {
+.table thead th.valueCol,
+.table thead th.checkedCol,
+.table td.valueCol,
+.table td.checkedCol {
   text-align: right;
 }
 
 .row {
   border-top: 1px solid var(--hairline);
   cursor: pointer;
+  transition: background 120ms ease;
 }
 
 .row:hover {
@@ -28,8 +58,53 @@
 }
 
 .row td {
-  padding: 12px;
+  padding: 12px 14px;
   vertical-align: middle;
+}
+
+.watchCol {
+  width: 38px;
+  padding-right: 0 !important;
+}
+
+.assetCol {
+  min-width: 200px;
+}
+
+.typeCol {
+  min-width: 85px;
+  white-space: nowrap;
+}
+
+.issuerCol {
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.backingCol {
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.chainsCol {
+  min-width: 100px;
+}
+
+.valueCol {
+  min-width: 85px;
+  white-space: nowrap;
+}
+
+.verificationCol,
+.eligibilityCol,
+.dataCol {
+  min-width: 110px;
+  white-space: nowrap;
+}
+
+.checkedCol {
+  min-width: 100px;
+  white-space: nowrap;
 }
 
 .assetCell {
@@ -78,6 +153,7 @@
   padding: 3px 9px;
   font-size: 11px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .pill::before {
@@ -113,6 +189,7 @@
   font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .chainBadges {
@@ -129,6 +206,7 @@
   font: 620 10px/1.5 var(--font-geist-mono), monospace;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .watchButton {
@@ -139,6 +217,9 @@
   padding: 4px;
   color: var(--faint);
   background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 120ms ease;
 }
 
 .watchButton:hover {

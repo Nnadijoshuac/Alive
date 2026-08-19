@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+  width: 100%;
   max-width: 1180px;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -199,6 +201,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .sectionHeading {
@@ -210,6 +214,7 @@
 
 .sectionHeaderRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
@@ -228,10 +233,14 @@
 }
 
 .tableCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   background: var(--paper-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 @media (max-width: 900px) {
@@ -241,5 +250,17 @@
 
   .searchForm {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .summaryStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeaderRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }

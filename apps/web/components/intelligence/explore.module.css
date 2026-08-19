@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
   max-width: 1280px;
+  min-width: 0;
   color: var(--ink);
 }
 
@@ -32,7 +34,9 @@
 .filterRow {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .filterRow input,
@@ -47,10 +51,10 @@
 
 .searchBox {
   display: flex;
-  flex: 1 1 260px;
+  flex: 1 1 240px;
   align-items: center;
   gap: 7px;
-  min-width: 200px;
+  min-width: 180px;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
   padding: 0 10px;
@@ -67,8 +71,8 @@
 }
 
 .filterRow input {
-  flex: 1 1 260px;
-  min-width: 200px;
+  flex: 1 1 240px;
+  min-width: 180px;
 }
 
 .searchBox input::placeholder,
@@ -85,10 +89,14 @@
 }
 
 .tableCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   background: var(--paper-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .emptyState {
@@ -182,4 +190,27 @@
   color: var(--muted-2);
   font: 600 12px/1 var(--font-geist-mono), monospace;
   user-select: none;
+}
+
+@media (max-width: 640px) {
+  .paginationRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .paginationInfo {
+    text-align: center;
+  }
+
+  .paginationControls {
+    justify-content: center;
+  }
+
+  .filterRow select,
+  .searchBox {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
 }
