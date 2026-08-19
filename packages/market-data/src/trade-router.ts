@@ -7,7 +7,7 @@ export type PaymentTokenConfig = {
   name: string;
   contractAddress: `0x${string}`;
   decimals: number;
-  isNative?: boolean;
+  isNative?: boolean | undefined;
 };
 
 export const XLAYER_PAYMENT_TOKENS: Record<string, PaymentTokenConfig> = {
@@ -46,8 +46,8 @@ export type SwapQuoteRequest = {
   fromTokenAddress: string;
   toTokenAddress: string;
   fromAmount: string; // Human readable (e.g. "100") or atomic units
-  userWalletAddress?: string;
-  slippageBps?: number; // Integer bps e.g. 50 = 0.5%
+  userWalletAddress?: string | undefined;
+  slippageBps?: number | undefined; // Integer bps e.g. 50 = 0.5%
 };
 
 export type SwapQuoteResponse = {
@@ -70,17 +70,17 @@ export type SwapQuoteResponse = {
     estimatedAmountRaw: string; // Atomic units
   };
   executionPrice: number;
-  marketPrice?: number;
+  marketPrice?: number | undefined;
   priceImpactPct: number;
   estimatedGasUsd: number;
-  tradeFeeUsd?: number;
+  tradeFeeUsd?: number | undefined;
   minimumReceived: string;
   routeName: string;
   routerAddress: string;
   allowanceTarget: string;
   quoteFetchedAt: string;
   expiresAt: string;
-  reason?: string;
+  reason?: string | undefined;
 };
 
 export type SwapTransactionRequest = {
@@ -89,7 +89,7 @@ export type SwapTransactionRequest = {
   toTokenAddress: string;
   fromAmount: string;
   userWalletAddress: string;
-  slippageBps?: number;
+  slippageBps?: number | undefined;
 };
 
 export type SwapTransactionResponse = {
@@ -97,7 +97,7 @@ export type SwapTransactionResponse = {
   to: `0x${string}`; // Router or aggregation contract
   data: `0x${string}`; // Calldata for swap
   value: `0x${string}`; // Native value (hex string)
-  gasLimit?: string;
+  gasLimit?: string | undefined;
   allowanceTarget: string;
   quote: SwapQuoteResponse;
 };
@@ -107,9 +107,9 @@ const swapAbi = parseAbi([
 ]);
 
 export class OkxTradeRouter {
-  private readonly apiKey?: string;
-  private readonly secretKey?: string;
-  private readonly passphrase?: string;
+  private readonly apiKey: string | undefined;
+  private readonly secretKey: string | undefined;
+  private readonly passphrase: string | undefined;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
 
@@ -117,11 +117,11 @@ export class OkxTradeRouter {
   readonly defaultRouterAddress = "0x789b70868a2d10ae8ee438992ad367f08c3d6118";
 
   constructor(options: {
-    apiKey?: string;
-    secretKey?: string;
-    passphrase?: string;
-    baseUrl?: string;
-    fetchImpl?: typeof fetch;
+    apiKey?: string | undefined;
+    secretKey?: string | undefined;
+    passphrase?: string | undefined;
+    baseUrl?: string | undefined;
+    fetchImpl?: typeof fetch | undefined;
   } = {}) {
     this.apiKey = options.apiKey ?? process.env.OKX_API_KEY;
     this.secretKey =
@@ -148,7 +148,7 @@ export class OkxTradeRouter {
     pathWithQuery: string,
     body = "",
   ): Record<string, string> {
-    if (!this.isConfigured()) {
+    if (!this.isConfigured() || !this.secretKey) {
       return {
         "User-Agent": "ALIVE-Trade-Terminal/1.0",
         Accept: "application/json",
@@ -158,17 +158,17 @@ export class OkxTradeRouter {
     const timestamp = new Date().toISOString();
     const prehash = `${timestamp}${method}${pathWithQuery}${body}`;
     const sign = crypto
-      .createHmac("sha256", this.secretKey!)
+      .createHmac("sha256", this.secretKey)
       .update(prehash)
       .digest("base64");
 
     return {
       "User-Agent": "ALIVE-Trade-Terminal/1.0",
       Accept: "application/json",
-      "OK-ACCESS-KEY": this.apiKey!,
+      "OK-ACCESS-KEY": this.apiKey ?? "",
       "OK-ACCESS-SIGN": sign,
       "OK-ACCESS-TIMESTAMP": timestamp,
-      "OK-ACCESS-PASSPHRASE": this.passphrase!,
+      "OK-ACCESS-PASSPHRASE": this.passphrase ?? "",
     };
   }
 

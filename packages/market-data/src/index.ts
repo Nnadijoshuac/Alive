@@ -37,4 +37,5 @@ export {
   type SwapTransactionRequest,
   type SwapTransactionResponse,
 } from "./trade-router.js";
+export * from "./coinmarketcap.js";
 export * from "./provider.js";

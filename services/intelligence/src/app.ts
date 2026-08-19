@@ -17,6 +17,8 @@ import {
   CompositeMarketDataProvider,
   ControllableDemoMarketDataProvider,
   CoinMarketCapPublicProvider,
+  OkxTradeRouter,
+  XLAYER_PAYMENT_TOKENS,
   MarketDataError,
   feedForAsset,
   type MarketDataProvider,
@@ -137,6 +139,7 @@ export type IntelligenceAppDependencies = {
   llm: LlmJsonProvider;
   marketData: MarketDataProvider;
   cmcProvider?: CoinMarketCapPublicProvider;
+  tradeRouter?: OkxTradeRouter;
   eligibilitySigner: EligibilitySigner;
   /** Absent when MARKET_MONITOR_ENABLED is not set -- the routes then report a disabled monitor rather than 404ing. */
   monitorService?: MonitorService;
@@ -222,6 +225,7 @@ export async function buildIntelligenceApp(
   const now = dependencies.now ?? (() => new Date());
   const cmcProvider =
     dependencies.cmcProvider ?? new CoinMarketCapPublicProvider({ now });
+  const tradeRouter = dependencies.tradeRouter ?? new OkxTradeRouter();
 
   await app.register(cors, {
     origin(origin, callback) {
@@ -897,6 +901,259 @@ export async function buildIntelligenceApp(
       return { policy: record };
     },
   );
+
+  const TradeQuoteBodySchema = z
+    .object({
+      assetId: z.string().trim().min(1).max(128),
+      fromTokenAddress: z
+        .string()
+        .trim()
+        .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid fromTokenAddress"),
+      amount: z.string().trim().min(1).max(32),
+      slippageBps: z.number().int().min(1).max(2000).optional(),
+    })
+    .strict();
+
+  const TradeTransactionBodySchema = z
+    .object({
+      assetId: z.string().trim().min(1).max(128),
+      fromTokenAddress: z
+        .string()
+        .trim()
+        .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid fromTokenAddress"),
+      amount: z.string().trim().min(1).max(32),
+      userWalletAddress: z
+        .string()
+        .trim()
+        .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid userWalletAddress"),
+      slippageBps: z.number().int().min(1).max(2000).optional(),
+    })
+    .strict();
+
+  function getVerifiedXLayerDeployment(asset: {
+    deployments?: {
+      chainId: number;
+      contractAddress: string;
+      deploymentStatus: string;
+      symbol?: string;
+      name?: string;
+    }[];
+  } | undefined) {
+    if (!asset) return undefined;
+    return asset.deployments?.find(
+      (d) => d.chainId === 196 && d.deploymentStatus === "VERIFIED",
+    );
+  }
+
+  app.get("/api/trade/payment-tokens", async () => ({
+    tokens: Object.values(XLAYER_PAYMENT_TOKENS),
+  }));
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/trade-availability",
+    async (request, reply) => {
+      const assetId = request.params.assetId;
+      const asset = dependencies.repository.getAsset(assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+
+      const deployment = getVerifiedXLayerDeployment(asset);
+      if (!deployment) {
+        return {
+          assetId,
+          status: "NO_XLAYER_DEPLOYMENT" as const,
+          reason: "Asset has no verified deployment on X Layer (Chain 196).",
+        };
+      }
+
+      const hasRealSource = asset.sources.some(
+        (s) => s.sourceType !== "DEMO_FIXTURE",
+      );
+      if (!hasRealSource) {
+        return {
+          assetId,
+          status: "NOT_VERIFIED" as const,
+          reason: "Asset has not completed source document verification.",
+        };
+      }
+
+      if (!asset.extraction) {
+        return {
+          assetId,
+          status: "NOT_ANALYZED" as const,
+          reason: "Asset extraction has not been analyzed by ALIVE.",
+        };
+      }
+
+      const eligibility = await computeEligibilityVerdict(assetId);
+      if (!eligibility || eligibility.verdict.status === "RESTRICTED") {
+        return {
+          assetId,
+          status: "NOT_ELIGIBLE" as const,
+          reason: eligibility?.verdict?.summary ?? "Asset is restricted by policy.",
+        };
+      }
+
+      try {
+        const quote = await tradeRouter.getQuote({
+          chainId: 196,
+          fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+          toTokenAddress: deployment.contractAddress,
+          fromAmount: "100",
+        });
+
+        if (!quote.hasRoute) {
+          return {
+            assetId,
+            status: "NO_ROUTE" as const,
+            chainId: 196,
+            tokenAddress: deployment.contractAddress,
+            symbol: deployment.symbol ?? asset.symbol,
+            reason:
+              quote.reason ??
+              "No active liquidity pool route on X Layer.",
+          };
+        }
+
+        return {
+          assetId,
+          status: "AVAILABLE" as const,
+          chainId: 196,
+          tokenAddress: deployment.contractAddress,
+          symbol: deployment.symbol ?? asset.symbol,
+          routerAddress: quote.routerAddress,
+        };
+      } catch {
+        return {
+          assetId,
+          status: "PROVIDER_UNAVAILABLE" as const,
+          reason: "Trading route service is temporarily unreachable.",
+        };
+      }
+    },
+  );
+
+  app.post("/api/trade/quote", async (request, reply) => {
+    const body = TradeQuoteBodySchema.parse(request.body);
+    const asset = dependencies.repository.getAsset(body.assetId);
+    if (!asset) {
+      reply.status(404);
+      return {
+        error: {
+          code: "ASSET_NOT_FOUND",
+          message: "Asset passport was not found.",
+        },
+      };
+    }
+
+    const deployment = getVerifiedXLayerDeployment(asset);
+    if (!deployment) {
+      reply.status(400);
+      return {
+        error: {
+          code: "NO_XLAYER_DEPLOYMENT",
+          message:
+            "Asset does not have a verified deployment on X Layer (Chain 196).",
+        },
+      };
+    }
+
+    try {
+      const quote = await tradeRouter.getQuote({
+        chainId: 196,
+        fromTokenAddress: body.fromTokenAddress,
+        toTokenAddress: deployment.contractAddress,
+        fromAmount: body.amount,
+        slippageBps: body.slippageBps,
+      });
+
+      return {
+        quote,
+        targetAsset: {
+          assetId: asset.id,
+          symbol: asset.symbol,
+          name: asset.name,
+          contractAddress: deployment.contractAddress,
+          chainId: 196,
+        },
+      };
+    } catch (error) {
+      reply.status(502);
+      return {
+        error: {
+          code: "QUOTE_FAILED",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to obtain trade quote.",
+        },
+      };
+    }
+  });
+
+  app.post("/api/trade/transaction", async (request, reply) => {
+    const body = TradeTransactionBodySchema.parse(request.body);
+    const asset = dependencies.repository.getAsset(body.assetId);
+    if (!asset) {
+      reply.status(404);
+      return {
+        error: {
+          code: "ASSET_NOT_FOUND",
+          message: "Asset passport was not found.",
+        },
+      };
+    }
+
+    const deployment = getVerifiedXLayerDeployment(asset);
+    if (!deployment) {
+      reply.status(400);
+      return {
+        error: {
+          code: "NO_XLAYER_DEPLOYMENT",
+          message:
+            "Asset does not have a verified deployment on X Layer (Chain 196).",
+        },
+      };
+    }
+
+    try {
+      const tx = await tradeRouter.getSwapTransaction({
+        chainId: 196,
+        fromTokenAddress: body.fromTokenAddress,
+        toTokenAddress: deployment.contractAddress,
+        fromAmount: body.amount,
+        userWalletAddress: body.userWalletAddress,
+        slippageBps: body.slippageBps,
+      });
+
+      return {
+        transaction: tx,
+        targetAsset: {
+          assetId: asset.id,
+          symbol: asset.symbol,
+          contractAddress: deployment.contractAddress,
+        },
+      };
+    } catch (error) {
+      reply.status(422);
+      return {
+        error: {
+          code: "TRANSACTION_CONSTRUCTION_FAILED",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to construct swap transaction.",
+        },
+      };
+    }
+  });
 
   app.post("/api/portfolios/optimize", async (request, reply) => {
     const body = OptimizeBodySchema.parse(request.body);

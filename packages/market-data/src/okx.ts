@@ -7,14 +7,14 @@ import {
 } from "./provider.js";
 
 export type OkxMarketProviderOptions = {
-  apiKey?: string;
-  secretKey?: string;
-  passphrase?: string;
-  projectId?: string;
-  baseUrl?: string;
-  fetchImpl?: typeof fetch;
-  cacheTtlMs?: number;
-  onchainPoolFallback?: boolean;
+  apiKey?: string | undefined;
+  secretKey?: string | undefined;
+  passphrase?: string | undefined;
+  projectId?: string | undefined;
+  baseUrl?: string | undefined;
+  fetchImpl?: typeof fetch | undefined;
+  cacheTtlMs?: number | undefined;
+  onchainPoolFallback?: boolean | undefined;
 };
 
 export type OkxLiveTokenData = {
@@ -22,11 +22,11 @@ export type OkxLiveTokenData = {
   contractAddress: string;
   symbol: string;
   priceUsd: number;
-  priceChange24hPct?: number;
-  volume24hUsd?: number;
-  liquidityUsd?: number;
-  marketCapUsd?: number;
-  holders?: number;
+  priceChange24hPct?: number | undefined;
+  volume24hUsd?: number | undefined;
+  liquidityUsd?: number | undefined;
+  marketCapUsd?: number | undefined;
+  holders?: number | undefined;
   sourceUpdatedAt: string;
   observedAt: string;
   status: "LIVE" | "AVAILABLE" | "STALE" | "UNAVAILABLE";
@@ -147,10 +147,10 @@ type CacheEntry = {
 
 export class OkxMarketProvider implements MarketDataProvider {
   readonly name = "OKX";
-  private readonly apiKey?: string;
-  private readonly secretKey?: string;
-  private readonly passphrase?: string;
-  private readonly projectId?: string;
+  private readonly apiKey: string | undefined;
+  private readonly secretKey: string | undefined;
+  private readonly passphrase: string | undefined;
+  private readonly projectId: string | undefined;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly cacheTtlMs: number;
@@ -198,7 +198,7 @@ export class OkxMarketProvider implements MarketDataProvider {
     pathWithQuery: string,
     body = "",
   ): Record<string, string> {
-    if (!this.isConfigured()) {
+    if (!this.isConfigured() || !this.secretKey) {
       return {
         "User-Agent": "ALIVE-Market-Terminal/1.0",
         Accept: "application/json",
@@ -208,17 +208,17 @@ export class OkxMarketProvider implements MarketDataProvider {
     const timestamp = new Date().toISOString();
     const prehash = `${timestamp}${method}${pathWithQuery}${body}`;
     const sign = crypto
-      .createHmac("sha256", this.secretKey!)
+      .createHmac("sha256", this.secretKey)
       .update(prehash)
       .digest("base64");
 
     const headers: Record<string, string> = {
       "User-Agent": "ALIVE-Market-Terminal/1.0",
       Accept: "application/json",
-      "OK-ACCESS-KEY": this.apiKey!,
+      "OK-ACCESS-KEY": this.apiKey ?? "",
       "OK-ACCESS-SIGN": sign,
       "OK-ACCESS-TIMESTAMP": timestamp,
-      "OK-ACCESS-PASSPHRASE": this.passphrase!,
+      "OK-ACCESS-PASSPHRASE": this.passphrase ?? "",
     };
 
     if (this.projectId) {
@@ -398,29 +398,23 @@ export class OkxMarketProvider implements MarketDataProvider {
     assetId: string,
     liveData: OkxLiveTokenData,
   ): MarketQuote {
-    const ageSeconds = Math.max(
-      0,
-      Math.floor(
-        (Date.now() - new Date(liveData.observedAt).getTime()) / 1000,
-      ),
-    );
-
     return {
       assetId,
       price: liveData.priceUsd.toFixed(4),
-      yieldAprBps: 0,
-      dataMode: "LIVE",
+      timestamp: liveData.sourceUpdatedAt,
       provider: liveData.provider,
-      asOf: liveData.observedAt,
-      ageSeconds,
+      status: "OPEN",
+      dataMode: "LIVE",
       onchainSource: {
         network: "X Layer",
-        feedAddress: liveData.contractAddress,
-        decimals: 18,
+        chainId: 196,
+        feedAddress: liveData.contractAddress as `0x${string}`,
         description: `${liveData.symbol} live token price on X Layer`,
-        heartbeatSeconds: 60,
+        decimals: 18,
+        roundId: "1",
         sourceUpdatedAt: liveData.sourceUpdatedAt,
-        contractExplorerUrl: `https://www.okx.com/web3/explorer/xlayer/address/${liveData.contractAddress}`,
+        observedAt: liveData.observedAt,
+        blockNumber: 1,
       },
     };
   }
