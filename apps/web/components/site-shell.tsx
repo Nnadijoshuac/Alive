@@ -91,8 +91,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
-  // If viewing the root landing page or /landing, render without the app shell
-  if (pathname === "/" || pathname === "/landing") {
+  // If viewing the root landing page, render without the app shell
+  if (pathname === "/") {
     return <>{children}</>;
   }
 
