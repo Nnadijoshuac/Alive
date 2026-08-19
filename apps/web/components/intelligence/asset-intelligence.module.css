@@ -149,20 +149,21 @@
 
 .signalsGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
 }
 
 .signalColumn {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .signalColumnHeading {
   margin: 0;
   color: var(--muted-2);
-  font: 650 10.5px/1 var(--font-geist-mono), monospace;
+  font: 650 11px/1.25 var(--font-geist-mono), monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -170,28 +171,61 @@
 .signalList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.signalItem {
-  display: flex;
-  gap: 8px;
+.positiveSignalItem {
   color: var(--ink-soft);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
-.signalItem strong {
-  flex-shrink: 0;
+.riskSignalItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.riskSignalCode {
   color: var(--ink);
+  font: 650 12px/1.25 var(--font-geist-mono), monospace;
+  letter-spacing: 0.02em;
+  display: block;
+}
+
+.riskSignalMessage {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 0;
 }
 
 .signalEmpty {
-  color: var(--faint);
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.policyFootnote {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+.policyFootnote p {
+  margin: 0;
+  color: var(--muted-2);
   font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.policyFootnote strong {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .policyNote {
@@ -203,6 +237,156 @@
 
 .policyNote strong {
   color: var(--ink-soft);
+}
+
+/* 1. What could move this asset */
+.riskCardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.riskCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.riskCardCategory {
+  color: var(--muted-2);
+  font: 650 11px/1.25 var(--font-geist-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sentimentBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sentimentBadge[data-tone="positive"] {
+  color: var(--positive);
+  background: var(--positive-bg);
+}
+
+.sentimentBadge[data-tone="negative"] {
+  color: var(--negative);
+  background: var(--negative-bg);
+}
+
+.sentimentBadge[data-tone="neutral"],
+.sentimentBadge[data-tone="warning"] {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.riskCardCurrent {
+  margin: 0 0 8px 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.riskCardExplanation {
+  margin: 0 0 12px 0;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.riskCardEvidence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.riskCardEvidence li {
+  color: var(--muted-2);
+}
+
+/* 3. Outlook */
+.outlookMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.outlookHorizonBadge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 5px;
+  padding: 2px 7px;
+  color: var(--muted-2);
+  font: 620 10.5px/1.4 var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.outlookSummary {
+  margin: 0 0 22px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.outlookDriversGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.outlookDriverCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.driverList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.outlookDisclaimer {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+.outlookDisclaimer p {
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .section {
@@ -247,17 +431,19 @@
 }
 
 .sectionSub {
-  margin: -8px 0 0;
+  margin: 0;
   color: var(--muted-2);
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .card {
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
-  padding: 20px 22px;
+  padding: 24px 28px;
   background: var(--paper-2);
 }
+
 
 .metricGrid {
   display: grid;

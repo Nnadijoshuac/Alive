@@ -492,22 +492,33 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           What could move this asset
         </h2>
         {riskDrivers && riskDrivers.length > 0 ? (
-          <div className={styles.signalsGrid}>
+          <div className={styles.riskCardGrid}>
             {riskDrivers.map((driver) => (
               <div className={styles.card} key={driver.name}>
-                <p className={styles.signalColumnHeading}>
-                  {driver.name}{" "}
-                  <span className={styles.detailsBadge}>{driver.direction}</span>
-                </p>
-                <p className={styles.sectionSub}>{driver.currentState}</p>
-                <p className={styles.sectionSub}>{driver.explanation}</p>
-                <ul className={styles.signalList}>
-                  {driver.evidence.map((item, index) => (
-                    <li className={styles.signalItem} key={index}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <div className={styles.riskCardHeader}>
+                  <span className={styles.riskCardCategory}>{driver.category || driver.name}</span>
+                  <span
+                    className={styles.sentimentBadge}
+                    data-tone={
+                      driver.direction === "POSITIVE"
+                        ? "positive"
+                        : driver.direction === "NEGATIVE"
+                          ? "negative"
+                          : "neutral"
+                    }
+                  >
+                    {driver.direction}
+                  </span>
+                </div>
+                <p className={styles.riskCardCurrent}>{driver.currentState}</p>
+                <p className={styles.riskCardExplanation}>{driver.explanation}</p>
+                {driver.evidence && driver.evidence.length > 0 ? (
+                  <ul className={styles.riskCardEvidence}>
+                    {driver.evidence.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ))}
           </div>
@@ -555,14 +566,14 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           What ALIVE sees
         </h2>
         {status === "VERIFIED" ? (
-          <>
+          <div className={styles.card}>
             <div className={styles.signalsGrid}>
               <div className={styles.signalColumn}>
-                <p className={styles.signalColumnHeading}>Positive signals</p>
+                <h3 className={styles.signalColumnHeading}>Positive signals</h3>
                 {positiveSignals.length > 0 ? (
                   <ul className={styles.signalList}>
                     {positiveSignals.map((reason, index) => (
-                      <li className={styles.signalItem} key={`${reason.code}-${index}`}>
+                      <li className={styles.positiveSignalItem} key={`${reason.code}-${index}`}>
                         {reason.message}
                       </li>
                     ))}
@@ -572,13 +583,13 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
                 )}
               </div>
               <div className={styles.signalColumn}>
-                <p className={styles.signalColumnHeading}>Risks / watch</p>
+                <h3 className={styles.signalColumnHeading}>Risks / watch</h3>
                 {riskSignals.length > 0 ? (
                   <ul className={styles.signalList}>
                     {riskSignals.map((reason, index) => (
-                      <li className={styles.signalItem} key={`${reason.code}-${index}`}>
-                        <strong>{reason.code}</strong>
-                        {reason.message}
+                      <li className={styles.riskSignalItem} key={`${reason.code}-${index}`}>
+                        <strong className={styles.riskSignalCode}>{reason.code}</strong>
+                        <p className={styles.riskSignalMessage}>{reason.message}</p>
                       </li>
                     ))}
                   </ul>
@@ -588,13 +599,15 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
               </div>
             </div>
             {policy ? (
-              <p className={styles.policyNote}>
-                Evaluated against policy <strong>{policy.policyId}</strong>. A RESTRICTED
-                result means this asset failed ALIVE&apos;s configured rules -- not that
-                ALIVE doubts the asset is real.
-              </p>
+              <div className={styles.policyFootnote}>
+                <p>
+                  Evaluated against policy <strong>{policy.policyId}</strong>. A RESTRICTED
+                  result means this asset failed ALIVE&apos;s configured rules -- not that
+                  ALIVE doubts the asset is real.
+                </p>
+              </div>
             ) : null}
-          </>
+          </div>
         ) : (
           <div className={styles.emptyStateBlock}>
             <AliveIconTile icon={CircleQuestionMarkIcon} tone="muted" />
@@ -606,6 +619,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           </div>
         )}
       </section>
+
 
       {/* 4. Financials */}
       <section className={styles.section} aria-labelledby="financials-title">
@@ -939,37 +953,57 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         </h2>
         {outlook ? (
           <div className={styles.card}>
-            <p className={styles.signalColumnHeading}>
-              {outlook.sentiment.replaceAll("_", " ")}{" "}
-              <span className={styles.detailsBadge}>{outlook.horizon}</span>
-            </p>
-            <p className={styles.sectionSub}>{outlook.summary}</p>
-            <div className={styles.signalsGrid}>
-              <div className={styles.signalColumn}>
-                <p className={styles.signalColumnHeading}>Positive drivers</p>
-                <ul className={styles.signalList}>
-                  {outlook.positiveDrivers.map((item, index) => (
-                    <li className={styles.signalItem} key={index}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+            <div className={styles.outlookMeta}>
+              <span
+                className={styles.sentimentBadge}
+                data-tone={
+                  outlook.sentiment === "POSITIVE"
+                    ? "positive"
+                    : outlook.sentiment === "NEGATIVE"
+                      ? "negative"
+                      : "neutral"
+                }
+              >
+                {outlook.sentiment.replaceAll("_", " ")}
+              </span>
+              <span className={styles.outlookHorizonBadge}>{outlook.horizon}</span>
+            </div>
+
+            <p className={styles.outlookSummary}>{outlook.summary}</p>
+
+            <div className={styles.outlookDriversGrid}>
+              <div className={styles.outlookDriverCol}>
+                <h3 className={styles.signalColumnHeading}>Positive drivers</h3>
+                {outlook.positiveDrivers && outlook.positiveDrivers.length > 0 ? (
+                  <ul className={styles.driverList}>
+                    {outlook.positiveDrivers.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.signalEmpty}>None identified</p>
+                )}
               </div>
-              <div className={styles.signalColumn}>
-                <p className={styles.signalColumnHeading}>Negative drivers</p>
-                <ul className={styles.signalList}>
-                  {outlook.negativeDrivers.map((item, index) => (
-                    <li className={styles.signalItem} key={index}>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+              <div className={styles.outlookDriverCol}>
+                <h3 className={styles.signalColumnHeading}>Negative drivers</h3>
+                {outlook.negativeDrivers && outlook.negativeDrivers.length > 0 ? (
+                  <ul className={styles.driverList}>
+                    {outlook.negativeDrivers.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.signalEmpty}>None identified</p>
+                )}
               </div>
             </div>
-            <p className={styles.policyNote}>
-              This is ALIVE&apos;s research outlook, not investment advice -- never a buy/sell
-              signal or price target, and entirely separate from the eligibility verdict above.
-            </p>
+
+            <div className={styles.outlookDisclaimer}>
+              <p>
+                This is ALIVE&apos;s research outlook, not investment advice -- never a buy/sell
+                signal or price target, and entirely separate from the eligibility verdict above.
+              </p>
+            </div>
           </div>
         ) : (
           <p className={styles.emptyState}>
@@ -977,6 +1011,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           </p>
         )}
       </section>
+
 
       {/* 7. Documents -- real Groq AI extraction */}
       <section className={styles.section} aria-labelledby="documents-title">

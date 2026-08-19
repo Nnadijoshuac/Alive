@@ -27,7 +27,7 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   constructor(
     private readonly chainlink: ChainlinkDataFeedProvider,
     private readonly demo: ControllableDemoMarketDataProvider,
-  ) {}
+  ) { }
 
   /** True when this asset's data comes from a real Chainlink feed. */
   isLive(assetId: string): boolean {
