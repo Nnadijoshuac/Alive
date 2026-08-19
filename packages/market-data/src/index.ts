@@ -22,4 +22,19 @@ export {
   type DemoAssetOverride,
 } from "./demo-controls.js";
 export { CompositeMarketDataProvider } from "./composite.js";
+export {
+  OkxMarketProvider,
+  XLAYER_KNOWN_POOLS,
+  type OkxLiveTokenData,
+  type OkxMarketProviderOptions,
+} from "./okx.js";
+export {
+  OkxTradeRouter,
+  XLAYER_PAYMENT_TOKENS,
+  type PaymentTokenConfig,
+  type SwapQuoteRequest,
+  type SwapQuoteResponse,
+  type SwapTransactionRequest,
+  type SwapTransactionResponse,
+} from "./trade-router.js";
 export * from "./provider.js";

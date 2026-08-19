@@ -3,6 +3,7 @@ import type { MarketQuote } from "@alive/shared";
 import { ChainlinkDataFeedProvider } from "./chainlink-data-feed.js";
 import { feedForAsset } from "./chainlink-feeds.js";
 import { ControllableDemoMarketDataProvider } from "./demo-controls.js";
+import { OkxMarketProvider } from "./okx.js";
 import {
   MarketDataError,
   type DataProviderHealth,
@@ -10,16 +11,10 @@ import {
 } from "./provider.js";
 
 /**
- * Routes each asset to the right source: assets with a configured Chainlink
- * feed are served live from that feed, everything else from the labelled
- * demo provider.
- *
- * The important property is what this makes impossible. The Attack Lab's
- * degradation controls live on the demo provider, and this router will not
- * apply them to a Chainlink-backed asset -- `degrade()` throws for those.
- * So a live Chainlink value can never be doctored to manufacture a demo
- * failure, and a demo failure can never be presented as a live one. The two
- * modes stay honest by construction rather than by convention.
+ * Routes each asset to the right source:
+ * 1. Assets with a configured Chainlink feed are served live from Chainlink (e.g. ttbill-b).
+ * 2. Assets supported on X Layer are served live from OKX OnchainOS (e.g. WMETAX).
+ * 3. Everything else comes from the labelled demo provider.
  */
 export class CompositeMarketDataProvider implements MarketDataProvider {
   readonly name = "ALIVE_COMPOSITE";
@@ -27,23 +22,36 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   constructor(
     private readonly chainlink: ChainlinkDataFeedProvider,
     private readonly demo: ControllableDemoMarketDataProvider,
-  ) { }
+    private readonly okx?: OkxMarketProvider,
+  ) {}
 
   /** True when this asset's data comes from a real Chainlink feed. */
-  isLive(assetId: string): boolean {
+  isChainlinkLive(assetId: string): boolean {
     return feedForAsset(assetId) !== undefined;
   }
 
+  /** True when this asset's data comes from OKX / X Layer. */
+  isOkxLive(assetId: string): boolean {
+    return this.okx?.supportsAsset(assetId) ?? false;
+  }
+
+  /** True when this asset has live market data from either provider. */
+  isLive(assetId: string): boolean {
+    return this.isChainlinkLive(assetId) || this.isOkxLive(assetId);
+  }
+
   /**
-   * Applies an Attack Lab degradation. Refuses on Chainlink-backed assets:
-   * real oracle data is never modified to make a demo fail.
+   * Applies an Attack Lab degradation. Refuses on live-backed assets:
+   * real oracle/market data is never modified to make a demo fail.
    */
   degrade(assetId: string, ageSeconds: number): void {
     if (this.isLive(assetId)) {
-      const feed = feedForAsset(assetId);
+      const source = this.isChainlinkLive(assetId)
+        ? `Chainlink feed ${feedForAsset(assetId)?.label}`
+        : "OKX OnchainOS market feed";
       throw new MarketDataError(
         "PROVIDER_DISABLED",
-        `${assetId} is backed by the live Chainlink feed ${feed?.label}. ALIVE does not modify real oracle data to simulate a failure; run the Attack Lab against a demo-backed asset instead.`,
+        `${assetId} is backed by the live ${source}. ALIVE does not modify real oracle data to simulate a failure; run the Attack Lab against a demo-backed asset instead.`,
       );
     }
     if (ageSeconds === 0) {
@@ -62,9 +70,17 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   }
 
   async getQuote(assetId: string): Promise<MarketQuote> {
-    return this.isLive(assetId)
-      ? this.chainlink.getQuote(assetId)
-      : this.demo.getQuote(assetId);
+    if (this.isChainlinkLive(assetId)) {
+      return this.chainlink.getQuote(assetId);
+    }
+    if (this.okx && this.isOkxLive(assetId)) {
+      try {
+        return await this.okx.getQuote(assetId);
+      } catch {
+        return this.demo.getQuote(assetId);
+      }
+    }
+    return this.demo.getQuote(assetId);
   }
 
   async getQuotes(assetIds: string[]): Promise<MarketQuote[]> {
@@ -81,25 +97,25 @@ export class CompositeMarketDataProvider implements MarketDataProvider {
   }
 
   async health(): Promise<DataProviderHealth> {
-    const [live, demo] = await Promise.all([
+    const checks: Promise<DataProviderHealth>[] = [
       this.chainlink.health(),
       this.demo.health(),
-    ]);
-    // Report the worse of the two rather than the more flattering one.
-    const status =
-      live.status === "OFFLINE" || demo.status === "OFFLINE"
-        ? "OFFLINE"
-        : live.status === "DEGRADED" || demo.status === "DEGRADED"
-          ? "DEGRADED"
-          : "HEALTHY";
+    ];
+    if (this.okx) {
+      checks.push(this.okx.health());
+    }
+
+    const results = await Promise.all(checks);
+    const hasOffline = results.some((r) => r.status === "OFFLINE");
+    const hasDegraded = results.some((r) => r.status === "DEGRADED");
+    const status = hasOffline ? "OFFLINE" : hasDegraded ? "DEGRADED" : "HEALTHY";
+
     return {
       provider: this.name,
       status,
-      // Mixed sourcing: some assets are live, some are demo, and the passport
-      // labels each asset individually.
       dataMode: "LIVE",
-      checkedAt: live.checkedAt,
-      message: `Live Chainlink: ${live.message} | Demo assets: ${demo.message}`,
+      checkedAt: results[0]?.checkedAt ?? new Date().toISOString(),
+      message: results.map((r) => `${r.provider}: ${r.message}`).join(" | "),
     };
   }
 }
