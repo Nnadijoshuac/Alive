@@ -35,6 +35,7 @@ import { getIntelligenceProfile } from "./data/intelligence-profiles.js";
 import {
   createDemoEligibilityPolicy,
   evaluateEligibility,
+  selectEligibilityPolicy,
 } from "@alive/eligibility-engine";
 
 import {
@@ -752,7 +753,7 @@ export async function buildIntelligenceApp(
       dependencies.repository.saveMarketSnapshot(marketSnapshotHash, snapshot);
     }
 
-    const policy = createDemoEligibilityPolicy();
+    const policy = selectEligibilityPolicy(passport);
     const verdict = evaluateEligibility({
       passport,
       policy,

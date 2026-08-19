@@ -76,6 +76,38 @@ export const DEMO_QUOTE_SEEDS: readonly DemoQuoteSeed[] = [
     mid: "225.300000",
     status: "CLOSED",
   },
+  {
+    assetId: "meta-xstock",
+    price: "528.500000",
+    bid: "528.100000",
+    ask: "528.900000",
+    mid: "528.500000",
+    status: "OPEN",
+  },
+  {
+    assetId: "spyx-xstock",
+    price: "555.200000",
+    bid: "555.100000",
+    ask: "555.300000",
+    mid: "555.200000",
+    status: "OPEN",
+  },
+  {
+    assetId: "buidl",
+    price: "1.000000",
+    bid: "1.000000",
+    ask: "1.000000",
+    mid: "1.000000",
+    status: "OPEN",
+  },
+  {
+    assetId: "acred",
+    price: "10.450000",
+    bid: "10.440000",
+    ask: "10.460000",
+    mid: "10.450000",
+    status: "OPEN",
+  },
 ] as const;
 
 export class DemoMarketDataProvider implements MarketDataProvider {

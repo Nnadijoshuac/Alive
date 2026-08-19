@@ -152,6 +152,11 @@ export function mergeExtractedFactsIntoPassport(params: {
     )
     .filter((source) => source.supportedFields.length > 0);
 
+  const newSourceIds = new Set(newSources.map((s) => s.id));
+  const filteredRetainedSources = retainedSources.filter(
+    (s) => !newSourceIds.has(s.id),
+  );
+
   const candidate = {
     ...existing,
     ...(facts.productName !== undefined ? { name: facts.productName } : {}),
@@ -177,7 +182,7 @@ export function mergeExtractedFactsIntoPassport(params: {
       ? { documentEffectiveDate: facts.documentEffectiveDate }
       : {}),
     extraction,
-    sources: [...retainedSources, ...newSources],
+    sources: [...filteredRetainedSources, ...newSources],
     lastUpdatedAt,
   };
 

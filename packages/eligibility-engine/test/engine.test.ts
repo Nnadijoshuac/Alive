@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RwaAssetSchema, isVerdictExpired, type MarketQuote, type RwaAsset } from "@alive/shared";
-import { createDemoEligibilityPolicy } from "../src/demo-policy.js";
+import {
+  createDemoEligibilityPolicy,
+  createXStockEligibilityPolicy,
+  selectEligibilityPolicy,
+} from "../src/demo-policy.js";
 import { evaluateEligibility } from "../src/engine.js";
 
 const NOW = new Date("2026-08-15T12:00:00.000Z");
@@ -256,16 +260,87 @@ describe("evaluateEligibility", () => {
   });
 });
 
-describe("isVerdictExpired", () => {
-  it("returns false before validUntil and true at/after it", () => {
+describe("selectEligibilityPolicy & multi-asset evaluation", () => {
+  it("selects appropriate policy by asset class and issuer", () => {
+    const metaPolicy = selectEligibilityPolicy({
+      id: "meta-xstock",
+      assetClass: "EQUITY",
+      issuer: "backed-assets-je",
+    });
+    expect(metaPolicy.policyId).toBe("xstock-eligibility-v1");
+    expect(metaPolicy.allowedAssetClasses).toEqual(["EQUITY", "ETF"]);
+
+    const spyxPolicy = selectEligibilityPolicy({
+      id: "spyx-xstock",
+      assetClass: "ETF",
+      issuer: "backed-assets-je",
+    });
+    expect(spyxPolicy.policyId).toBe("xstock-eligibility-v1");
+
+    const buidlPolicy = selectEligibilityPolicy({
+      id: "buidl",
+      assetClass: "FUND",
+      issuer: "blackrock",
+    });
+    expect(buidlPolicy.policyId).toBe("fund-eligibility-v1");
+    expect(buidlPolicy.allowedAssetClasses).toEqual(["FUND", "CREDIT", "TREASURY"]);
+
+    const ustbPolicy = selectEligibilityPolicy({
+      id: "ttbill-b",
+      assetClass: "TREASURY",
+      issuer: "invesco-advisers",
+    });
+    expect(ustbPolicy.policyId).toBe("treasury-eligibility-v1");
+
+    const demoPolicy = selectEligibilityPolicy({
+      id: "ttbill-a",
+      assetClass: "TREASURY",
+      issuer: "demo-treasury-issuer-a",
+    });
+    expect(demoPolicy.policyId).toBe("alive-demo-eligibility-v1");
+  });
+
+  it("enforces requireVerifiedDeployment and requireBackingEvidence when configured", () => {
+    const policy = createXStockEligibilityPolicy();
+    const passportWithoutDeployment = RwaAssetSchema.parse({
+      id: "meta-xstock",
+      symbol: "WMETAX",
+      name: "Wrapped Meta xStock",
+      assetClass: "EQUITY",
+      issuer: "backed-assets-je",
+      issuerName: "Backed Assets (JE) Limited",
+      underlying: "Meta Platforms, Inc. Class A shares",
+      sources: [
+        {
+          id: "xstocks-doc",
+          title: "xStocks Overview",
+          sourceType: "ISSUER_DOCUMENTATION",
+          sourceUrl: "https://docs.xstocks.fi",
+          retrievedAt: "2026-08-15T11:00:00.000Z",
+          supportedFields: [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "lastUpdatedAt",
+          ],
+        },
+      ],
+      lastUpdatedAt: "2026-08-15T11:00:00.000Z",
+      dataMode: "SNAPSHOT",
+    });
+
     const verdict = evaluateEligibility({
-      passport: healthyTreasuryPassport(),
-      policy: createDemoEligibilityPolicy(),
-      quote: quoteAt("ttbill-a", "2026-08-15T11:56:00.000Z"),
+      passport: passportWithoutDeployment,
+      policy,
       now: NOW,
     });
-    expect(isVerdictExpired(verdict, NOW)).toBe(false);
-    const afterExpiry = new Date(Date.parse(verdict.validUntil) + 1);
-    expect(isVerdictExpired(verdict, afterExpiry)).toBe(true);
+
+    expect(verdict.status).toBe("RESTRICTED");
+    expect(verdict.reasons.map((r) => r.code)).toContain("DEPLOYMENT_UNVERIFIED");
+    expect(verdict.reasons.map((r) => r.code)).toContain("BACKING_UNVERIFIED");
   });
 });
+

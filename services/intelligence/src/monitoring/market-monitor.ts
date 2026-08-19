@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { MarketDataError, type MarketDataProvider } from "@alive/market-data";
-import { evaluateEligibility } from "@alive/eligibility-engine";
+import {
+  evaluateEligibility,
+  selectEligibilityPolicy,
+} from "@alive/eligibility-engine";
 import {
   MarketSnapshotSchema,
   hashMarketSnapshot,
@@ -138,9 +141,10 @@ export class MarketMonitor {
     this.#repository.saveMarketSnapshot(marketSnapshotHash, snapshot);
     this.#repository.saveQuotes([quote], observedAt.toISOString());
 
+    const policy = selectEligibilityPolicy(passport) ?? this.#policy;
     const verdict = evaluateEligibility({
       passport,
-      policy: this.#policy,
+      policy,
       quote,
       marketSnapshotHash,
       now: observedAt,

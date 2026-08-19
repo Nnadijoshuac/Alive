@@ -47,6 +47,8 @@ export const EligibilityReasonCodeSchema = z.enum([
   "REDEMPTION_UNKNOWN",
   "SOURCE_DATA_TOO_OLD",
   "ASSET_DISABLED",
+  "DEPLOYMENT_UNVERIFIED",
+  "BACKING_UNVERIFIED",
   // Reserved for forward compatibility with the directive's reason-code
   // vocabulary. RwaAssetSchema has no structured jurisdiction/investor-type
   // facts yet (only a free-text restrictions[] array), so evaluateEligibility
@@ -86,6 +88,9 @@ export const EligibilityPolicySchema = z
     requireRedemptionActive: z.boolean(),
     maxPriceDeviationBps: BasisPointsSchema,
     verdictValiditySeconds: z.number().int().positive(),
+    requireMarketQuote: z.boolean().optional(),
+    requireVerifiedDeployment: z.boolean().optional(),
+    requireBackingEvidence: z.boolean().optional(),
   })
   .strict();
 

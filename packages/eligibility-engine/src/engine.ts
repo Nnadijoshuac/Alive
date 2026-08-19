@@ -133,13 +133,45 @@ export function evaluateEligibility(
     );
   }
 
-  const trackedByNav = NAV_TRACKED_CLASSES.has(passport.assetClass);
-  if (!quote) {
-    reasons.push(
-      trackedByNav
-        ? reason("NAV_UNAVAILABLE", "No NAV/price quote is available for this asset.")
-        : reason("PRICE_UNAVAILABLE", "No price quote is available for this asset."),
+  if (policy.requireVerifiedDeployment) {
+    const hasVerifiedDeployment = passport.deployments?.some(
+      (d) => d.deploymentStatus === "VERIFIED",
     );
+    if (!hasVerifiedDeployment) {
+      reasons.push(
+        reason(
+          "DEPLOYMENT_UNVERIFIED",
+          "This asset does not have a verified smart contract deployment on an approved network.",
+        ),
+      );
+    }
+  }
+
+  if (policy.requireBackingEvidence) {
+    const hasBackingEvidence =
+      Boolean(passport.backing) &&
+      Array.isArray(passport.backing?.sourceIds) &&
+      passport.backing.sourceIds.length > 0;
+    if (!hasBackingEvidence) {
+      reasons.push(
+        reason(
+          "BACKING_UNVERIFIED",
+          "This asset lacks verified backing or custody evidence.",
+        ),
+      );
+    }
+  }
+
+  const trackedByNav = NAV_TRACKED_CLASSES.has(passport.assetClass);
+  const quoteRequired = policy.requireMarketQuote !== false;
+  if (!quote) {
+    if (quoteRequired) {
+      reasons.push(
+        trackedByNav
+          ? reason("NAV_UNAVAILABLE", "No NAV/price quote is available for this asset.")
+          : reason("PRICE_UNAVAILABLE", "No price quote is available for this asset."),
+      );
+    }
   } else {
     const ageSeconds = Math.max(
       0,
