@@ -327,3 +327,39 @@ export function hashMarketSnapshot(input: MarketSnapshotInput): Hex {
     ),
   );
 }
+
+export const CoinMarketCapContextSchema = z
+  .object({
+    provider: z.literal("coinmarketcap"),
+    providerMode: z.literal("KEYLESS_PUBLIC"),
+    assetId: AssetIdSchema,
+    chainId: z.number().int().positive().optional(),
+    contractAddress: AddressSchema.optional(),
+    priceUsd: z.number().positive().optional(),
+    marketCapUsd: z.number().positive().optional(),
+    volume24hUsd: z.number().nonnegative().optional(),
+    priceChange24hPct: z.number().optional(),
+    liquidityUsd: z.number().nonnegative().optional(),
+    circulatingSupply: z.number().positive().optional(),
+    totalSupply: z.number().positive().optional(),
+    holders: z.number().int().nonnegative().optional(),
+    dex: z
+      .object({
+        exchangeName: z.string().optional(),
+        exchangeSlug: z.string().optional(),
+        pair: z.string().optional(),
+        baseSymbol: z.string().optional(),
+        quoteSymbol: z.string().optional(),
+        dexTotalLiquidity: z.number().nonnegative().optional(),
+      })
+      .optional(),
+    sourceUpdatedAt: IsoDateSchema.optional(),
+    observedAt: IsoDateSchema,
+    sourceUrl: z.string().url().optional(),
+    dataMode: z.enum(["LIVE", "AVAILABLE", "STALE", "UNAVAILABLE"]),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+export type CoinMarketCapMarketContext = z.infer<typeof CoinMarketCapContextSchema>;
+

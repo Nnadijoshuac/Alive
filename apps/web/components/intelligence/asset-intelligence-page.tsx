@@ -31,11 +31,13 @@ import {
   getAssetEligibility,
   getAssetExtraction,
   getAssetIntelligenceProfile,
+  getAssetMarketContext,
   getAssetMonitor,
   getRwaAsset,
   listRwaMarkets,
   type AssetExtractionStatus,
   type AssetMonitorStatus,
+  type CoinMarketCapMarketContext,
   type RwaMarketQuote,
 } from "@/lib/rwa-api";
 import type { RwaIntelligenceProfile } from "@alive/shared";
@@ -100,6 +102,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   const [monitor, setMonitor] = useState<AssetMonitorStatus>();
   const [extraction, setExtraction] = useState<AssetExtractionStatus>();
   const [profile, setProfile] = useState<RwaIntelligenceProfile>();
+  const [marketContext, setMarketContext] = useState<CoinMarketCapMarketContext>();
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<unknown>();
 
@@ -139,6 +142,11 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         setProfile(result.available ? result.profile : undefined);
       } catch {
         setProfile(undefined);
+      }
+      try {
+        setMarketContext(await getAssetMarketContext(passport.asset.id));
+      } catch {
+        setMarketContext(undefined);
       }
     } catch (requestError) {
       setError(requestError);
@@ -621,12 +629,119 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
         )}
       </section>
 
-      {/* 5. Market -- live Chainlink card */}
+      {/* 5. Live Token Market Context (CoinMarketCap Keyless Public) */}
+      <section className={styles.section} aria-labelledby="token-market-title">
+        <div className={styles.sectionHeaderRow}>
+          <h2 className={styles.sectionHeading} id="token-market-title">
+            <AliveIcon icon={CoinsIcon} size="lg" className={styles.sectionHeadingIcon} />
+            Token market context
+          </h2>
+          {marketContext ? (
+            <span
+              className={styles.statusPill}
+              data-tone={
+                marketContext.dataMode === "LIVE"
+                  ? "positive"
+                  : marketContext.dataMode === "AVAILABLE"
+                    ? "positive"
+                    : "muted"
+              }
+            >
+              {marketContext.dataMode}
+            </span>
+          ) : null}
+        </div>
+
+        {marketContext && marketContext.dataMode !== "UNAVAILABLE" ? (
+          <div className={styles.card}>
+            <div className={styles.metricGrid}>
+              <div className={styles.metric}>
+                <span>Token market price</span>
+                <strong>
+                  {marketContext.priceUsd !== undefined
+                    ? `$${marketContext.priceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>24h Change</span>
+                <strong
+                  style={{
+                    color:
+                      (marketContext.priceChange24hPct ?? 0) >= 0
+                        ? "var(--scanner-green, #10b981)"
+                        : "#ef4444",
+                  }}
+                >
+                  {marketContext.priceChange24hPct !== undefined
+                    ? `${marketContext.priceChange24hPct >= 0 ? "+" : ""}${marketContext.priceChange24hPct.toFixed(2)}%`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>24h Volume</span>
+                <strong>
+                  {marketContext.volume24hUsd !== undefined
+                    ? `$${Math.round(marketContext.volume24hUsd).toLocaleString()}`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>Onchain liquidity</span>
+                <strong>
+                  {marketContext.liquidityUsd !== undefined
+                    ? `$${Math.round(marketContext.liquidityUsd).toLocaleString()}`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>Market cap</span>
+                <strong>
+                  {marketContext.marketCapUsd !== undefined
+                    ? `$${Math.round(marketContext.marketCapUsd).toLocaleString()}`
+                    : "—"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>DEX / Pool</span>
+                <strong>
+                  {marketContext.dex
+                    ? `${marketContext.dex.exchangeName ?? "DEX"} (${marketContext.dex.pair ?? "Pair"})`
+                    : "X Layer DEX"}
+                </strong>
+              </div>
+              <div className={styles.metric}>
+                <span>Data provider</span>
+                <strong>CoinMarketCap (Public Keyless)</strong>
+              </div>
+              <div className={styles.metric}>
+                <span>Observed</span>
+                <strong>{formatRelativeAgo(marketContext.observedAt)}</strong>
+              </div>
+            </div>
+
+            <p className={styles.policyNote}>
+              Token market metrics reflect secondary onchain trading on X Layer. This is strictly
+              distinguished from underlying security NAV or legal backing verification.
+            </p>
+          </div>
+        ) : (
+          <div className={styles.emptyStateBlock}>
+            <AliveIconTile icon={CircleQuestionMarkIcon} tone="muted" />
+            <p className={styles.emptyState}>
+              {marketContext?.reason ??
+                "CoinMarketCap public keyless index does not have active X Layer coverage for this contract address."}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* 5b. Authoritative Oracle Market -- live Chainlink card (e.g. USTB) */}
       {source ? (
         <section className={styles.section} aria-labelledby="market-title">
           <h2 className={styles.sectionHeading} id="market-title">
             <AliveIcon icon={CoinsIcon} size="lg" className={styles.sectionHeadingIcon} />
-            Market
+            Authoritative oracle market (Chainlink)
           </h2>
           <div className={styles.card}>
             <div className={styles.metricGrid}>

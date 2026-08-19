@@ -178,7 +178,48 @@ describe("RWA intelligence client", () => {
       }),
     );
   });
+
+  it("fetches and validates normalized CoinMarketCap token market context", async () => {
+    const mockContext = {
+      provider: "coinmarketcap",
+      providerMode: "KEYLESS_PUBLIC",
+      assetId: "meta-xstock",
+      chainId: 196,
+      contractAddress: "0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
+      priceUsd: 549.10,
+      marketCapUsd: 112148.01,
+      volume24hUsd: 22892.52,
+      priceChange24hPct: -0.018,
+      liquidityUsd: 192264.02,
+      dex: {
+        exchangeName: "Uniswap v3 (X Layer)",
+        pair: "USDG/WMETAX",
+      },
+      sourceUpdatedAt: "2026-08-19T14:47:47.000Z",
+      observedAt: "2026-08-19T14:50:00.000Z",
+      dataMode: "LIVE",
+    };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          assetId: "meta-xstock",
+          market: mockContext,
+        }),
+      ),
+    );
+
+    const { getAssetMarketContext } = await import("@/lib/rwa-api");
+    const result = await getAssetMarketContext("meta-xstock");
+
+    expect(result.provider).toBe("coinmarketcap");
+    expect(result.dataMode).toBe("LIVE");
+    expect(result.priceUsd).toBe(549.10);
+    expect(result.dex?.exchangeName).toBe("Uniswap v3 (X Layer)");
+  });
 });
+
 
 describe("RWA presentation persistence", () => {
   it("stores only safe IDs and a validated public vault address", () => {

@@ -16,6 +16,7 @@ import {
 import {
   CompositeMarketDataProvider,
   ControllableDemoMarketDataProvider,
+  CoinMarketCapPublicProvider,
   MarketDataError,
   feedForAsset,
   type MarketDataProvider,
@@ -135,6 +136,7 @@ export type IntelligenceAppDependencies = {
   catalog: RwaCatalog;
   llm: LlmJsonProvider;
   marketData: MarketDataProvider;
+  cmcProvider?: CoinMarketCapPublicProvider;
   eligibilitySigner: EligibilitySigner;
   /** Absent when MARKET_MONITOR_ENABLED is not set -- the routes then report a disabled monitor rather than 404ing. */
   monitorService?: MonitorService;
@@ -218,6 +220,8 @@ export async function buildIntelligenceApp(
 ): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 1_000_000 });
   const now = dependencies.now ?? (() => new Date());
+  const cmcProvider =
+    dependencies.cmcProvider ?? new CoinMarketCapPublicProvider({ now });
 
   await app.register(cors, {
     origin(origin, callback) {
@@ -396,6 +400,27 @@ export async function buildIntelligenceApp(
         };
       }
       return { assetId: request.params.assetId, available: true, profile };
+    },
+  );
+
+  app.get<{ Params: { assetId: string } }>(
+    "/api/assets/:assetId/market-context",
+    async (request, reply) => {
+      const asset = dependencies.repository.getAsset(request.params.assetId);
+      if (!asset) {
+        reply.status(404);
+        return {
+          error: {
+            code: "ASSET_NOT_FOUND",
+            message: "Asset passport was not found.",
+          },
+        };
+      }
+      const market = await cmcProvider.getMarketContext(asset);
+      return {
+        assetId: request.params.assetId,
+        market,
+      };
     },
   );
 

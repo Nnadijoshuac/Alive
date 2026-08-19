@@ -1,4 +1,5 @@
 import {
+  CoinMarketCapContextSchema,
   EligibilityPolicySchema,
   EligibilityVerdictSchema,
   MarketQuoteSchema,
@@ -6,6 +7,7 @@ import {
   RwaAssetSchema,
   RwaIntelligenceProfileSchema,
   type AssetClass,
+  type CoinMarketCapMarketContext,
   type EligibilityPolicy,
   type EligibilityVerdict,
   type MarketQuote,
@@ -13,6 +15,17 @@ import {
   type RwaAsset,
   type RwaIntelligenceProfile,
 } from "@alive/shared";
+
+export type {
+  AssetClass,
+  CoinMarketCapMarketContext,
+  EligibilityPolicy,
+  EligibilityVerdict,
+  MarketQuote,
+  PortfolioPolicy,
+  RwaAsset,
+  RwaIntelligenceProfile,
+};
 
 const INTELLIGENCE_URL = (
   process.env.NEXT_PUBLIC_INTELLIGENCE_URL ?? "http://127.0.0.1:4200"
@@ -930,3 +943,14 @@ export async function proposeRwaRebalance(
     disclaimer: text(payload.disclaimer, "Market data disclaimer"),
   };
 }
+
+export async function getAssetMarketContext(
+  assetId: string,
+): Promise<CoinMarketCapMarketContext> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/market-context`),
+    "getAssetMarketContext",
+  );
+  return CoinMarketCapContextSchema.parse(payload.market);
+}
+
