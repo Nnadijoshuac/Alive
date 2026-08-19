@@ -1,11 +1,12 @@
 import type { Viewport } from "next";
-import { OverviewPage } from "@/components/intelligence/overview-page";
+import { LandingPage } from "@/components/landing/landing-page";
 
 export const viewport: Viewport = {
-  themeColor: "#f7f4ee",
-  colorScheme: "light",
+  themeColor: "#000000",
+  colorScheme: "dark",
 };
 
 export default function HomePage() {
-  return <OverviewPage />;
+  return <LandingPage />;
 }
+

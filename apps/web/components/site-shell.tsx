@@ -18,7 +18,7 @@ import { getIntelligenceHealth } from "@/lib/rwa-api";
 import styles from "./shell.module.css";
 
 const primaryNav = [
-  { href: "/", label: "Overview", icon: HouseIcon },
+  { href: "/overview", label: "Overview", icon: HouseIcon },
   { href: "/explore", label: "Explore", icon: CompassIcon },
   { href: "/watchlist", label: "Watchlist", icon: StarIcon },
   { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
@@ -91,15 +91,20 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
+  // If viewing the root landing page or /landing, render without the app shell
+  if (pathname === "/" || pathname === "/landing") {
+    return <>{children}</>;
+  }
+
   function isActive(href: string) {
-    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return href === "/overview" ? pathname === "/overview" || pathname === "/" : pathname.startsWith(href);
   }
 
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
-    router.push(`/?q=${encodeURIComponent(trimmed)}`);
+    router.push(`/overview?q=${encodeURIComponent(trimmed)}`);
     setQuery("");
     setMobileOpen(false);
   }
