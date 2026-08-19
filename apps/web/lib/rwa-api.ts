@@ -954,3 +954,140 @@ export async function getAssetMarketContext(
   return CoinMarketCapContextSchema.parse(payload.market);
 }
 
+export type TradeAvailabilityResult = {
+  assetId: string;
+  status:
+    | "AVAILABLE"
+    | "NOT_ANALYZED"
+    | "NOT_VERIFIED"
+    | "NOT_ELIGIBLE"
+    | "NO_XLAYER_DEPLOYMENT"
+    | "NO_ROUTE"
+    | "PROVIDER_UNAVAILABLE";
+  chainId?: number | undefined;
+  tokenAddress?: string | undefined;
+  symbol?: string | undefined;
+  routerAddress?: string | undefined;
+  reason?: string | undefined;
+};
+
+export type PaymentTokenInfo = {
+  chainId: 196;
+  symbol: string;
+  name: string;
+  contractAddress: string;
+  decimals: number;
+  isNative?: boolean;
+};
+
+export type TradeQuoteResult = {
+  quote: {
+    hasRoute: boolean;
+    status: "AVAILABLE" | "NO_ROUTE" | "PROVIDER_UNAVAILABLE";
+    provider: string;
+    chainId: 196;
+    fromToken: {
+      symbol: string;
+      contractAddress: string;
+      decimals: number;
+      amount: string;
+      amountRaw: string;
+    };
+    toToken: {
+      symbol: string;
+      contractAddress: string;
+      decimals: number;
+      estimatedAmount: string;
+      estimatedAmountRaw: string;
+    };
+    executionPrice: number;
+    marketPrice?: number;
+    priceImpactPct: number;
+    estimatedGasUsd: number;
+    tradeFeeUsd?: number;
+    minimumReceived: string;
+    routeName: string;
+    routerAddress: string;
+    allowanceTarget: string;
+    quoteFetchedAt: string;
+    expiresAt: string;
+    reason?: string;
+  };
+  targetAsset: {
+    assetId: string;
+    symbol: string;
+    name: string;
+    contractAddress: string;
+    chainId: 196;
+  };
+};
+
+export type TradeTransactionResult = {
+  transaction: {
+    chainId: 196;
+    to: string;
+    data: string;
+    value: string;
+    gasLimit?: string;
+    allowanceTarget: string;
+    quote: TradeQuoteResult["quote"];
+  };
+  targetAsset: {
+    assetId: string;
+    symbol: string;
+    contractAddress: string;
+  };
+};
+
+export async function getTradeAvailability(
+  assetId: string,
+): Promise<TradeAvailabilityResult> {
+  const payload = record(
+    await request(`/api/assets/${encodeURIComponent(assetId)}/trade-availability`),
+    "getTradeAvailability",
+  );
+  return payload as TradeAvailabilityResult;
+}
+
+export async function getPaymentTokens(): Promise<PaymentTokenInfo[]> {
+  const payload = record(
+    await request("/api/trade/payment-tokens"),
+    "getPaymentTokens",
+  );
+  return (payload.tokens as PaymentTokenInfo[]) ?? [];
+}
+
+export async function getTradeQuote(params: {
+  assetId: string;
+  fromTokenAddress: string;
+  amount: string;
+  slippageBps?: number;
+}): Promise<TradeQuoteResult> {
+  const payload = record(
+    await request("/api/trade/quote", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+    "getTradeQuote",
+  );
+  return payload as unknown as TradeQuoteResult;
+}
+
+export async function getTradeTransaction(params: {
+  assetId: string;
+  fromTokenAddress: string;
+  amount: string;
+  userWalletAddress: string;
+  slippageBps?: number;
+}): Promise<TradeTransactionResult> {
+  const payload = record(
+    await request("/api/trade/transaction", {
+      method: "POST",
+      body: JSON.stringify(params),
+    }),
+    "getTradeTransaction",
+  );
+  return payload as unknown as TradeTransactionResult;
+}
+
+

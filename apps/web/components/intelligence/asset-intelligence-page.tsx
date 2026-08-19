@@ -38,8 +38,9 @@ import {
   type AssetExtractionStatus,
   type AssetMonitorStatus,
   type CoinMarketCapMarketContext,
-  type RwaMarketQuote,
+  type MarketQuote as RwaMarketQuote,
 } from "@/lib/rwa-api";
+import { TradeDrawer } from "./trade-drawer";
 import type { RwaIntelligenceProfile } from "@alive/shared";
 import { loadAssetDocumentation } from "@/lib/verify-flow";
 import { AssetHeroCard } from "./asset-hero-card";
@@ -102,6 +103,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
   const [marketContext, setMarketContext] = useState<CoinMarketCapMarketContext>();
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<unknown>();
+  const [isTradeOpen, setIsTradeOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -358,6 +360,17 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             <span className={styles.metricMeta}>
               ALIVE checked {formatRelativeAgo(monitor.lastAliveCheckAt)}
             </span>
+          ) : null}
+          {asset?.deployments?.some(
+            (d) => d.chainId === 196 && d.deploymentStatus === "VERIFIED",
+          ) ? (
+            <button
+              type="button"
+              className={styles.tradeButton}
+              onClick={() => setIsTradeOpen(true)}
+            >
+              Trade on X Layer ↗
+            </button>
           ) : null}
         </div>
       </header>
@@ -1157,6 +1170,14 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
           </p>
         </div>
       </details>
+
+      <TradeDrawer
+        isOpen={isTradeOpen}
+        onClose={() => setIsTradeOpen(false)}
+        asset={asset}
+        liveQuote={quote}
+        marketContext={marketContext}
+      />
     </div>
   );
 }
