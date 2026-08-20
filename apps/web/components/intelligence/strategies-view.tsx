@@ -2,12 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import {
   SlidersHorizontalIcon,
   CheckIcon,
   ArrowRightIcon,
   XIcon,
   ShieldCheckIcon,
+  InfoIcon,
+  CodeIcon,
+  CheckCircleIcon,
 } from "@phosphor-icons/react";
 import type { AgentStrategy } from "@alive/shared";
 import { getMarketplaceStrategies, cloneStrategy, setActiveStrategy } from "@/lib/agent-api";
@@ -19,10 +23,14 @@ type CategoryFilter = "ALL" | "FREE" | "BALANCED" | "TREASURY" | "EQUITY" | "YIE
 
 export function StrategiesView() {
   const router = useRouter();
+  const { address: wagmiAddress, isConnected } = useAccount();
+  const currentWallet = isConnected && wagmiAddress ? wagmiAddress : DEFAULT_DEMO_WALLET;
+
   const [strategies, setStrategies] = useState<AgentStrategy[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<CategoryFilter>("ALL");
   const [selectedStrategy, setSelectedStrategy] = useState<AgentStrategy | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+  const [showTechnicalRules, setShowTechnicalRules] = useState<boolean>(false);
   const [isAdopting, setIsAdopting] = useState<boolean>(false);
   const [adoptedSuccess, setAdoptedSuccess] = useState<boolean>(false);
 
@@ -43,10 +51,10 @@ export function StrategiesView() {
     setIsAdopting(true);
     try {
       // 1. Clone strategy for this wallet
-      const cloned = await cloneStrategy(strategy.id, DEFAULT_DEMO_WALLET, `${strategy.name} (Active)`);
+      const cloned = await cloneStrategy(strategy.id, currentWallet, `${strategy.name} (Active)`);
       if (cloned && cloned.id) {
         // 2. Set as active strategy
-        await setActiveStrategy(DEFAULT_DEMO_WALLET, cloned.id);
+        await setActiveStrategy(currentWallet, cloned.id);
         setAdoptedSuccess(true);
         setTimeout(() => {
           setIsDetailOpen(false);
@@ -65,8 +73,10 @@ export function StrategiesView() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerInfo}>
-          <h1 className={styles.title}>Strategies</h1>
-          <p className={styles.subtitle}>Discover verified operating strategies for ALIVE Agents.</p>
+          <h1 className={styles.title}>Agent Strategies</h1>
+          <p className={styles.subtitle}>
+            Operating rules and execution boundaries for ALIVE autonomous portfolio agents on X Layer.
+          </p>
         </div>
       </header>
 
@@ -98,20 +108,22 @@ export function StrategiesView() {
 
               <h2 className={styles.strategyName}>{strat.name}</h2>
               <span className={styles.creatorText}>
-                by {strat.author.slice(0, 6)}…{strat.author.slice(-4)}
+                Author: {strat.author.slice(0, 6)}…{strat.author.slice(-4)}
               </span>
               <p className={styles.descriptionText}>{strat.description}</p>
             </div>
 
             <div className={styles.cardBottom}>
-              <span className={styles.usageStats}>
-                Verified on X Layer
-              </span>
+              <div className={styles.verifiedTag}>
+                <ShieldCheckIcon size={14} color="#22c55e" />
+                <span>Deterministic Rules</span>
+              </div>
               <button
                 type="button"
                 className={styles.viewDetailBtn}
                 onClick={() => {
                   setSelectedStrategy(strat);
+                  setShowTechnicalRules(false);
                   setAdoptedSuccess(false);
                   setIsDetailOpen(true);
                 }}
@@ -123,7 +135,20 @@ export function StrategiesView() {
         ))}
       </div>
 
-      {/* Strategy Detail Modal */}
+      {/* Explainer: Why Deterministic Rules */}
+      <div className={styles.explainerCard}>
+        <div className={styles.explainerIconWrap}>
+          <ShieldCheckIcon size={24} color="#22c55e" />
+        </div>
+        <div className={styles.explainerContent}>
+          <h3 className={styles.explainerTitle}>Why ALIVE Uses Deterministic Rules Instead of Black-Box AI</h3>
+          <p className={styles.explainerDesc}>
+            ALIVE preserves a verifiable causal chain. AI is used for interpretation, research, and natural language queries, but rebalancing triggers, slippage limits, and portfolio calculations are governed by deterministic, verifiable rules.
+          </p>
+        </div>
+      </div>
+
+      {/* Strategy Detail Modal with Progressive Disclosure */}
       {isDetailOpen && selectedStrategy && (
         <div className={styles.modalOverlay} onClick={() => setIsDetailOpen(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -146,30 +171,76 @@ export function StrategiesView() {
 
             <p className={styles.descriptionText}>{selectedStrategy.description}</p>
 
-            {/* How It Operates */}
+            {/* Level 1 & 2: Plain-Language Strategy Rules */}
             <div className={styles.operatesSection}>
               <div className={styles.operatesTitle}>
-                <ShieldCheckIcon size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
-                How It Operates
+                <ShieldCheckIcon size={16} color="#22c55e" />
+                Plain-Language Policy Rules
               </div>
               <ul className={styles.operatesList}>
                 <li className={styles.operatesItem}>
-                  <span className={styles.operatesBullet}>✓</span>
+                  <CheckCircleIcon size={15} color="#22c55e" weight="fill" />
                   <span>Verified and eligible X Layer assets only</span>
                 </li>
                 <li className={styles.operatesItem}>
-                  <span className={styles.operatesBullet}>✓</span>
+                  <CheckCircleIcon size={15} color="#22c55e" weight="fill" />
                   <span>Target asset universe: {selectedStrategy.targetAssetClasses.join(", ")}</span>
                 </li>
                 <li className={styles.operatesItem}>
-                  <span className={styles.operatesBullet}>✓</span>
-                  <span>Rebalancing threshold: {selectedStrategy.rebalanceThresholdBps ? `${selectedStrategy.rebalanceThresholdBps / 100}%` : "5%"} deviation</span>
+                  <CheckCircleIcon size={15} color="#22c55e" weight="fill" />
+                  <span>
+                    Rebalances when allocation deviates more than{" "}
+                    {selectedStrategy.rebalanceThresholdBps ? `${selectedStrategy.rebalanceThresholdBps / 100}%` : "5%"}
+                  </span>
                 </li>
                 <li className={styles.operatesItem}>
-                  <span className={styles.operatesBullet}>✓</span>
-                  <span>{selectedStrategy.rules.length} active deterministic rules</span>
+                  <CheckCircleIcon size={15} color="#22c55e" weight="fill" />
+                  <span>{selectedStrategy.rules.length} active deterministic boundary conditions</span>
                 </li>
               </ul>
+            </div>
+
+            {/* Level 3: Collapsible Technical Rules */}
+            <div>
+              <button
+                type="button"
+                className={styles.technicalToggleBtn}
+                onClick={() => setShowTechnicalRules(!showTechnicalRules)}
+              >
+                <CodeIcon size={14} />
+                {showTechnicalRules ? "Hide technical rules ▴" : "View technical execution rules ▾"}
+              </button>
+
+              {showTechnicalRules && (
+                <div className={styles.technicalRulesDrawer}>
+                  <table className={styles.rulesTable}>
+                    <thead>
+                      <tr>
+                        <th>Rule ID</th>
+                        <th>Condition</th>
+                        <th>Operator</th>
+                        <th>Threshold</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedStrategy.rules.map((r, idx) => (
+                        <tr key={idx}>
+                          <td>{r.id || `rule-${idx + 1}`}</td>
+                          <td>{r.conditionVariable}</td>
+                          <td>{r.operator}</td>
+                          <td>
+                            {typeof r.thresholdValue === "number"
+                              ? `${r.thresholdValue} bps`
+                              : String(r.thresholdValue)}
+                          </td>
+                          <td style={{ color: "#22c55e" }}>{r.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <button
