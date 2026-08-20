@@ -13,11 +13,10 @@ import {
   type VerificationStatus,
 } from "@/lib/asset-intelligence-summary";
 import { getWatchlist, toggleWatch } from "@/lib/watchlist-state";
-import { EXPLORE_PAGE_SIZE, getPaginationItems } from "@/lib/pagination";
 import { AssetTable } from "./asset-table";
 import styles from "./explore.module.css";
 
-export { EXPLORE_PAGE_SIZE, getPaginationItems };
+export const EXPLORE_PAGE_SIZE = 8;
 
 const VERIFICATION_FILTERS = ["ALL", "VERIFIED", "NOT_ANALYZED", "UNVERIFIED"] as const;
 const VERIFICATION_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {

@@ -59,6 +59,11 @@ function verdictTone(status: EligibilityVerdict["status"] | undefined) {
   return "warning" as const;
 }
 
+function quoteAgeSeconds(timestamp?: string): number {
+  if (!timestamp) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000));
+}
+
 function verdictIcon(status: EligibilityVerdict["status"] | undefined) {
   if (status === "ELIGIBLE") return <AliveIcon icon={Shield01Icon} size="sm" />;
   if (status === "RESTRICTED") return <AliveIcon icon={CancelCircleIcon} size="sm" />;
@@ -353,7 +358,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
             </span>
           ) : quote ? (
             <span className={styles.metricMeta}>
-              {quote.provider} · {formatFreshness(quote.ageSeconds)}
+              {quote.provider} · {formatFreshness(quoteAgeSeconds(quote.timestamp))}
             </span>
           ) : null}
           {monitor?.lastAliveCheckAt ? (
@@ -773,7 +778,7 @@ export function AssetIntelligencePage({ assetId }: { assetId: string }) {
               <div className={styles.metric}>
                 <span>Data status</span>
                 <strong>{quote?.status === "OPEN" ? "Fresh" : "Stale"}</strong>
-                <small>{quote ? formatFreshness(quote.ageSeconds) : ""}</small>
+                <small>{quote ? formatFreshness(quoteAgeSeconds(quote.timestamp)) : ""}</small>
               </div>
             </div>
           </div>

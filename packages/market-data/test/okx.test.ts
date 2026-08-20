@@ -125,7 +125,7 @@ describe("OkxTradeRouter", () => {
 
     const quote = await router.getQuote({
       chainId: 196,
-      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
       toTokenAddress: "0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
       fromAmount: "1000",
       slippageBps: 50, // 0.5%
@@ -165,7 +165,7 @@ describe("OkxTradeRouter", () => {
 
     const quote = await router.getQuote({
       chainId: 196,
-      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
       toTokenAddress: "0x90a2a4c76b5d8c0bc892a69ea28aa775a8f2dd48",
       fromAmount: "100",
     });
@@ -196,7 +196,7 @@ describe("OkxTradeRouter", () => {
 
     const tx = await router.getSwapTransaction({
       chainId: 196,
-      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+      fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
       toTokenAddress: "0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
       fromAmount: "100",
       userWalletAddress: "0x1111111111111111111111111111111111111111",

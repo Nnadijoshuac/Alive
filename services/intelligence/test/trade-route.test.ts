@@ -20,6 +20,9 @@ const NOW = new Date("2026-08-17T00:00:00.000Z");
 const catalogPath = fileURLToPath(
   new URL("../../../data/rwa-catalog/catalog.demo.json", import.meta.url),
 );
+const sourceDocumentsPath = fileURLToPath(
+  new URL("../../../data/source-documents", import.meta.url),
+);
 
 function unconfiguredEligibilitySigner(): EligibilitySigner {
   return new EligibilitySigner({});
@@ -55,8 +58,11 @@ function demoConfig(): IntelligenceConfig {
     host: "127.0.0.1",
     port: 4_200,
     databasePath: ":memory:",
+    catalogPath,
+    sourceDocumentsPath,
     allowedOrigins: ["http://localhost:3000"],
-    marketDataProvider: "chainlink",
+    llm: { provider: "disabled", timeoutMs: 1_000 },
+    eligibilitySigner: { ttlSeconds: 900 },
     marketMonitorEnabled: false,
     marketMonitorIntervalSeconds: 300,
     demoMode: true,
@@ -74,7 +80,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       eligibilitySigner: unconfiguredEligibilitySigner(),
@@ -94,7 +100,7 @@ describe("X Layer Trading API Endpoints", () => {
     expect(usdc).toMatchObject({
       chainId: 196,
       symbol: "USDC",
-      contractAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+      contractAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
       decimals: 6,
     });
     await app.close();
@@ -110,7 +116,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       eligibilitySigner: unconfiguredEligibilitySigner(),
@@ -168,7 +174,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       tradeRouter: mockRouter,
@@ -231,7 +237,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       tradeRouter: mockRouter,
@@ -278,7 +284,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       tradeRouter: mockRouter,
@@ -291,7 +297,7 @@ describe("X Layer Trading API Endpoints", () => {
       url: "/api/trade/quote",
       payload: {
         assetId: "meta-xstock",
-        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
         amount: "500",
         slippageBps: 50,
       },
@@ -334,7 +340,7 @@ describe("X Layer Trading API Endpoints", () => {
       catalog,
       llm: disabledLlm(),
       marketData: new CompositeMarketDataProvider(
-        new ChainlinkDataFeedProvider({ reader: reader() }),
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
         new ControllableDemoMarketDataProvider(),
       ),
       tradeRouter: mockRouter,
@@ -347,7 +353,7 @@ describe("X Layer Trading API Endpoints", () => {
       url: "/api/trade/transaction",
       payload: {
         assetId: "meta-xstock",
-        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
         amount: "500",
         userWalletAddress: "0x1234567890123456789012345678901234567890",
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState } from "react";
 import type { CoinMarketCapMarketContext, MarketQuote, RwaAsset } from "@alive/shared";
 import {
   getPaymentTokens,
@@ -28,8 +28,8 @@ export type TradeDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   asset: RwaAsset;
-  liveQuote?: MarketQuote;
-  marketContext?: CoinMarketCapMarketContext;
+  liveQuote?: MarketQuote | undefined;
+  marketContext?: CoinMarketCapMarketContext | undefined;
 };
 
 export function TradeDrawer({
@@ -173,8 +173,8 @@ export function TradeDrawer({
       setWalletAddress(acc);
       const cid = await getWalletChainId();
       setWalletChainId(cid ?? null);
-    } catch (err: any) {
-      setActionError(err.message ?? "Wallet connection failed.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Wallet connection failed.");
     }
   };
 
@@ -184,8 +184,8 @@ export function TradeDrawer({
       await switchNetworkToXLayer();
       const cid = await getWalletChainId();
       setWalletChainId(cid ?? null);
-    } catch (err: any) {
-      setActionError(err.message ?? "Failed to switch network.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Failed to switch network.");
     }
   };
 
@@ -198,8 +198,8 @@ export function TradeDrawer({
       // Refresh allowance
       const newAllw = await getTokenAllowance(selectedTokenAddr, walletAddress, quote.routerAddress);
       setTokenAllowance(newAllw);
-    } catch (err: any) {
-      setActionError(err.message ?? "Approval rejected by user.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Approval rejected by user.");
     } finally {
       setIsApproving(false);
     }
@@ -231,8 +231,8 @@ export function TradeDrawer({
       } else {
         setActionError("Transaction failed onchain.");
       }
-    } catch (err: any) {
-      setActionError(err.message ?? "Transaction cancelled or failed.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Transaction cancelled or failed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -251,13 +251,13 @@ export function TradeDrawer({
 
   const displayPrice = liveQuote?.price
     ? `$${parseFloat(liveQuote.price).toFixed(2)}`
-    : marketContext?.usdPrice
-      ? `$${marketContext.usdPrice.toFixed(2)}`
+    : marketContext?.priceUsd !== undefined
+      ? `$${marketContext.priceUsd.toFixed(2)}`
       : "$--";
 
   const displayChange =
-    marketContext?.priceChange24hPercent !== undefined
-      ? `${marketContext.priceChange24hPercent >= 0 ? "+" : ""}${marketContext.priceChange24hPercent.toFixed(2)}%`
+    marketContext?.priceChange24hPct !== undefined
+      ? `${marketContext.priceChange24hPct >= 0 ? "+" : ""}${marketContext.priceChange24hPct.toFixed(2)}%`
       : undefined;
 
   return (
@@ -286,11 +286,7 @@ export function TradeDrawer({
             <div className={styles.assetRow}>
               <div className={styles.assetLeft}>
                 <div className={styles.assetLogo}>
-                  {asset.logoUri ? (
-                    <img src={asset.logoUri} alt={asset.symbol} />
-                  ) : (
-                    asset.symbol.slice(0, 3)
-                  )}
+                  {asset.symbol.slice(0, 4)}
                 </div>
                 <div className={styles.assetNames}>
                   <div className={styles.assetSymbol}>{asset.symbol}</div>
@@ -404,7 +400,7 @@ export function TradeDrawer({
                   className={styles.amountInput}
                 />
                 <div className={styles.tokenPill}>
-                  <span>{xlayerDeployment?.symbol ?? asset.symbol}</span>
+                  <span>{asset.symbol}</span>
                 </div>
               </div>
             </div>
@@ -523,7 +519,7 @@ export function TradeDrawer({
             >
               {isSubmitting
                 ? "Confirming in Wallet..."
-                : `Trade ${xlayerDeployment?.symbol ?? asset.symbol}`}
+                : `Trade ${asset.symbol}`}
             </button>
           )}
 

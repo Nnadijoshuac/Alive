@@ -12,9 +12,9 @@ export const XLAYER_MAINNET_CONFIG = {
 };
 
 export type EIP1193Provider = {
-  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<any>;
-  on?: (eventName: string, handler: (...args: any[]) => void) => void;
-  removeListener?: (eventName: string, handler: (...args: any[]) => void) => void;
+  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
+  on?: (eventName: string, handler: (...args: unknown[]) => void) => void;
+  removeListener?: (eventName: string, handler: (...args: unknown[]) => void) => void;
 };
 
 declare global {
@@ -77,9 +77,10 @@ export async function switchNetworkToXLayer(): Promise<void> {
       method: "wallet_switchEthereumChain",
       params: [{ chainId: XLAYER_MAINNET_CONFIG.chainIdHex }],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { code?: number; message?: string; data?: { originalError?: { code?: number } } };
     // Error code 4902 means the chain has not been added to MetaMask
-    if (error?.code === 4902 || error?.message?.includes("4902") || error?.data?.originalError?.code === 4902) {
+    if (err?.code === 4902 || err?.message?.includes("4902") || err?.data?.originalError?.code === 4902) {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [

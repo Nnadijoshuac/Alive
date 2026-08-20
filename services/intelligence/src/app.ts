@@ -930,14 +930,14 @@ export async function buildIntelligenceApp(
     })
     .strict();
 
-  function getVerifiedXLayerDeployment(asset: {
+  function getVerifiedXLayerDeployment(asset?: {
     deployments?: {
       chainId: number;
       contractAddress: string;
       deploymentStatus: string;
-      symbol?: string;
-      name?: string;
-    }[];
+      symbol?: string | undefined;
+      name?: string | undefined;
+    }[] | undefined;
   } | undefined) {
     if (!asset) return undefined;
     return asset.deployments?.find(
@@ -954,6 +954,7 @@ export async function buildIntelligenceApp(
     async (request, reply) => {
       const assetId = request.params.assetId;
       const asset = dependencies.repository.getAsset(assetId);
+
       if (!asset) {
         reply.status(404);
         return {
@@ -997,14 +998,14 @@ export async function buildIntelligenceApp(
         return {
           assetId,
           status: "NOT_ELIGIBLE" as const,
-          reason: eligibility?.verdict?.summary ?? "Asset is restricted by policy.",
+          reason: eligibility?.verdict?.reasons?.[0]?.message ?? "Asset is restricted by policy.",
         };
       }
 
       try {
         const quote = await tradeRouter.getQuote({
           chainId: 196,
-          fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
+          fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
           toTokenAddress: deployment.contractAddress,
           fromAmount: "100",
         });
