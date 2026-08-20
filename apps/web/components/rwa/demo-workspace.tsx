@@ -17,7 +17,6 @@ import {
   optimizeRwaPortfolio,
   proposeRwaRebalance,
   type PolicyRecord,
-  type PortfolioProposal,
   type RebalanceResult,
 } from "@/lib/rwa-api";
 import { rwaContractConfiguration } from "@/lib/rwa-chain";

@@ -3,14 +3,11 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ClockCounterClockwiseIcon,
   RobotIcon,
   ShieldCheckIcon,
   ArrowUpRightIcon,
-  CheckCircleIcon,
-  XCircleIcon,
 } from "@phosphor-icons/react";
-import { listActivity, type ActivityEntry } from "@/lib/activity-log";
+import { listActivity } from "@/lib/activity-log";
 import { formatRelativeAgo, formatTimestamp } from "@/lib/rwa-format";
 import styles from "./overview.module.css";
 import activityStyles from "./activity.module.css";

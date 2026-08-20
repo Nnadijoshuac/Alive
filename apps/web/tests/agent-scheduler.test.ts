@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 describe("Persistent Agent Scheduler Invariants", () => {
   it("executes cheap check and skips evaluation when no active strategies exist", () => {
-    const activeStrategies: any[] = [];
+    const activeStrategies: unknown[] = [];
     const shouldRunDeepEvaluation = activeStrategies.length > 0;
 
     expect(shouldRunDeepEvaluation).toBe(false);

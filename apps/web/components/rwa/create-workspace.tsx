@@ -16,7 +16,7 @@ import {
   type PortfolioProposal,
 } from "@/lib/rwa-api";
 import { rememberRwaState } from "@/lib/rwa-state";
-import { formatBps, truncateIdentifier } from "@/lib/rwa-format";
+import { truncateIdentifier } from "@/lib/rwa-format";
 import {
   AllocationList,
   ErrorState,

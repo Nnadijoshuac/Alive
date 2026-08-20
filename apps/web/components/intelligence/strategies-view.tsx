@@ -4,12 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import {
-  SlidersHorizontalIcon,
   CheckIcon,
   ArrowRightIcon,
   XIcon,
   ShieldCheckIcon,
-  InfoIcon,
   CodeIcon,
   CheckCircleIcon,
 } from "@phosphor-icons/react";

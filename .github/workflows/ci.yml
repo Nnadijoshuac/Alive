@@ -2,7 +2,7 @@ name: quality
 
 on:
   push:
-    branches: [main, feat/rwa-intelligence-pivot]
+    branches: [main, feat/alive-runtime, feat/rwa-intelligence-pivot]
   pull_request:
 
 permissions:

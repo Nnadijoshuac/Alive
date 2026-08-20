@@ -22,7 +22,6 @@ import type {
   ProposedAgentAction,
   AgentStrategy,
   RwaAsset,
-  SpendableToken,
 } from "@alive/shared";
 import {
   getAgentSnapshot,
@@ -64,9 +63,7 @@ export function AgentWorkspace() {
 
   const [snapshot, setSnapshot] = useState<AgentContextSnapshot | null>(null);
   const [activeStrategy, setActiveStrategy] = useState<AgentStrategy | null>(null);
-  const [spendableTokens, setSpendableTokens] = useState<SpendableToken[]>([]);
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
@@ -311,7 +308,7 @@ export function AgentWorkspace() {
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, agentMsg]);
-    } catch (err) {
+    } catch {
       const errMsg: ChatMessage = {
         sender: "agent",
         text: "Trading data is temporarily unavailable. Please try asking again shortly.",

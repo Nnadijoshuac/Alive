@@ -148,7 +148,7 @@ export function TradeDrawer({
       .finally(() => {
         setIsQuoting(false);
       });
-  }, [isOpen, asset?.id, selectedTokenAddr, debouncedAmount]);
+  }, [isOpen, asset, selectedTokenAddr, debouncedAmount]);
 
   // 4. Update Token Balance & Allowance when Wallet or Token changes
   useEffect(() => {

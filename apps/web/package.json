@@ -8,6 +8,8 @@
     "build:worker": "opennextjs-cloudflare build",
     "preview:worker": "opennextjs-cloudflare build && wrangler dev",
     "deploy:worker": "opennextjs-cloudflare build && wrangler deploy",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",

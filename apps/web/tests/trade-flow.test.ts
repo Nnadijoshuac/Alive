@@ -7,7 +7,6 @@ import {
 } from "@/lib/rwa-api";
 import {
   XLAYER_MAINNET_CONFIG,
-  isWalletAvailable,
 } from "@/lib/rwa-trade";
 
 function jsonResponse(payload: unknown, status = 200): Response {
