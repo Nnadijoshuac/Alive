@@ -76,6 +76,10 @@ export {
   type MarketObservationRecord,
   type PublishedVerdictRecord,
 } from "./repository.js";
+export {
+  WalletIntelligenceService,
+  type WalletIntelligenceServiceOptions,
+} from "./wallet/wallet-intelligence-service.js";
 
 const FeedMapSchema = z.record(
   z.string().trim().min(1),

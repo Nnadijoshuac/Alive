@@ -4,14 +4,26 @@ import path from "node:path";
 import Database from "better-sqlite3";
 
 import {
+  AgentContextSnapshotSchema,
+  AgentInteractionSchema,
+  AgentStrategySchema,
+  AliveTradeRecordSchema,
   MarketSnapshotSchema,
   PortfolioPolicySchema,
   RwaAssetSchema,
+  WalletContextSchema,
+  WalletTradeSchema,
+  type AgentContextSnapshot,
+  type AgentInteraction,
+  type AgentStrategy,
+  type AliveTradeRecord,
   type MarketQuote,
   type MarketSnapshot,
   type PortfolioPolicy,
   type RwaAsset,
   type SignedStrategyProposal,
+  type WalletContext,
+  type WalletTrade,
 } from "@alive/shared";
 import type { Allocation, PortfolioProposal } from "@alive/optimizer";
 
@@ -230,6 +242,80 @@ const MIGRATIONS = [
       ALTER TABLE extraction_runs ADD COLUMN facts_cited_count INTEGER;
       ALTER TABLE extraction_runs ADD COLUMN unknown_fields_count INTEGER;
       ALTER TABLE extraction_runs ADD COLUMN rejected_attempts_count INTEGER;
+    `,
+  },
+  {
+    version: 7,
+    sql: `
+      -- Migration 7: Wallet intelligence, Agent memory, Trade logs, Strategies, Context snapshots
+      CREATE TABLE IF NOT EXISTS wallet_snapshots (
+        wallet_address TEXT PRIMARY KEY,
+        snapshot_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+
+      CREATE TABLE IF NOT EXISTS wallet_trades (
+        id TEXT PRIMARY KEY,
+        wallet_address TEXT NOT NULL,
+        tx_hash TEXT NOT NULL,
+        chain_id INTEGER NOT NULL,
+        trade_json TEXT NOT NULL,
+        source TEXT NOT NULL,
+        confidence TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS wallet_trades_wallet ON wallet_trades(wallet_address, timestamp DESC);
+
+      CREATE TABLE IF NOT EXISTS agent_interactions (
+        id TEXT PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        wallet_address TEXT NOT NULL,
+        action_id TEXT NOT NULL,
+        event TEXT NOT NULL,
+        original_amount TEXT,
+        edited_amount TEXT,
+        reason TEXT,
+        timestamp TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS agent_interactions_wallet ON agent_interactions(wallet_address, timestamp DESC);
+
+      CREATE TABLE IF NOT EXISTS alive_trades (
+        tx_hash TEXT PRIMARY KEY,
+        wallet_address TEXT NOT NULL,
+        agent_id TEXT,
+        strategy_id TEXT,
+        asset_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        amount_in TEXT NOT NULL,
+        amount_out_expected TEXT NOT NULL,
+        quote_json TEXT,
+        chain_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        executed_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS alive_trades_wallet ON alive_trades(wallet_address, executed_at DESC);
+
+      CREATE TABLE IF NOT EXISTS agent_strategies (
+        id TEXT PRIMARY KEY,
+        wallet_address TEXT,
+        name TEXT NOT NULL,
+        strategy_json TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 0,
+        is_marketplace INTEGER NOT NULL DEFAULT 0,
+        pricing_json TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS agent_strategies_wallet ON agent_strategies(wallet_address);
+
+      CREATE TABLE IF NOT EXISTS agent_context_snapshots (
+        id TEXT PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        wallet_address TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS agent_context_snapshots_wallet ON agent_context_snapshots(wallet_address, timestamp DESC);
     `,
   },
 ] as const;
@@ -1181,6 +1267,375 @@ export class IntelligenceRepository {
     return row ? rowToPublishedVerdict(row) : undefined;
   }
 
+  saveWalletSnapshot(walletAddress: string, snapshot: WalletContext): void {
+    const normalized = walletAddress.toLowerCase();
+    this.#database
+      .prepare(
+        `
+        INSERT INTO wallet_snapshots (wallet_address, snapshot_json, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(wallet_address) DO UPDATE SET
+          snapshot_json = excluded.snapshot_json,
+          updated_at = excluded.updated_at
+      `,
+      )
+      .run(normalized, JSON.stringify(snapshot), new Date().toISOString());
+  }
+
+  getWalletSnapshot(walletAddress: string): WalletContext | undefined {
+    const normalized = walletAddress.toLowerCase();
+    const row = this.#database
+      .prepare("SELECT snapshot_json FROM wallet_snapshots WHERE wallet_address = ?")
+      .get(normalized) as { snapshot_json: string } | undefined;
+    if (!row) return undefined;
+    try {
+      return WalletContextSchema.parse(JSON.parse(row.snapshot_json));
+    } catch {
+      return undefined;
+    }
+  }
+
+  saveWalletTrade(walletAddress: string, trade: WalletTrade): void {
+    const normalized = walletAddress.toLowerCase();
+    const id = `${trade.chainId}:${trade.txHash}:${normalized}`;
+    this.#database
+      .prepare(
+        `
+        INSERT INTO wallet_trades (id, wallet_address, tx_hash, chain_id, trade_json, source, confidence, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          trade_json = excluded.trade_json,
+          source = excluded.source,
+          confidence = excluded.confidence
+      `,
+      )
+      .run(
+        id,
+        normalized,
+        trade.txHash,
+        trade.chainId,
+        JSON.stringify(trade),
+        trade.source,
+        trade.confidence,
+        trade.timestamp,
+      );
+  }
+
+  getWalletTrades(walletAddress: string, limit = 50): WalletTrade[] {
+    const normalized = walletAddress.toLowerCase();
+    const rows = this.#database
+      .prepare(
+        "SELECT trade_json FROM wallet_trades WHERE wallet_address = ? ORDER BY timestamp DESC LIMIT ?",
+      )
+      .all(normalized, limit) as { trade_json: string }[];
+    const result: WalletTrade[] = [];
+    for (const r of rows) {
+      try {
+        result.push(WalletTradeSchema.parse(JSON.parse(r.trade_json)));
+      } catch {
+        // Skip invalid rows
+      }
+    }
+    return result;
+  }
+
+  saveAgentInteraction(interaction: AgentInteraction): void {
+    const normalized = interaction.walletAddress.toLowerCase();
+    this.#database
+      .prepare(
+        `
+        INSERT INTO agent_interactions (id, agent_id, wallet_address, action_id, event, original_amount, edited_amount, reason, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          event = excluded.event,
+          edited_amount = excluded.edited_amount,
+          reason = excluded.reason,
+          timestamp = excluded.timestamp
+      `,
+      )
+      .run(
+        interaction.id,
+        interaction.agentId,
+        normalized,
+        interaction.actionId,
+        interaction.event,
+        interaction.originalAmount ?? null,
+        interaction.editedAmount ?? null,
+        interaction.reason ?? null,
+        interaction.timestamp,
+      );
+  }
+
+  getAgentInteractions(walletAddress: string, limit = 50): AgentInteraction[] {
+    const normalized = walletAddress.toLowerCase();
+    const rows = this.#database
+      .prepare(
+        `SELECT id, agent_id, wallet_address, action_id, event, original_amount, edited_amount, reason, timestamp
+         FROM agent_interactions WHERE wallet_address = ? ORDER BY timestamp DESC LIMIT ?`,
+      )
+      .all(normalized, limit) as Array<{
+      id: string;
+      agent_id: string;
+      wallet_address: string;
+      action_id: string;
+      event: string;
+      original_amount: string | null;
+      edited_amount: string | null;
+      reason: string | null;
+      timestamp: string;
+    }>;
+    return rows.map((r) =>
+      AgentInteractionSchema.parse({
+        id: r.id,
+        agentId: r.agent_id,
+        walletAddress: r.wallet_address,
+        actionId: r.action_id,
+        event: r.event,
+        originalAmount: r.original_amount ?? undefined,
+        editedAmount: r.edited_amount ?? undefined,
+        reason: r.reason ?? undefined,
+        timestamp: r.timestamp,
+      }),
+    );
+  }
+
+  saveAliveTrade(trade: AliveTradeRecord): void {
+    const normalized = trade.walletAddress.toLowerCase();
+    this.#database
+      .prepare(
+        `
+        INSERT INTO alive_trades (tx_hash, wallet_address, agent_id, strategy_id, asset_id, action, amount_in, amount_out_expected, quote_json, chain_id, status, executed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tx_hash) DO UPDATE SET
+          status = excluded.status,
+          amount_out_expected = excluded.amount_out_expected
+      `,
+      )
+      .run(
+        trade.txHash,
+        normalized,
+        trade.agentId ?? null,
+        trade.strategyId ?? null,
+        trade.assetId,
+        trade.action,
+        trade.amountIn,
+        trade.amountOutExpected,
+        trade.quoteJson ?? null,
+        trade.chainId,
+        trade.status,
+        trade.executedAt,
+      );
+  }
+
+  getAliveTrades(walletAddress: string, limit = 50): AliveTradeRecord[] {
+    const normalized = walletAddress.toLowerCase();
+    const rows = this.#database
+      .prepare(
+        `SELECT tx_hash, wallet_address, agent_id, strategy_id, asset_id, action, amount_in, amount_out_expected, quote_json, chain_id, status, executed_at
+         FROM alive_trades WHERE wallet_address = ? ORDER BY executed_at DESC LIMIT ?`,
+      )
+      .all(normalized, limit) as Array<{
+      tx_hash: string;
+      wallet_address: string;
+      agent_id: string | null;
+      strategy_id: string | null;
+      asset_id: string;
+      action: string;
+      amount_in: string;
+      amount_out_expected: string;
+      quote_json: string | null;
+      chain_id: number;
+      status: string;
+      executed_at: string;
+    }>;
+    return rows.map((r) =>
+      AliveTradeRecordSchema.parse({
+        txHash: r.tx_hash,
+        walletAddress: r.wallet_address,
+        agentId: r.agent_id ?? undefined,
+        strategyId: r.strategy_id ?? undefined,
+        assetId: r.asset_id,
+        action: r.action,
+        fromTokenAddress: "0x74b7f16337b8972027f6196a17a631ac6de26d22", // default standard
+        toTokenAddress: "0xe840946ffebcd66b7c4e95095effafadfa0d0e56",
+        amountIn: r.amount_in,
+        amountOutExpected: r.amount_out_expected,
+        quoteJson: r.quote_json ?? undefined,
+        executedAt: r.executed_at,
+        chainId: r.chain_id,
+        status: r.status,
+      }),
+    );
+  }
+
+  saveAgentStrategy(
+    strategy: AgentStrategy,
+    walletAddress?: string,
+    isActive = false,
+    isMarketplace = false,
+  ): void {
+    const normalized = walletAddress ? walletAddress.toLowerCase() : null;
+    const now = new Date().toISOString();
+    this.#database
+      .prepare(
+        `
+        INSERT INTO agent_strategies (id, wallet_address, name, strategy_json, is_active, is_marketplace, pricing_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          strategy_json = excluded.strategy_json,
+          is_active = excluded.is_active,
+          is_marketplace = excluded.is_marketplace,
+          pricing_json = excluded.pricing_json,
+          updated_at = excluded.updated_at
+      `,
+      )
+      .run(
+        strategy.id,
+        normalized,
+        strategy.name,
+        JSON.stringify(strategy),
+        isActive ? 1 : 0,
+        isMarketplace ? 1 : 0,
+        JSON.stringify(strategy.pricing),
+        strategy.publishedAt || now,
+        now,
+      );
+  }
+
+  getAgentStrategy(
+    id: string,
+  ): { strategy: AgentStrategy; walletAddress?: string | undefined; isActive: boolean; isMarketplace: boolean } | undefined {
+    const row = this.#database
+      .prepare(
+        "SELECT id, wallet_address, name, strategy_json, is_active, is_marketplace FROM agent_strategies WHERE id = ?",
+      )
+      .get(id) as {
+      id: string;
+      wallet_address: string | null;
+      name: string;
+      strategy_json: string;
+      is_active: number;
+      is_marketplace: number;
+    } | undefined;
+    if (!row) return undefined;
+    try {
+      const strategy = AgentStrategySchema.parse(JSON.parse(row.strategy_json));
+      return {
+        strategy,
+        walletAddress: row.wallet_address ?? undefined,
+        isActive: Boolean(row.is_active),
+        isMarketplace: Boolean(row.is_marketplace),
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  listMarketplaceStrategies(): AgentStrategy[] {
+    const rows = this.#database
+      .prepare(
+        "SELECT strategy_json FROM agent_strategies WHERE is_marketplace = 1 ORDER BY created_at DESC",
+      )
+      .all() as { strategy_json: string }[];
+    const result: AgentStrategy[] = [];
+    for (const r of rows) {
+      try {
+        result.push(AgentStrategySchema.parse(JSON.parse(r.strategy_json)));
+      } catch {
+        // Skip invalid rows
+      }
+    }
+    return result;
+  }
+
+  listWalletStrategies(walletAddress: string): AgentStrategy[] {
+    const normalized = walletAddress.toLowerCase();
+    const rows = this.#database
+      .prepare(
+        "SELECT strategy_json FROM agent_strategies WHERE wallet_address = ? ORDER BY updated_at DESC",
+      )
+      .all(normalized) as { strategy_json: string }[];
+    const result: AgentStrategy[] = [];
+    for (const r of rows) {
+      try {
+        result.push(AgentStrategySchema.parse(JSON.parse(r.strategy_json)));
+      } catch {
+        // Skip invalid rows
+      }
+    }
+    return result;
+  }
+
+  getActiveStrategyForWallet(walletAddress: string): AgentStrategy | undefined {
+    const normalized = walletAddress.toLowerCase();
+    const row = this.#database
+      .prepare(
+        "SELECT strategy_json FROM agent_strategies WHERE wallet_address = ? AND is_active = 1 LIMIT 1",
+      )
+      .get(normalized) as { strategy_json: string } | undefined;
+    if (row) {
+      try {
+        return AgentStrategySchema.parse(JSON.parse(row.strategy_json));
+      } catch {
+        // fall through
+      }
+    }
+    // Default fallback to first marketplace strategy
+    const marketplace = this.listMarketplaceStrategies();
+    return marketplace[0];
+  }
+
+  setActiveStrategyForWallet(walletAddress: string, strategyId: string): void {
+    const normalized = walletAddress.toLowerCase();
+    // First deactivate all for this wallet
+    this.#database
+      .prepare("UPDATE agent_strategies SET is_active = 0 WHERE wallet_address = ?")
+      .run(normalized);
+    // Then activate the target strategy
+    this.#database
+      .prepare(
+        "UPDATE agent_strategies SET is_active = 1 WHERE wallet_address = ? AND id = ?",
+      )
+      .run(normalized, strategyId);
+  }
+
+  saveContextSnapshot(snapshot: AgentContextSnapshot): void {
+    const normalized = snapshot.walletAddress.toLowerCase();
+    this.#database
+      .prepare(
+        `
+        INSERT INTO agent_context_snapshots (id, agent_id, wallet_address, snapshot_json, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          snapshot_json = excluded.snapshot_json,
+          timestamp = excluded.timestamp
+      `,
+      )
+      .run(
+        snapshot.id,
+        snapshot.agentId,
+        normalized,
+        JSON.stringify(snapshot),
+        snapshot.timestamp,
+      );
+  }
+
+  getLatestContextSnapshot(walletAddress: string): AgentContextSnapshot | undefined {
+    const normalized = walletAddress.toLowerCase();
+    const row = this.#database
+      .prepare(
+        "SELECT snapshot_json FROM agent_context_snapshots WHERE wallet_address = ? ORDER BY timestamp DESC LIMIT 1",
+      )
+      .get(normalized) as { snapshot_json: string } | undefined;
+    if (!row) return undefined;
+    try {
+      return AgentContextSnapshotSchema.parse(JSON.parse(row.snapshot_json));
+    } catch {
+      return undefined;
+    }
+  }
+
   tableNames(): string[] {
     const rows = this.#database
       .prepare(
@@ -1194,3 +1649,4 @@ export class IntelligenceRepository {
     this.#database.close();
   }
 }
+

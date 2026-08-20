@@ -12,3 +12,4 @@ export * from "./eligibility.js";
 export * from "./schemas.js";
 export * from "./scoring.js";
 export * from "./strategy.js";
+export * from "./agent.js";
