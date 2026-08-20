@@ -35,6 +35,14 @@ export type TradeDrawerProps = {
   onTradeSuccess?: ((txHash: string) => void) | undefined;
 };
 
+type AuthorizationState =
+  | "IDLE"
+  | "WAITING_WALLET"
+  | "SUBMITTED_ONCHAIN"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "FAILED";
+
 export function TradeDrawer({
   isOpen,
   onClose,
@@ -52,6 +60,7 @@ export function TradeDrawer({
   const [quote, setQuote] = useState<TradeQuoteResult["quote"] | null>(null);
   const [isQuoting, setIsQuoting] = useState<boolean>(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [showExecutionDetails, setShowExecutionDetails] = useState<boolean>(true);
 
   // Wallet state
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -59,15 +68,14 @@ export function TradeDrawer({
   const [tokenBalance, setTokenBalance] = useState<string>("0.00");
   const [tokenAllowance, setTokenAllowance] = useState<bigint>(0n);
 
-  // Action state
+  // Action & Authorization states
+  const [authState, setAuthState] = useState<AuthorizationState>("IDLE");
   const [isApproving, setIsApproving] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [tradeSuccess, setTradeSuccess] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  const isPending = isQuoting || isApproving || isSubmitting;
+  const isPending = isQuoting || isApproving || authState === "WAITING_WALLET" || authState === "SUBMITTED_ONCHAIN";
 
   // Verified X Layer target deployment
   const xlayerDeployment = asset?.deployments?.find(
@@ -168,7 +176,7 @@ export function TradeDrawer({
     setQuote(null);
     setQuoteError(null);
     setTxHash(null);
-    setTradeSuccess(false);
+    setAuthState("IDLE");
     setActionError(null);
     onClose();
   };
@@ -181,53 +189,62 @@ export function TradeDrawer({
   };
 
   const handleConnect = async () => {
-    setActionError(null);
-    try {
-      const acc = await connectWallet();
+    const acc = await connectWallet();
+    if (acc) {
       setWalletAddress(acc);
       const cid = await getWalletChainId();
       setWalletChainId(cid ?? null);
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Wallet connection failed.");
     }
   };
 
   const handleSwitchNetwork = async () => {
-    setActionError(null);
     try {
       await switchNetworkToXLayer();
       const cid = await getWalletChainId();
       setWalletChainId(cid ?? null);
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to switch network.");
+    } catch (err) {
+      console.error("Failed to switch network to X Layer:", err);
     }
   };
 
   const handleApprove = async () => {
-    if (!walletAddress || !quote?.routerAddress || !selectedTokenAddr) return;
-    setActionError(null);
+    if (!walletAddress || !quote?.routerAddress) return;
     setIsApproving(true);
+    setActionError(null);
+
     try {
-      await requestTokenApproval(selectedTokenAddr, quote.routerAddress, walletAddress);
-      // Refresh allowance
-      const newAllw = await getTokenAllowance(selectedTokenAddr, walletAddress, quote.routerAddress);
-      setTokenAllowance(newAllw);
+      const approvedTxHash = await requestTokenApproval(
+        selectedTokenAddr,
+        quote.routerAddress,
+        walletAddress,
+      );
+
+      if (approvedTxHash) {
+        const receipt = await waitForTransactionReceipt(approvedTxHash);
+        if (receipt && receipt.status) {
+          const newAllowance = await getTokenAllowance(
+            selectedTokenAddr,
+            walletAddress,
+            quote.routerAddress,
+          );
+          setTokenAllowance(newAllowance);
+        }
+      }
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Approval rejected by user.");
+      const msg = err instanceof Error ? err.message : "Approval rejected or failed.";
+      setActionError(msg);
     } finally {
       setIsApproving(false);
     }
   };
 
   const handleTrade = async () => {
-    if (!walletAddress || !quote || !selectedTokenAddr || !asset) return;
+    if (!walletAddress || !quote || !asset) return;
+    setAuthState("WAITING_WALLET");
     setActionError(null);
-    setIsSubmitting(true);
-    setTradeSuccess(false);
-    setTxHash(null);
 
     try {
-      const txData = await getTradeTransaction({
+      const txPayload = await getTradeTransaction({
         assetId: asset.id,
         fromTokenAddress: selectedTokenAddr,
         amount: debouncedAmount,
@@ -235,27 +252,43 @@ export function TradeDrawer({
         slippageBps: 50,
       });
 
-      const hash = await sendSwapTransaction(txData.transaction, walletAddress);
-      setTxHash(hash);
+      if (!txPayload.transaction) {
+        setAuthState("FAILED");
+        setActionError("Failed to build swap transaction data.");
+        return;
+      }
 
-      // Wait for onchain receipt
-      const receipt = await waitForTransactionReceipt(hash);
-      if (receipt.status) {
-        setTradeSuccess(true);
-        if (onTradeSuccess) {
-          try {
-            onTradeSuccess(hash);
-          } catch {
-            // ignore callback error
+      const submittedTxHash = await sendSwapTransaction(
+        {
+          to: txPayload.transaction.to,
+          data: txPayload.transaction.data,
+          value: txPayload.transaction.value,
+          ...(txPayload.transaction.gasLimit ? { gasLimit: txPayload.transaction.gasLimit } : {}),
+        },
+        walletAddress,
+      );
+
+      if (submittedTxHash) {
+        setTxHash(submittedTxHash);
+        setAuthState("SUBMITTED_ONCHAIN");
+
+        const receipt = await waitForTransactionReceipt(submittedTxHash);
+        if (receipt && receipt.status) {
+          setAuthState("CONFIRMED");
+          if (onTradeSuccess) {
+            onTradeSuccess(submittedTxHash);
           }
+        } else {
+          setAuthState("FAILED");
+          setActionError("Transaction failed onchain.");
         }
       } else {
-        setActionError("Transaction failed onchain.");
+        setAuthState("CANCELLED");
+        setActionError("Transaction cancelled by user.");
       }
     } catch (err: unknown) {
+      setAuthState("CANCELLED");
       setActionError(err instanceof Error ? err.message : "Transaction cancelled or failed.");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -287,7 +320,7 @@ export function TradeDrawer({
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerTitleGroup}>
-            <h2 className={styles.title}>Trade on X Layer</h2>
+            <h2 className={styles.title}>Review Trade</h2>
             <span className={styles.networkBadge}>
               <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
                 <circle cx="4" cy="4" r="3" />
@@ -330,7 +363,7 @@ export function TradeDrawer({
 
             {targetContract && (
               <div className={styles.contractRow}>
-                <span>Verified Contract</span>
+                <span>Target Contract</span>
                 <div className={styles.contractLinks}>
                   <span className={styles.contractCode}>
                     {targetContract.slice(0, 6)}...{targetContract.slice(-4)}
@@ -363,6 +396,7 @@ export function TradeDrawer({
                     <button
                       className={styles.maxBtn}
                       onClick={() => setAmount(tokenBalance)}
+                      disabled={isPending}
                     >
                       MAX
                     </button>
@@ -406,7 +440,7 @@ export function TradeDrawer({
             <div className={styles.swapCard}>
               <div className={styles.cardHeader}>
                 <span>You Receive (Estimated)</span>
-                <span>Exact-In Quote</span>
+                <span>Exact-In</span>
               </div>
               <div className={styles.inputGroup}>
                 <input
@@ -415,7 +449,7 @@ export function TradeDrawer({
                   placeholder="0.00"
                   value={
                     isQuoting
-                      ? "Quoting..."
+                      ? "Calculating quote…"
                       : quote?.toToken.estimatedAmount ?? "0.00"
                   }
                   className={styles.amountInput}
@@ -427,44 +461,85 @@ export function TradeDrawer({
             </div>
           </div>
 
-          {/* Quote Execution Details */}
+          {/* Collapsible Execution Details */}
           {quote && (
-            <div className={styles.quoteDetails}>
-              <div className={styles.quoteRow}>
-                <span>Execution Rate</span>
-                <span className={styles.quoteValue}>
-                  1 {quote.toToken.symbol} ≈ {quote.executionPrice.toFixed(2)}{" "}
-                  {quote.fromToken.symbol}
-                </span>
-              </div>
-              <div className={styles.quoteRow}>
-                <span>Price Impact</span>
-                <span className={styles.quoteValue}>
-                  {quote.priceImpactPct < 0.01
-                    ? "< 0.01%"
-                    : `${quote.priceImpactPct.toFixed(2)}%`}
-                </span>
-              </div>
-              <div className={styles.quoteRow}>
-                <span>Estimated Network Fee</span>
-                <span className={styles.quoteValue}>
-                  ${quote.estimatedGasUsd.toFixed(2)} OKB
-                </span>
-              </div>
-              <div className={styles.quoteRow}>
-                <span>Min Received (0.5% slippage)</span>
-                <span className={styles.quoteValue}>
-                  {quote.minimumReceived} {quote.toToken.symbol}
-                </span>
-              </div>
-              <div className={styles.quoteRow}>
-                <span>Routing Provider</span>
-                <span className={styles.quoteValue}>{quote.routeName}</span>
-              </div>
+            <div className={styles.executionDetailsContainer}>
+              <button
+                type="button"
+                className={styles.executionDetailsToggle}
+                onClick={() => setShowExecutionDetails(!showExecutionDetails)}
+              >
+                <span>Execution Details</span>
+                <span>{showExecutionDetails ? "▴" : "▾"}</span>
+              </button>
+
+              {showExecutionDetails && (
+                <div className={styles.quoteDetails}>
+                  <div className={styles.quoteRow}>
+                    <span>Exchange Rate</span>
+                    <span className={styles.quoteValue}>
+                      1 {quote.toToken.symbol} ≈ {quote.executionPrice.toFixed(2)}{" "}
+                      {quote.fromToken.symbol}
+                    </span>
+                  </div>
+                  <div className={styles.quoteRow}>
+                    <span>Price Impact</span>
+                    <span className={styles.quoteValue}>
+                      {quote.priceImpactPct < 0.01
+                        ? "< 0.01%"
+                        : `${quote.priceImpactPct.toFixed(2)}%`}
+                    </span>
+                  </div>
+                  <div className={styles.quoteRow}>
+                    <span>Estimated Network Fee</span>
+                    <span className={styles.quoteValue}>
+                      ~0.00012 OKB (${quote.estimatedGasUsd.toFixed(2)})
+                    </span>
+                  </div>
+                  <div className={styles.quoteRow}>
+                    <span>Min Received (0.50% slippage)</span>
+                    <span className={styles.quoteValue}>
+                      {quote.minimumReceived} {quote.toToken.symbol}
+                    </span>
+                  </div>
+                  <div className={styles.quoteRow}>
+                    <span>Liquidity Provider</span>
+                    <span className={styles.quoteValue}>OKX DEX · X Layer Router</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Error and Success Notifications */}
+          {/* Wallet Authorization & Status States */}
+          {authState === "WAITING_WALLET" && (
+            <div className={`${styles.statusMessage} ${styles.statusWaiting}`}>
+              <div className={styles.pulseDot} />
+              <span>Waiting for your wallet authorization… Please confirm the transaction in your wallet.</span>
+            </div>
+          )}
+
+          {authState === "SUBMITTED_ONCHAIN" && (
+            <div className={`${styles.statusMessage} ${styles.statusWaiting}`}>
+              <div className={styles.pulseDot} />
+              <span>Submitted on X Layer. Awaiting onchain confirmation…</span>
+            </div>
+          )}
+
+          {authState === "CONFIRMED" && txHash && (
+            <div className={`${styles.statusMessage} ${styles.statusSuccess}`}>
+              <span>✓ Trade confirmed on X Layer!</span>
+              <a
+                href={`https://www.okx.com/web3/explorer/xlayer/tx/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.txLink}
+              >
+                View on Explorer ↗
+              </a>
+            </div>
+          )}
+
           {quoteError && (
             <div className={`${styles.statusMessage} ${styles.statusError}`}>
               {quoteError}
@@ -474,20 +549,6 @@ export function TradeDrawer({
           {actionError && (
             <div className={`${styles.statusMessage} ${styles.statusError}`}>
               {actionError}
-            </div>
-          )}
-
-          {tradeSuccess && txHash && (
-            <div className={`${styles.statusMessage} ${styles.statusSuccess}`}>
-              ✓ Trade settled on X Layer!{" "}
-              <a
-                href={`https://www.okx.com/web3/explorer/xlayer/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#4ade80", textDecoration: "underline" }}
-              >
-                View Transaction ↗
-              </a>
             </div>
           )}
 
@@ -512,7 +573,7 @@ export function TradeDrawer({
             </button>
           ) : isQuoting ? (
             <button className={`${styles.actionButton} ${styles.btnDisabled}`} disabled>
-              Getting real quote...
+              Getting live quote…
             </button>
           ) : !quote ? (
             <button className={`${styles.actionButton} ${styles.btnDisabled}`} disabled>
@@ -529,25 +590,26 @@ export function TradeDrawer({
               disabled={isApproving}
             >
               {isApproving
-                ? `Approving ${currentPaymentToken?.symbol ?? "USDC"}...`
+                ? `Approving ${currentPaymentToken?.symbol ?? "USDC"}…`
                 : `Approve ${currentPaymentToken?.symbol ?? "USDC"}`}
             </button>
           ) : (
             <button
               className={`${styles.actionButton} ${styles.btnPrimary}`}
               onClick={handleTrade}
-              disabled={isSubmitting}
+              disabled={isPending}
             >
-              {isSubmitting
-                ? "Confirming in Wallet..."
-                : `Trade ${asset.symbol}`}
+              {authState === "WAITING_WALLET"
+                ? "Waiting for wallet…"
+                : authState === "SUBMITTED_ONCHAIN"
+                ? "Confirming on X Layer…"
+                : `Confirm Trade for ${asset.symbol}`}
             </button>
           )}
 
-          {/* Disclaimer */}
+          {/* Institutional Disclaimer */}
           <div className={styles.disclaimer}>
-            ALIVE eligibility reflects configured verification rules, not investment advice.
-            Trades are executed through your connected self-custodial wallet on X Layer.
+            ALIVE provides policy checks and routing intelligence. Execution is self-custodial on X Layer.
           </div>
         </div>
       </div>
