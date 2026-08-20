@@ -150,7 +150,8 @@ export function AgentWorkspace() {
         clearTimeout(t4);
       };
     }
-  }, [activeWalletAddress, activatedWallets, loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWalletAddress, activatedWallets.size]);
 
   const handleConnectWallet = () => {
     const connector = connectors[0];

@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans";
 import type { ReactNode } from "react";
 import { AliveMotionProvider } from "@/components/motion-system";
 import { SiteShell } from "@/components/site-shell";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,9 +47,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
-        <AliveMotionProvider>
-          <SiteShell>{children}</SiteShell>
-        </AliveMotionProvider>
+        <Providers>
+          <AliveMotionProvider>
+            <SiteShell>{children}</SiteShell>
+          </AliveMotionProvider>
+        </Providers>
       </body>
     </html>
   );
