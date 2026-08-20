@@ -8,7 +8,499 @@
   padding: 36px 24px 96px;
 }
 
-/* Agent Header & Status Bar */
+/* =========================================================================
+   1. DISCONNECTED & ONBOARDING STATES
+   ========================================================================= */
+.disconnectedCard {
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 64px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 680px;
+  margin: 40px auto 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.disconnectedIconWrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #111512;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.disconnectedTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.disconnectedBadge {
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.disconnectedTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.disconnectedDesc {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0;
+}
+
+.disconnectedButtonGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.primaryConnectBtn {
+  width: 100%;
+  background: #fff;
+  color: #050806;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.primaryConnectBtn:hover {
+  background: #e2e8f0;
+}
+
+.sampleWalletBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sampleWalletBtn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* =========================================================================
+   2. PROGRESSIVE UNDERSTANDING TRANSITION
+   ========================================================================= */
+.syncProgressCard {
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 56px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 28px;
+  max-width: 640px;
+  margin: 40px auto 0;
+}
+
+.syncProgressTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.syncProgressSubtitle {
+  font-size: 0.92rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.syncStepsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+  text-align: left;
+}
+
+.syncStepRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #050806;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.88rem;
+}
+
+.stepDotPending {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #334155;
+}
+
+.stepDotActive {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.syncStepLabelPending {
+  color: #64748b;
+}
+
+.syncStepLabelActive {
+  color: #fff;
+  font-weight: 600;
+}
+
+.syncStepLabelDone {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+/* =========================================================================
+   3. FIRST CONTEXT REVEAL & STRATEGY SELECTION
+   ========================================================================= */
+.firstRevealCard {
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 40px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 840px;
+  margin: 20px auto 0;
+}
+
+.revealHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.revealBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  align-self: flex-start;
+}
+
+.revealTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.revealStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.revealStatItem {
+  background: #050806;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.revealStatValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.revealStatLabel {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.revealStrategySection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.revealSectionPrompt {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.strategyCardFeatured {
+  background: #050806;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.strategyCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.strategyCardTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.strategyBadgeRecommended {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.strategyCardDesc {
+  font-size: 0.9rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.strategyRulesSummaryList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.strategyRulePill {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.advancedToggleBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  align-self: flex-start;
+  transition: color 0.15s ease;
+}
+
+.advancedToggleBtn:hover {
+  color: #fff;
+}
+
+.advancedSettingsDrawer {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.advancedSettingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.advancedSettingLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.advancedSettingValue {
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.revealActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 8px;
+}
+
+.activatePrimaryBtn {
+  background: #22c55e;
+  color: #050806;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.activatePrimaryBtn:hover {
+  background: #16a34a;
+}
+
+.exploreSecondaryBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  padding: 14px 22px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.exploreSecondaryBtn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* =========================================================================
+   4. ACTIVATION MOMENT CONFIRMATION
+   ========================================================================= */
+.activationMomentCard {
+  background: #090c0a;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 20px;
+  padding: 64px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  max-width: 600px;
+  margin: 40px auto 0;
+}
+
+.activationBadge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 4px 12px;
+  border-radius: 9999px;
+}
+
+.activationTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.activationDesc {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+.activationProgress {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  font-family: var(--font-geist-mono), monospace;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+/* =========================================================================
+   5. ACTIVE AGENT HOME (TOP-LEVEL & SECTIONS)
+   ========================================================================= */
 .agentHeader {
   display: flex;
   flex-direction: column;
@@ -179,24 +671,25 @@
   color: #94a3b8;
 }
 
-/* Primary Agent Insight Card */
+/* =========================================================================
+   6. DOMINANT PRIMARY AGENT INSIGHT CARD & ZERO-ACTION STATE
+   ========================================================================= */
 .insightCard {
-  background: linear-gradient(180deg, #0e1610 0%, #0a0e0b 100%);
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 24px 28px;
+  padding: 26px 30px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .insightHeader {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #22c55e;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -205,7 +698,7 @@
 .insightContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .insightTitle {
@@ -214,6 +707,7 @@
   letter-spacing: -0.02em;
   color: #fff;
   line-height: 1.3;
+  margin: 0;
 }
 
 .insightDescription {
@@ -221,13 +715,14 @@
   color: #cbd5e1;
   line-height: 1.6;
   max-width: 800px;
+  margin: 0;
 }
 
 .insightMetricsRow {
   display: flex;
   align-items: center;
   gap: 24px;
-  background: rgba(0, 0, 0, 0.35);
+  background: #050806;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 14px 20px;
@@ -251,6 +746,7 @@
   font-size: 0.72rem;
   color: #64748b;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .insightFooter {
@@ -267,7 +763,6 @@
   align-items: center;
   gap: 10px;
   font-size: 0.76rem;
-  color: #94a3b8;
 }
 
 .badgeVerified {
@@ -286,6 +781,12 @@
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
+}
+
+.ctaButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .primaryReviewBtn {
@@ -307,137 +808,67 @@
   background: #16a34a;
 }
 
-/* Secondary Proposals Section */
-.proposalsList {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 8px;
-}
-
-.sectionTitle {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.01em;
-}
-
-.actionCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  transition: border-color 0.15s ease;
-}
-
-.actionCard:hover {
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-.actionCardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.actionCardInfo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.pillBuy {
-  background: rgba(34, 197, 94, 0.12);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.pillSell {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.actionTarget {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.actionProposedAmt {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.95rem;
-  color: #cbd5e1;
-}
-
-.cardButtons {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.secondaryReviewBtn {
-  background: #152018;
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  color: #22c55e;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.secondaryReviewBtn:hover {
-  background: #22c55e;
-  color: #050806;
-}
-
-.dismissBtn {
+.ghostActionBtn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   color: #94a3b8;
-  padding: 8px 14px;
-  border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  padding: 8px 12px;
+  transition: color 0.15s ease;
 }
 
-.dismissBtn:hover {
+.ghostActionBtn:hover {
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
 }
 
-/* Why Expandable Section */
-.whyContainer {
-  background: #050706;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  padding: 14px 18px;
+/* Zero Action (Complying) State */
+.zeroActionCard {
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 36px 30px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.zeroActionIcon {
+  color: #22c55e;
+  margin-top: 2px;
+}
+
+.zeroActionContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+}
+
+.zeroActionTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.zeroActionDesc {
+  font-size: 0.92rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* =========================================================================
+   7. PROGRESSIVE "WHY THIS ACTION?" PANEL
+   ========================================================================= */
+.whyContainer {
+  background: #050806;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .whyTrigger {
@@ -456,12 +887,19 @@
   color: #22c55e;
 }
 
+.whyLevel1 {
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .whyGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .whyEvidenceItem {
@@ -483,7 +921,55 @@
   font-family: var(--font-geist-mono), monospace;
 }
 
-/* What This Agent Knows Section */
+.level3ToggleBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0;
+  align-self: flex-start;
+  transition: color 0.15s ease;
+}
+
+.level3ToggleBtn:hover {
+  color: #94a3b8;
+}
+
+.level3EvidenceDrawer {
+  background: #090c0a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.level3Item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.level3Label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.level3Val {
+  font-family: var(--font-geist-mono), monospace;
+  color: #94a3b8;
+}
+
+/* =========================================================================
+   8. WHAT THIS AGENT KNOWS & TECHNICAL DETAILS
+   ========================================================================= */
 .agentKnowledgeCard {
   background: #090c0a;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -546,6 +1032,7 @@
   text-underline-offset: 3px;
   padding: 0;
   align-self: flex-start;
+  transition: color 0.15s ease;
 }
 
 .technicalToggleBtn:hover {
@@ -583,7 +1070,9 @@
   font-family: var(--font-geist-mono), monospace;
 }
 
-/* Ask Agent Section */
+/* =========================================================================
+   9. ASK AGENT SECTION
+   ========================================================================= */
 .askAgentSection {
   background: #090c0a;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -629,8 +1118,8 @@
 }
 
 .chipBtn:hover {
-  border-color: rgba(34, 197, 94, 0.35);
-  color: #22c55e;
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
 
 .chatBox {
@@ -706,7 +1195,7 @@
 }
 
 .askInput:focus {
-  border-color: #22c55e;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .askSendBtn {
@@ -730,64 +1219,25 @@
   cursor: not-allowed;
 }
 
-/* Empty / No Wallet / Syncing States */
-.emptyStateCard {
-  background: #090c0a;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  padding: 56px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.emptyStateTitle {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.emptyStateDesc {
-  font-size: 0.92rem;
-  color: #94a3b8;
-  max-width: 520px;
-  line-height: 1.5;
-}
-
-.syncProgressCard {
-  background: #090c0a;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  border-radius: 16px;
-  padding: 40px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.syncProgressSteps {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-  font-size: 0.82rem;
-  color: #94a3b8;
-}
-
-.syncStepDone {
-  color: #22c55e;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.syncStepActive {
-  color: #fff;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+@media (max-width: 768px) {
+  .container {
+    padding: 20px 16px 80px;
+    gap: 24px;
+  }
+  .disconnectedCard,
+  .firstRevealCard,
+  .syncProgressCard {
+    padding: 32px 20px;
+  }
+  .insightCard {
+    padding: 20px 18px;
+  }
+  .insightFooter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .ctaButtonGroup {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
