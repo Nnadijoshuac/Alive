@@ -13,3 +13,4 @@ allowBuilds:
   secp256k1: true
   sharp: true
   tesseract.js: true
+  workerd: true

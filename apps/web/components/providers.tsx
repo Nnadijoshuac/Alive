@@ -6,6 +6,8 @@ import { useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
 import { activeChain } from "@/lib/chain";
 
+import { ConvexClientProvider } from "./convex-provider";
+
 const wagmiConfig = createConfig({
   chains: [activeChain],
   connectors: [injected({ shimDisconnect: true })],
@@ -21,7 +23,9 @@ export function Providers({ children }: { children: ReactNode }) {
   );
   return (
     <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConvexClientProvider>{children}</ConvexClientProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }
