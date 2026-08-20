@@ -11,6 +11,7 @@ import {
   ListIcon,
   MagnifyingGlassIcon,
   PlayCircleIcon,
+  RobotIcon,
   StarIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -20,6 +21,7 @@ import styles from "./shell.module.css";
 const primaryNav = [
   { href: "/overview", label: "Overview", icon: HouseIcon },
   { href: "/explore", label: "Explore", icon: CompassIcon },
+  { href: "/agents", label: "Agents", icon: RobotIcon },
   { href: "/watchlist", label: "Watchlist", icon: StarIcon },
   { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
 ] as const;

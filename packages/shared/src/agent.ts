@@ -174,6 +174,7 @@ export const AgentInteractionSchema = z.object({
   event: AgentInteractionEventSchema,
   originalAmount: z.string().nullable().optional(),
   editedAmount: z.string().nullable().optional(),
+  txHash: z.string().optional(),
   reason: z.string().nullable().optional(),
   timestamp: z.string(),
 });

@@ -30,6 +30,9 @@ export type TradeDrawerProps = {
   asset: RwaAsset;
   liveQuote?: MarketQuote | undefined;
   marketContext?: CoinMarketCapMarketContext | undefined;
+  initialPaymentTokenAddress?: string | undefined;
+  initialAmount?: string | undefined;
+  onTradeSuccess?: ((txHash: string) => void) | undefined;
 };
 
 export function TradeDrawer({
@@ -38,11 +41,14 @@ export function TradeDrawer({
   asset,
   liveQuote,
   marketContext,
+  initialPaymentTokenAddress,
+  initialAmount,
+  onTradeSuccess,
 }: TradeDrawerProps) {
   const [paymentTokens, setPaymentTokens] = useState<PaymentTokenInfo[]>([]);
-  const [selectedTokenAddr, setSelectedTokenAddr] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
-  const [debouncedAmount, setDebouncedAmount] = useState<string>("");
+  const [selectedTokenAddr, setSelectedTokenAddr] = useState<string>(initialPaymentTokenAddress || "");
+  const [amount, setAmount] = useState<string>(initialAmount || "");
+  const [debouncedAmount, setDebouncedAmount] = useState<string>(initialAmount || "");
   const [quote, setQuote] = useState<TradeQuoteResult["quote"] | null>(null);
   const [isQuoting, setIsQuoting] = useState<boolean>(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -73,9 +79,17 @@ export function TradeDrawer({
   useEffect(() => {
     if (!isOpen) return;
 
+    if (initialAmount) {
+      setAmount(initialAmount);
+      setDebouncedAmount(initialAmount);
+    }
+    if (initialPaymentTokenAddress) {
+      setSelectedTokenAddr(initialPaymentTokenAddress);
+    }
+
     getPaymentTokens().then((tokens) => {
       setPaymentTokens(tokens);
-      if (tokens.length > 0 && !selectedTokenAddr) {
+      if (tokens.length > 0 && !selectedTokenAddr && !initialPaymentTokenAddress) {
         setSelectedTokenAddr(tokens[0]!.contractAddress);
       }
     });
@@ -84,7 +98,7 @@ export function TradeDrawer({
       getConnectedAccount().then((acc) => setWalletAddress(acc ?? null));
       getWalletChainId().then((cid) => setWalletChainId(cid ?? null));
     }
-  }, [isOpen, selectedTokenAddr]);
+  }, [isOpen, selectedTokenAddr, initialAmount, initialPaymentTokenAddress]);
 
   // 2. Debounce Amount Input (350ms)
   useEffect(() => {
@@ -228,6 +242,13 @@ export function TradeDrawer({
       const receipt = await waitForTransactionReceipt(hash);
       if (receipt.status) {
         setTradeSuccess(true);
+        if (onTradeSuccess) {
+          try {
+            onTradeSuccess(hash);
+          } catch {
+            // ignore callback error
+          }
+        }
       } else {
         setActionError("Transaction failed onchain.");
       }
