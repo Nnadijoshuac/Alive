@@ -1,0 +1,245 @@
+.tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline-strong) transparent;
+}
+
+.tableWrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 999px;
+}
+
+.table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.table thead th {
+  padding: 10px 14px;
+  color: var(--muted-2);
+  font: 650 10px/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper-2);
+}
+
+.table thead th.valueCol,
+.table thead th.checkedCol,
+.table td.valueCol,
+.table td.checkedCol {
+  text-align: right;
+}
+
+.row {
+  border-top: 1px solid var(--hairline);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.row:hover {
+  background: var(--milk-deep);
+}
+
+.row td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+.watchCol {
+  width: 38px;
+  padding-right: 0 !important;
+}
+
+.assetCol {
+  min-width: 200px;
+}
+
+.typeCol {
+  min-width: 85px;
+  white-space: nowrap;
+}
+
+.issuerCol {
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.backingCol {
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.chainsCol {
+  min-width: 100px;
+}
+
+.valueCol {
+  min-width: 85px;
+  white-space: nowrap;
+}
+
+.verificationCol,
+.eligibilityCol,
+.dataCol {
+  min-width: 110px;
+  white-space: nowrap;
+}
+
+.checkedCol {
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.assetCell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.symbol {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.assetName {
+  overflow: hidden;
+  max-width: 260px;
+  color: var(--muted-2);
+  font-size: 11.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.muted {
+  color: var(--muted-2);
+}
+
+.issuer {
+  overflow: hidden;
+  display: block;
+  max-width: 220px;
+  color: var(--muted-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.value {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.pill::before {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentcolor;
+  content: "";
+}
+
+.pillEligible {
+  composes: pill;
+  color: var(--positive);
+  background: var(--positive-bg);
+}
+
+.pillRestricted {
+  composes: pill;
+  color: var(--negative);
+  background: var(--negative-bg);
+}
+
+.pillUnknown {
+  composes: pill;
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.backingBadge {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 550;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chainBadges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chainBadge {
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--muted-2);
+  font: 620 10px/1.5 var(--font-geist-mono), monospace;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.watchButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 4px;
+  color: var(--faint);
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 120ms ease;
+}
+
+.watchButton:hover {
+  color: var(--ink);
+}
+
+.watchButton[data-watched="true"] {
+  color: var(--warning);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 12px;
+  color: var(--muted-2);
+  text-align: center;
+}
+
+.empty p {
+  margin: 0;
+}

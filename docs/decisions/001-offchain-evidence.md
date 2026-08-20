@@ -1,5 +1,9 @@
 # ADR 001: Keep raw evidence offchain
 
+Status: **Accepted for historical V1; superseded as the primary product
+architecture by [the RWA pivot](../PIVOT.md).** The privacy principle remains
+applicable to restricted source documents and user financial data.
+
 ## Context
 
 Camera evidence and feature vectors are sensitive, large, and unsuitable for public permanent storage.

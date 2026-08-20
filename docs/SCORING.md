@@ -1,5 +1,9 @@
 # Verification scoring
 
+> **Historical V1 reference.** These scores describe physical-image matching
+> and camera challenge signals. They are unrelated to the planned ALIVE RWA risk
+> score and must not be presented as V2 portfolio intelligence.
+
 ## Principle
 
 No single signal establishes physical identity. ALIVE combines multiple observable signals, returns the underlying values, and emits machine-readable reasons whenever policy fails. Scores are estimates from the submitted camera evidence, not probabilities of legal authenticity.

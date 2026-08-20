@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { DemoConsole } from "@/components/demo-console";
+import { DemoGuidePage } from "@/components/intelligence/demo-guide-page";
 
 export const metadata: Metadata = {
-  title: "Presentation mode",
-  description: "A focused ALIVE hackathon demonstration console.",
+  title: "Guided demo",
+  description: "The ALIVE judge flow: a real verified asset, then a controlled failure ALIVE catches and X Layer enforces.",
 };
 
 export default function DemoPage() {
-  return <DemoConsole />;
+  return <DemoGuidePage />;
 }

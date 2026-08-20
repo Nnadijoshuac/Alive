@@ -1,26 +1,17 @@
-import type { Metadata } from "next";
-import { AssetPassport } from "@/components/asset-passport";
-import { PageIntro } from "@/components/ui";
+import type { Metadata, Viewport } from "next";
+import { AssetIntelligencePage } from "@/components/intelligence/asset-intelligence-page";
 
 export const metadata: Metadata = {
-  title: "Asset passport",
-  description: "Registration and physical-state history for an ALIVE asset.",
+  title: "ALIVE Asset Intelligence",
+  description: "What this tokenized asset is, how it's doing, and what ALIVE currently thinks -- with every fact traced to its source.",
 };
 
-export default async function AssetPassportPage({
-  params,
-}: {
-  params: Promise<{ assetId: string }>;
-}) {
+export const viewport: Viewport = {
+  themeColor: "#f7f4ee",
+  colorScheme: "light",
+};
+
+export default async function AssetPage({ params }: { params: Promise<{ assetId: string }> }) {
   const { assetId } = await params;
-  return (
-    <div className="page-width">
-      <PageIntro
-        eyebrow="Asset passport"
-        title="A continuous record of observable state."
-        description="Registration anchors identity. Fresh inspections add time-bound evidence without publishing raw media."
-      />
-      <AssetPassport assetId={assetId} />
-    </div>
-  );
+  return <AssetIntelligencePage assetId={assetId} />;
 }

@@ -1,0 +1,34 @@
+{
+  "fixtureVersion": 1,
+  "encoding": "ALIVE_ONCHAIN_ENFORCEABLE_POLICY_V1_EIP712_STRUCT_HASH",
+  "policy": {
+    "version": 1,
+    "objective": "CAPITAL_PRESERVATION",
+    "minimumCashBps": 1000,
+    "assetClassLimits": [
+      { "assetClass": "CASH", "minimumBps": 1000, "maximumBps": 3000 },
+      { "assetClass": "TREASURY", "minimumBps": 5000, "maximumBps": 8000 },
+      { "assetClass": "EQUITY", "minimumBps": 0, "maximumBps": 2000 },
+      { "assetClass": "GOLD", "minimumBps": 500, "maximumBps": 2000 }
+    ],
+    "maximumSingleAssetBps": 2000,
+    "maximumSingleIssuerBps": 2500,
+    "minimumLiquidityScore": 70,
+    "maximumPortfolioRiskScore": 40,
+    "maximumPriceAgeSeconds": 120,
+    "maximumSlippageBps": 100,
+    "allowedAssetIds": ["tgold", "ttbill-a", "tusdc"],
+    "blockedAssetIds": ["speculative-credit"],
+    "allowedIssuers": ["issuer-a", "issuer-b"],
+    "blockedIssuers": ["blocked-issuer"],
+    "userApprovalRequired": true
+  },
+  "expected": {
+    "assetClassLimitsHash": "0xeb8aa485ea5fcf62ca6f0583527d4e8c72b4a0056cf765b0b81008d5127eb611",
+    "allowedAssetIdsHash": "0xb3b98ece07f9c0a57538692f2f0961345cd45496860084b7d509a83a5e6a2edc",
+    "blockedAssetIdsHash": "0x18d59314a2176277bafc98c42548809114a8c65275697b78bd9824a75c41b4b5",
+    "allowedIssuersHash": "0x71940ec71c8b160cdf2d5537b2de317df7190c0af77be03372188fc9486f91db",
+    "blockedIssuersHash": "0x370c84ff42550155bf985689b6388294a947dc36b872e6d21b5391f49eb44106",
+    "policyHash": "0xbcd8df46ce4f44db5a3a818da70d6728d96ab741e8e996f256abe1aaeb5a6b55"
+  }
+}

@@ -1,5 +1,9 @@
 # Project assets
 
+> **Historical V1 asset ledger.** The forensic laptop and physical scanner art
+> belong to the archived launch narrative. They may remain as source history but
+> must not represent the V2 RWA intelligence product.
+
 ## Forensic laptop still
 
 - Canonical video path: `videos/alive-launch/public/forensic-laptop.png`

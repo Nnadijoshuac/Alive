@@ -1,5 +1,76 @@
 # ALIVE contracts
 
+The active contract direction is **ALIVE RWA Policy Vault V1**:
+
+`user mandate -> canonical policy -> signed bounded plan -> vault enforcement -> RWA allocation`
+
+The earlier physical-state registry, attestation registry, and escrow remain in
+this package temporarily for compatibility and historical tests. The two stacks
+have distinct contract names and do not share mutable state.
+
+## RWA Policy Vault V1
+
+- `AliveRwaAssetRegistry.sol` is the owner-administered allowlist of unique
+  six-decimal tokens. Each record commits to an asset class, issuer, metadata,
+  provenance, and enabled state; it does not claim the demo token is a real RWA.
+- `AlivePolicyRegistry.sol` stores immutable, versioned policies bound to the
+  current owner of one vault. Its enforceable subset includes asset and issuer
+  caps, class min/max ranges, a cash floor, price freshness, slippage, allow and
+  block lists, and `Advisory` or `GuardedAuto` approval mode.
+- `AliveStrategyVerifier.sol` consumes vault-only EIP-712 capabilities bound to
+  policy, before/after portfolios, a market snapshot, an execution plan, a
+  nonce, and issue/expiry times. Nonces are single-use per vault.
+- `AliveVault.sol` holds user assets, gives only the owner withdrawal authority,
+  executes no arbitrary calldata, checks exact token deltas, and validates the
+  resulting onchain balances against the active policy.
+- `test/MockRwaToken.sol` and `test/MockRwaRouter.sol` are explicitly synthetic,
+  controlled-price demo infrastructure. They are not securities or a DEX.
+
+The RWA strategy signing domain is:
+
+```text
+name: ALIVE RWA Strategy
+version: 1
+chainId: current chain ID
+verifyingContract: deployed AliveStrategyVerifier address
+```
+
+The exact primary type is:
+
+```text
+Strategy(
+  address vault,
+  bytes32 policyHash,
+  bytes32 portfolioBeforeHash,
+  bytes32 portfolioAfterHash,
+  bytes32 marketSnapshotHash,
+  bytes32 executionPlanHash,
+  bytes32 strategyNonce,
+  uint64 marketTimestamp,
+  uint64 issuedAt,
+  uint64 expiresAt
+)
+```
+
+Portfolio, quote, trade, and execution-plan hashes should be obtained from the
+vault's `hashPortfolio`, `hashMarketSnapshot`, `hashTrades`, and
+`hashExecutionPlan` functions until an equivalent canonical encoder is shared
+with clients. All allocation constraints use integer basis points.
+
+Run the isolated demo deployment against a local Hardhat node with:
+
+```bash
+pnpm --filter @alive/contracts deploy:rwa:local
+```
+
+It exports `deployments/rwa-31337.json` locally (ignored by Git) and refuses to
+overwrite it. A public testnet demo requires `RWA_STRATEGY_SIGNER`,
+`DEPLOY_RWA_MOCKS=true`, and the additional explicit safety acknowledgement
+`ALLOW_PUBLIC_DEMO_DEPLOYMENT=true`. This repository change does not deploy to a
+public network.
+
+## Archived physical-state contracts
+
 Solidity contracts for ALIVE's complete MVP settlement chain:
 
 `physical capture -> visual analysis -> signed attestation -> contract validation -> payment outcome`

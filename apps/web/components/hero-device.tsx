@@ -1,14 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { Component, useEffect, useState, type ReactNode } from "react";
-import { ScanIcon } from "@phosphor-icons/react";
 import { useHydrationSafeReducedMotion } from "@/lib/reduced-motion";
 
 const DeviceScene = dynamic(() => import("./device-scene"), {
   ssr: false,
-  loading: () => <ForensicFallback loading />,
+  loading: () => <CapitalFallback loading />,
 });
 
 class WebGLErrorBoundary extends Component<
@@ -16,12 +14,17 @@ class WebGLErrorBoundary extends Component<
   { failed: boolean }
 > {
   state = { failed: false };
+
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {}
+
+  componentDidCatch() {
+    // The static diagram remains available when the GPU path fails.
+  }
+
   render() {
-    return this.state.failed ? <ForensicFallback /> : this.props.children;
+    return this.state.failed ? <CapitalFallback /> : this.props.children;
   }
 }
 
@@ -36,34 +39,54 @@ function supportsWebGL(): boolean {
 
 function scheduleWhenIdle(callback: () => void): () => void {
   if ("requestIdleCallback" in window) {
-    const idleId = window.requestIdleCallback(callback, { timeout: 2_000 });
+    const idleId = window.requestIdleCallback(callback, { timeout: 1_800 });
     return () => window.cancelIdleCallback(idleId);
   }
-  const timeoutId = globalThis.setTimeout(callback, 800);
+
+  const timeoutId = globalThis.setTimeout(callback, 650);
   return () => globalThis.clearTimeout(timeoutId);
 }
 
-export function ForensicFallback({ loading = false }: { loading?: boolean }) {
-  const [imageFailed, setImageFailed] = useState(false);
+function CapitalOverlay() {
   return (
-    <div className="forensic-fallback">
-      <div className="fallback-device" aria-hidden="true">
-        <span />
-        <i />
-      </div>
-      {!imageFailed ? (
-        <Image
-          src="/media/forensic-laptop.png"
-          alt="A physical laptop under a forensic ALIVE scan"
-          fill
-          sizes="(max-width: 1120px) calc(100vw - 40px), 50vw"
-          onError={() => setImageFailed(true)}
-        />
-      ) : null}
-      <div className="fallback-scan" aria-hidden="true" />
-      <span className="fallback-label">
-        <ScanIcon size={14} weight="bold" />
-        {loading ? "Initializing optical model" : "Static forensic view"}
+    <div className="capital-overlay" aria-hidden="true">
+      <span className="capital-boundary-label">Your policy boundary</span>
+      <span className="capital-vault-label">ALIVE vault</span>
+      <span className="capital-scene-label" data-node="treasuries">
+        <strong>Treasuries</strong>
+        allocation / risk / yield / liquidity
+      </span>
+      <span className="capital-scene-label" data-node="gold">
+        <strong>Gold</strong>
+        allocation / risk / yield / liquidity
+      </span>
+      <span className="capital-scene-label" data-node="equities">
+        <strong>Equities</strong>
+        allocation / risk / yield / liquidity
+      </span>
+      <span className="capital-scene-label" data-node="cash">
+        <strong>Cash</strong>
+        allocation / risk / yield / liquidity
+      </span>
+      <span className="capital-rejection-label">
+        Out-of-policy proposal meets the wall and returns
+      </span>
+    </div>
+  );
+}
+
+export function CapitalFallback({ loading = false }: { loading?: boolean }) {
+  return (
+    <div className="capital-fallback" aria-hidden="true">
+      <span className="capital-fallback-boundary" />
+      <span className="capital-fallback-vault" />
+      <span className="capital-fallback-node" />
+      <span className="capital-fallback-node" />
+      <span className="capital-fallback-node" />
+      <span className="capital-fallback-node" />
+      <span className="capital-fallback-flow" />
+      <span className="capital-fallback-state">
+        {loading ? "Preparing policy universe" : "Static policy universe"}
       </span>
     </div>
   );
@@ -73,31 +96,33 @@ export function HeroDevice() {
   const reduceMotion = useHydrationSafeReducedMotion();
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [sceneReady, setSceneReady] = useState(false);
+
   useEffect(() => setWebgl(supportsWebGL()), []);
+
   useEffect(() => {
     if (!webgl || reduceMotion) return;
     return scheduleWhenIdle(() => setSceneReady(true));
   }, [reduceMotion, webgl]);
 
+  const showStatic = webgl === false || reduceMotion;
+  const showLoading = webgl === null || !sceneReady;
+
   return (
     <div
       className="hero-device"
-      aria-label="Procedural three-dimensional physical asset scan"
+      role="img"
+      aria-label="An illustrative capital system with an ALIVE vault, four real-world asset classes, capital flows, and a policy boundary that rejects an invalid allocation"
     >
-      {webgl === false || reduceMotion ? (
-        <ForensicFallback />
-      ) : webgl === null || !sceneReady ? (
-        <ForensicFallback loading />
+      {showStatic ? (
+        <CapitalFallback />
+      ) : showLoading ? (
+        <CapitalFallback loading />
       ) : (
         <WebGLErrorBoundary>
-          <DeviceScene reduceMotion={reduceMotion} />
+          <DeviceScene />
         </WebGLErrorBoundary>
       )}
-      <div className="hero-device-data">
-        <span>FEATURE EXTRACTION</span>
-        <span>OFFCHAIN EVIDENCE</span>
-        <span>SIGNED OUTPUT</span>
-      </div>
+      <CapitalOverlay />
     </div>
   );
 }

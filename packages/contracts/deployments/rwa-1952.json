@@ -1,0 +1,122 @@
+{
+  "protocol": "ALIVE RWA Policy Vault V1",
+  "demoOnly": true,
+  "network": "xlayerTestnet",
+  "chainId": 1952,
+  "deployedAt": "2026-08-16T14:44:36.461Z",
+  "deployer": "0x9f6813f3534f1C01a271482D8d8EAdbEA146F092",
+  "strategySigner": "0x2E8b26D0664Eeb71ae58f144c53a597E61dD09ad",
+  "eligibilitySigner": "0x2E8b26D0664Eeb71ae58f144c53a597E61dD09ad",
+  "activePolicyVersion": 1,
+  "canonicalPolicyHash": "0xcc3181ed9e6166f3c594de5edb03ab4d6952b498875b1e26f7272c190566a720",
+  "assetIds": {
+    "tusdc": "0xd8114d253129c27b0408b155b8c08f73d8d7f5f8cf011d17ff9a7b9931adeb8a",
+    "ttbill-a": "0xacd6386304cdb79811ba2ddac139e067f137b96ce452cdcee352246095b4ab5e",
+    "ttbill-b": "0x2b41680c8a5cdf9ad0fa59dfd50ad74de93750ee7f41507f672ac56e0f1542b4",
+    "ttbill-c": "0x573ae4f2272d36a7c05546660cbd952b03b4188c79ee01855f6760a83e173eb0",
+    "tgold": "0x33a17bc435534b5d1373c7ee1c7424ad5fbf0baac8986cada2ff24b1010afc7f",
+    "tsp500": "0xeb9931773de8324c9dd571a90ef12417a8ce23a44b9a321299d1eaf549b0044a",
+    "tnvda": "0x1f532b8d60efb2d0de33eba3d82d7ea3c8b03ce97e8df8983f8dd856ae55f5cc",
+    "taapl": "0x8098c3cb500cb3a062cb5507e62d74479aa7c9f2d2cec528849999414e2e3d39"
+  },
+  "contracts": {
+    "AliveRwaAssetRegistry": {
+      "address": "0xE4B4F15D7d484c14128260d29b9d4D7739677Ce3",
+      "transactionHash": "0xc8f5d7f9a2e77d9cec00357806c7785f4ad7eb5964c5b4d1f1eb104d69a052a9",
+      "blockNumber": 38432498,
+      "runtimeBytecodePresent": true
+    },
+    "AlivePolicyRegistry": {
+      "address": "0x531E8b545c92C4Ab616a943B41b2Ae817F342E3b",
+      "transactionHash": "0x623be59a865f7e674609da4ebc21ef6155259d245176ff84bd596e1fbe41aa87",
+      "blockNumber": 38432595,
+      "runtimeBytecodePresent": true
+    },
+    "AliveStrategyVerifier": {
+      "address": "0xD3B71c5cde87e6cA750920dD4DB7eD8Cf7AE2221",
+      "transactionHash": "0xbe502d84e300754be261066eaf428406c4c8c98c84f1e4290b665fb487a7814d",
+      "blockNumber": 38432592,
+      "runtimeBytecodePresent": true
+    },
+    "AliveEligibilityRegistry": {
+      "address": "0x5E3584d61710f8FD6076d93a0bDbE96784a4f98d",
+      "transactionHash": "0x3f3f9a8787a89d9b52ff8a4b8dd8a4f5fccd2f83c6c0fedb74e35e8ec6121c92",
+      "blockNumber": 38432600,
+      "runtimeBytecodePresent": true
+    },
+    "AliveVaultFactory": {
+      "address": "0xd2c06F2978De1CF7e589b3e054373C871E594fBc",
+      "transactionHash": "0xb71ab83a7cd2e8745e373027143c6017ba617166e056e6dfb5932196bdb85cea",
+      "blockNumber": 38432604,
+      "runtimeBytecodePresent": true
+    },
+    "AliveVault": {
+      "address": "0xd998a66A76501a32557B57A21F33c84396490ae0",
+      "transactionHash": "0xd91d61cd45183a16f4194921f91b7a21ab60939d6976b6e1104bb4c827fc7555",
+      "blockNumber": 38432610,
+      "runtimeBytecodePresent": true
+    }
+  },
+  "demoOnlyContracts": {
+    "MockRwaRouter": {
+      "address": "0xD2f84F0aadF24328B05606508Bb9b51057818a30",
+      "transactionHash": "0x6b79c9eecfe1a62df1bb55e5b1d03091f823865ce196a6dad92dfe213527b5be",
+      "blockNumber": 38432535,
+      "runtimeBytecodePresent": true
+    },
+    "DemoRwaFaucet": {
+      "address": "0x190D61be07f8c19D1Dd6bB0C37e7aa39a21CAB7A",
+      "transactionHash": "0xf524e6d4c8a7247564d3bda83086923f971b9657b549604416eeaeddff435897",
+      "blockNumber": 38432584,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:tusdc": {
+      "address": "0xec379ac98b8B66c53B6693Be209da13230f20808",
+      "transactionHash": "0xe6332938527082c153153883514096ef5529222c424ca3d23a6de2e4b1a69774",
+      "blockNumber": 38432458,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:ttbill-a": {
+      "address": "0xC12D77E4F92B122277E804c24DA12BE51940c261",
+      "transactionHash": "0x4f139d17ffaac258c5935a0ca6dae2d2f59e7032ddaac177978bbac0b7adc29c",
+      "blockNumber": 38432463,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:ttbill-b": {
+      "address": "0xcDAba8183FcCBA2BCf43ebC11aA560F15BD127c3",
+      "transactionHash": "0xf71421c2c0c0e37a82898aa0c5ae82b52310876df2b856b3c9acb158f78c0db0",
+      "blockNumber": 38432468,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:ttbill-c": {
+      "address": "0xd8156409D5C77ECF21FDAfA7Ba61AC72451649F1",
+      "transactionHash": "0x018e0099abd6907d2104824b03d9105b1f1b4037ed2ede5e031f1a14301b6aab",
+      "blockNumber": 38432473,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:tgold": {
+      "address": "0xF7F55a29b7B89da95A8f412F35715689eBC816AF",
+      "transactionHash": "0x7032be1ad940ad61bceb3553c5286cf16e70da976691cf689bcc8647b8ff2513",
+      "blockNumber": 38432478,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:tsp500": {
+      "address": "0x2F48Bf1f1fd9F165d775BE5640b67f179f9Ee4a3",
+      "transactionHash": "0x2a4e7c540605556ce92a41fba420b48c6aefb5f6f40b0d4fdd44579b3656ce6c",
+      "blockNumber": 38432483,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:tnvda": {
+      "address": "0x61bb351309c082B7466d6757C20AA6fC12FB3826",
+      "transactionHash": "0x5ff52529f4fe76611fc97018bf4089d51598a0c1fb6f69a1a230b8589f89ad38",
+      "blockNumber": 38432488,
+      "runtimeBytecodePresent": true
+    },
+    "MockRwaToken:taapl": {
+      "address": "0x3373E0B9846f4Ccb43738cEFB59e41D450C8BE57",
+      "transactionHash": "0x33ce90371e5957cd07c69a121c5e72f85b951836ccfb0495b7fee7696a84988d",
+      "blockNumber": 38432493,
+      "runtimeBytecodePresent": true
+    }
+  }
+}

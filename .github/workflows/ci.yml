@@ -2,7 +2,7 @@ name: quality
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/rwa-intelligence-pivot]
   pull_request:
 
 permissions:
@@ -11,19 +11,39 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 11.1.2
-      - uses: actions/setup-node@v4
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - run: pnpm smoke:local
+
+      - name: Install frozen dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Workspace tests
+        run: pnpm test
+
+      - name: Contract tests (explicit release gate)
+        run: pnpm test:contracts
+
+      - name: Production build
+        run: pnpm build
+
+      - name: Legacy physical-state integration regression
+        run: pnpm smoke:local

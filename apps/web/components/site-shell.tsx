@@ -1,232 +1,216 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  ArrowRightIcon,
-  FingerprintIcon,
+  ClockCounterClockwiseIcon,
+  CompassIcon,
   FlaskIcon,
-  FlowArrowIcon,
+  HouseIcon,
   ListIcon,
+  MagnifyingGlassIcon,
   PlayCircleIcon,
-  SquaresFourIcon,
+  StarIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useState, type ReactNode } from "react";
-import { AliveLogo } from "./logo";
-import { ScrollProgress, useSafeReducedMotion } from "./motion-system";
+import { getIntelligenceHealth } from "@/lib/rwa-api";
+import styles from "./shell.module.css";
 
-const headerButtonClass =
-  "button inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap px-4 text-sm font-semibold";
+const primaryNav = [
+  { href: "/overview", label: "Overview", icon: HouseIcon },
+  { href: "/explore", label: "Explore", icon: CompassIcon },
+  { href: "/watchlist", label: "Watchlist", icon: StarIcon },
+  { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
+] as const;
 
-const navigation = [
-  { href: "/dashboard", label: "Dashboard", icon: SquaresFourIcon },
-  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
-  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
-  { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
-];
-
-const landingNavigation = [
-  { href: "/assets/register", label: "Register", icon: FingerprintIcon },
-  { href: "/protocol", label: "Protocol", icon: FlowArrowIcon },
-  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
+const demoNav = [
   { href: "/demo", label: "Demo", icon: PlayCircleIcon },
-];
+  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
+] as const;
+
+const advancedLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/create", label: "Policy builder" },
+  { href: "/markets", label: "Markets" },
+  { href: "/rebalance", label: "Rebalance" },
+  { href: "/protocol", label: "Protocol" },
+] as const;
+
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  icon: typeof HouseIcon;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      {...(onClick ? { onClick } : {})}
+      aria-current={active ? "page" : undefined}
+      className={active ? styles.navLinkActive : styles.navLink}
+    >
+      <Icon size={17} weight={active ? "fill" : "regular"} aria-hidden="true" />
+      {label}
+    </Link>
+  );
+}
+
+function useIntelligenceStatus() {
+  const [live, setLive] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    getIntelligenceHealth()
+      .then(() => {
+        if (!cancelled) setLive(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLive(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return live;
+}
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isHome = pathname === "/";
-  const pageNavigation = isHome ? landingNavigation : navigation;
-  const [open, setOpen] = useState(false);
-  const reducedMotion = useSafeReducedMotion();
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = previous;
-    };
-  }, [open]);
-  if (pathname === "/demo") return <>{children}</>;
+  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const intelligenceLive = useIntelligenceStatus();
+
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  // If viewing the root landing page, render without the app shell
+  if (pathname === "/") {
+    return <>{children}</>;
+  }
+
+  function isActive(href: string) {
+    return href === "/overview" ? pathname === "/overview" || pathname === "/" : pathname.startsWith(href);
+  }
+
+  function submitSearch(event: React.FormEvent) {
+    event.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    router.push(`/overview?q=${encodeURIComponent(trimmed)}`);
+    setQuery("");
+    setMobileOpen(false);
+  }
+
+  const allNavItems = [...primaryNav, ...demoNav];
 
   return (
-    <div className={`site-shell${isHome ? " site-shell-home" : ""}`}>
-      <ScrollProgress className="site-scroll-progress" />
+    <div className={styles.shell}>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      {!isHome ? (
-        <aside className="site-rail">
+
+      <aside className={styles.rail}>
         <div>
-          <Link href="/" className="logo-link" aria-label="ALIVE home">
-            <AliveLogo />
+          <Link href="/" className={styles.brand} aria-label="ALIVE home">
+            ALIVE <span>RWA Intelligence</span>
           </Link>
-          <nav className="rail-nav" aria-label="Primary navigation">
-            {navigation.map((item) => (
+          <nav className={styles.nav} aria-label="Primary navigation">
+            {primaryNav.map((item) => (
+              <NavItem key={item.href} {...item} active={isActive(item.href)} />
+            ))}
+          </nav>
+          <hr className={styles.navSeparator} />
+          <nav className={styles.nav} aria-label="Demo navigation">
+            {demoNav.map((item) => (
+              <NavItem key={item.href} {...item} active={isActive(item.href)} />
+            ))}
+          </nav>
+          <hr className={styles.navSeparator} />
+          <div className={styles.advancedGroup}>
+            <p className={styles.advancedLabel}>Advanced</p>
+            {advancedLinks.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 prefetch={false}
-                aria-current={
-                  pathname.startsWith(item.href) ? "page" : undefined
-                }
+                className={styles.advancedLink}
               >
-                {pathname.startsWith(item.href) ? (
-                  <motion.span
-                    className="rail-active-line"
-                    layoutId="rail-active-line"
-                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                  />
-                ) : null}
-                <item.icon size={19} weight="regular" aria-hidden="true" />
                 {item.label}
               </Link>
             ))}
-          </nav>
+          </div>
         </div>
-        <div className="rail-meta">
-          <span className="rail-status">
-            <i aria-hidden="true" /> Proof pipeline
+        <div className={styles.railFooter}>
+          <span>
+            <i
+              className={
+                intelligenceLive ? styles.statusDotLive : styles.statusDot
+              }
+              aria-hidden="true"
+            />
+            {intelligenceLive === undefined
+              ? "Checking intelligence service…"
+              : intelligenceLive
+                ? "Intelligence service connected"
+                : "Intelligence service offline"}
           </span>
-          <span>X Layer Testnet · Chain 1952</span>
-          <span>Raw media stays offchain</span>
+          <span>Demo data is labeled</span>
         </div>
-        </aside>
-      ) : null}
+      </aside>
 
-      <div className={`site-frame${isHome ? " site-frame-home" : ""}`}>
-        <header
-          className={`site-header${isHome ? " landing-site-header" : ""}`}
-        >
-          <div
-            className={`shell-width nav-row${isHome ? " home-nav-row" : ""}`}
-          >
-            <Link
-              href="/"
-              className={isHome ? "landing-brand" : "mobile-brand"}
-              aria-label="ALIVE home"
-            >
-              <AliveLogo compact={!isHome} />
+      <div className={styles.main}>
+        <header className={styles.topbar}>
+          <div className={styles.mobileBar}>
+            <Link href="/" className={styles.brand} aria-label="ALIVE home">
+              ALIVE
             </Link>
-            {isHome ? (
-              <nav
-                className="landing-desktop-nav"
-                aria-label="Landing navigation"
-              >
-                {landingNavigation.map((item) => (
-                  <Link key={item.href} href={item.href} prefetch={false}>
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            ) : (
-              <div
-                className="protocol-ticker"
-                aria-label="Protocol properties"
-              >
-                <span>
-                  <i aria-hidden="true" /> Capture
-                </span>
-                <span>Analyze + attest</span>
-                <span>Validate + settle</span>
-              </div>
-            )}
-            <div className="nav-wallet">
-              <Link
-                href="/dashboard"
-                prefetch={false}
-                className={`${headerButtonClass} button-paper`}
-              >
-                Launch app
-                <ArrowRightIcon size={18} weight="bold" />
-              </Link>
-            </div>
             <button
-              className="mobile-menu-button"
               type="button"
-              onClick={() => setOpen((value) => !value)}
-              aria-expanded={open}
-              aria-controls="mobile-navigation"
-              aria-label="Toggle navigation"
+              aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((value) => !value)}
             >
-              {open ? <XIcon size={22} /> : <ListIcon size={22} />}
+              {mobileOpen ? <XIcon size={20} /> : <ListIcon size={20} />}
             </button>
           </div>
-          <AnimatePresence initial={false}>
-            {open ? (
-              <motion.nav
-                id="mobile-navigation"
-                className="mobile-nav"
-                aria-label="Mobile navigation"
-                initial={{ clipPath: "inset(0 0 100% 0)", opacity: 0.65 }}
-                animate={{ clipPath: "inset(0 0 0% 0)", opacity: 1 }}
-                exit={{ clipPath: "inset(0 0 100% 0)", opacity: 0 }}
-                transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {pageNavigation.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch={false}
-                    aria-current={
-                      pathname.startsWith(item.href) ? "page" : undefined
-                    }
-                    onClick={() => setOpen(false)}
-                  >
-                    <item.icon size={20} aria-hidden="true" />
-                    {item.label}
-                  </Link>
-                ))}
-                <Link
-                  href="/dashboard"
-                  prefetch={false}
-                  className={`${headerButtonClass} button-paper`}
-                  onClick={() => setOpen(false)}
-                >
-                  Launch app
-                  <ArrowRightIcon size={18} weight="bold" />
-                </Link>
-              </motion.nav>
-            ) : null}
-          </AnimatePresence>
+          <form className={styles.topbarSearch} onSubmit={submitSearch} role="search">
+            <MagnifyingGlassIcon size={15} aria-hidden="true" />
+            <input
+              type="text"
+              inputMode="search"
+              autoComplete="off"
+              placeholder="Search token, issuer, asset or address"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search a tokenized asset"
+            />
+          </form>
         </header>
-        <motion.main
-          id="main-content"
-          key={pathname}
-          initial={false}
-          animate={
-            reducedMotion
-              ? { opacity: 1, y: 0 }
-              : { opacity: [0.985, 1], y: [6, 0] }
-          }
-          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-        >
+
+        {mobileOpen ? (
+          <nav className={styles.nav} aria-label="Mobile navigation" style={{ padding: "8px 16px" }}>
+            {allNavItems.map((item) => (
+              <NavItem
+                key={item.href}
+                {...item}
+                active={isActive(item.href)}
+                onClick={() => setMobileOpen(false)}
+              />
+            ))}
+          </nav>
+        ) : null}
+
+        <main id="main-content" className={styles.content}>
           {children}
-        </motion.main>
-        <footer
-          className={`site-footer${isHome ? " landing-site-footer" : ""}`}
-        >
-          <div className="shell-width footer-grid">
-            <div className="footer-brand">
-              <AliveLogo />
-              <p>
-                Observable physical state, signed for programmable settlement.
-              </p>
-            </div>
-            <div className="footer-meta">
-              <span>Evidence offchain</span>
-              <span>Scores in basis points</span>
-              <span>Attestations expire</span>
-            </div>
-            <div className="footer-links">
-              <Link href="/protocol">Security model</Link>
-              <Link href="/attack-lab">Attack Lab</Link>
-              <Link href="/dev/design-system">Interface system</Link>
-            </div>
-          </div>
-        </footer>
+        </main>
       </div>
     </div>
   );

@@ -1,5 +1,9 @@
 # Verifier HTTP API
 
+> **Historical V1 reference.** This API serves the archived physical-state
+> verifier and is not the V2 RWA intelligence or policy API. Preserve it for
+> regression work against `v0.8.1-physical-state-archive`.
+
 ## Scope
 
 `@alive/verifier` is the authoritative local service for offchain asset records, capture evidence, visual fingerprints, active verification sessions, scoring, and EIP-712 signing. It listens on `http://127.0.0.1:4100` by default.

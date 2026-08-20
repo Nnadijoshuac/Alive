@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@alive/shared": ["../shared/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

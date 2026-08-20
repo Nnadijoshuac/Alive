@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "dataMode": "DEMO",
+  "capturedAt": "2026-08-14T12:00:01.000Z",
+  "quotes": [
+    {
+      "assetId": "tusdc",
+      "price": "1.000000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "OPEN",
+      "dataMode": "DEMO",
+      "bid": "0.999900",
+      "ask": "1.000100",
+      "mid": "1.000000"
+    },
+    {
+      "assetId": "ttbill-a",
+      "price": "101.250000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "OPEN",
+      "dataMode": "DEMO",
+      "bid": "101.240000",
+      "ask": "101.260000",
+      "mid": "101.250000"
+    },
+    {
+      "assetId": "ttbill-b",
+      "price": "100.870000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "OPEN",
+      "dataMode": "DEMO",
+      "bid": "100.860000",
+      "ask": "100.880000",
+      "mid": "100.870000"
+    },
+    {
+      "assetId": "ttbill-c",
+      "price": "99.940000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "OPEN",
+      "dataMode": "DEMO",
+      "bid": "99.930000",
+      "ask": "99.950000",
+      "mid": "99.940000"
+    },
+    {
+      "assetId": "tgold",
+      "price": "2450.500000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "OPEN",
+      "dataMode": "DEMO",
+      "bid": "2449.500000",
+      "ask": "2451.500000",
+      "mid": "2450.500000"
+    },
+    {
+      "assetId": "tsp500",
+      "price": "552.400000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "CLOSED",
+      "dataMode": "DEMO",
+      "bid": "552.200000",
+      "ask": "552.600000",
+      "mid": "552.400000"
+    },
+    {
+      "assetId": "tnvda",
+      "price": "126.700000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "CLOSED",
+      "dataMode": "DEMO",
+      "bid": "126.600000",
+      "ask": "126.800000",
+      "mid": "126.700000"
+    },
+    {
+      "assetId": "taapl",
+      "price": "225.300000",
+      "timestamp": "2026-08-14T12:00:00.000Z",
+      "provider": "ALIVE Demo Market Provider",
+      "status": "CLOSED",
+      "dataMode": "DEMO",
+      "bid": "225.200000",
+      "ask": "225.400000",
+      "mid": "225.300000"
+    }
+  ]
+}

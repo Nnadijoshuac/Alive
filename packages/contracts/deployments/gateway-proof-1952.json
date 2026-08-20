@@ -1,0 +1,63 @@
+{
+  "protocol": "ALIVE verification gateway",
+  "network": "xlayer-testnet",
+  "chainId": 1952,
+  "assetId": "ttbill-a",
+  "provedAt": "2026-08-16T14:52:58.258Z",
+  "sender": "0x9f6813f3534f1C01a271482D8d8EAdbEA146F092",
+  "contracts": {
+    "eligibilityRegistry": "0x5E3584d61710f8FD6076d93a0bDbE96784a4f98d",
+    "vault": "0xd998a66A76501a32557B57A21F33c84396490ae0",
+    "token": "0xC12D77E4F92B122277E804c24DA12BE51940c261"
+  },
+  "extractionMode": "DEMO_FIXTURE",
+  "sequence": [
+    {
+      "step": "GOOD PATH: publish verdict",
+      "aliveStatus": "ELIGIBLE",
+      "aliveReasons": [
+        "OK"
+      ],
+      "txHash": "0x378b12c22f19afd7c0c47969397bd49183700e3abc33cd0da31151ee7d9a5750",
+      "blockNumber": 38433115,
+      "outcome": "registry.isEligible=true"
+    },
+    {
+      "step": "GOOD PATH: gated deposit",
+      "outcome": "CONFIRMED",
+      "txHash": "0x547033d641f40038911584793090df700b3f3fb7d501885334a98a87d20a8f78",
+      "blockNumber": 38433124
+    },
+    {
+      "step": "BAD PATH: publish verdict",
+      "aliveStatus": "RESTRICTED",
+      "aliveReasons": [
+        "NAV_STALE"
+      ],
+      "txHash": "0x8eaae09fd443efe9b3efd4b787d83706a3a0b37aabe3fc4a32f26e00c5e9298a",
+      "blockNumber": 38433127,
+      "outcome": "registry.isEligible=false"
+    },
+    {
+      "step": "BAD PATH: gated deposit",
+      "outcome": "REJECTED",
+      "contractError": "AssetNotEligible"
+    },
+    {
+      "step": "RECOVERY: publish verdict",
+      "aliveStatus": "ELIGIBLE",
+      "aliveReasons": [
+        "OK"
+      ],
+      "txHash": "0xdcf75906651df3b2648b67782516da794f1d83bc22427172041aa76523b2580d",
+      "blockNumber": 38433132,
+      "outcome": "registry.isEligible=true"
+    },
+    {
+      "step": "RECOVERY: gated deposit",
+      "outcome": "CONFIRMED",
+      "txHash": "0x9e2a1a39efe2e462b3da25dff6016805767d8d4ac591996f2dca879e81206ab8",
+      "blockNumber": 38433141
+    }
+  ]
+}

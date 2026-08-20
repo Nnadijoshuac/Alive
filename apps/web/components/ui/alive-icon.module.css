@@ -1,0 +1,40 @@
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.default {
+  color: var(--ink);
+}
+
+.muted {
+  color: var(--muted-2);
+}
+
+.positive {
+  color: var(--positive);
+}
+
+.warning {
+  color: var(--warning);
+}
+
+.negative {
+  color: var(--negative);
+}
+
+/* Deliberate large-icon container: a 48px icon inside a ~68px restrained
+   tile -- subtle border/background contrast only, never a glowing or
+   gradient bubble. */
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  border: 1px solid var(--hairline-strong, var(--hairline));
+  border-radius: var(--radius-lg, 14px);
+  background: var(--milk-deep);
+}
