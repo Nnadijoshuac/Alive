@@ -88,7 +88,6 @@ export function AgentWorkspace() {
 
   const loadData = useCallback(async (wallet: string) => {
     if (!wallet) return;
-    setIsLoading(true);
     try {
       const snap = await getAgentSnapshot(wallet);
       setSnapshot(snap);
@@ -102,15 +101,8 @@ export function AgentWorkspace() {
           setActiveStrategy(marketplace.strategies[0] ?? null);
         }
       }
-
-      const ctx = await fetchWalletContext(wallet);
-      if (ctx?.capabilities?.spendableTokens) {
-        setSpendableTokens(ctx.capabilities.spendableTokens);
-      }
     } catch (err) {
       console.error("Failed to load agent workspace data:", err);
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
@@ -193,10 +185,6 @@ export function AgentWorkspace() {
       setSnapshot(evalSnap);
       setLastSyncTime(new Date());
 
-      const ctx = await fetchWalletContext(activeWalletAddress);
-      if (ctx?.capabilities?.spendableTokens) {
-        setSpendableTokens(ctx.capabilities.spendableTokens);
-      }
       setSyncFeedback("Wallet updated");
       setTimeout(() => setSyncFeedback(null), 2500);
     } catch (err) {
