@@ -267,7 +267,7 @@ export const StrategyRuleSchema = z.object({
   operator: z.enum([">", "<", "==", "!=", ">=", "<="]),
   thresholdValue: z.union([z.string(), z.number()]),
   targetAssetId: z.string().optional(),
-  action: z.enum(["REBALANCE", "SELL", "BUY", "ALERT"]),
+  action: z.enum(["REBALANCE", "SELL", "BUY", "ACCUMULATE", "TRIM", "ALERT"]),
   priority: z.number().int().nonnegative(),
 });
 

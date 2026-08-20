@@ -8,6 +8,8 @@ import {
   IsoDateSchema,
   MarketSnapshotSchema,
   PortfolioPolicySchema,
+  AgentInteractionSchema,
+  AliveTradeRecordSchema,
   hashMarketSnapshot,
   type PortfolioPolicy,
   type RwaCatalog,
@@ -65,6 +67,9 @@ import {
   resolveGatewayClientConfig,
 } from "./onchain/gateway-client.js";
 import { IntelligenceRepository } from "./repository.js";
+import { WalletIntelligenceService } from "./wallet/wallet-intelligence-service.js";
+import { StrategyMarketplaceService } from "./agent/strategy-marketplace.js";
+import { AgentEngine } from "./agent/agent-engine.js";
 
 const CompileBodySchema = z
   .object({ mandate: z.string().trim().min(3).max(5_000) })
@@ -1422,6 +1427,179 @@ export async function buildIntelligenceApp(
       },
     );
   }
+
+  // ================================================================
+  // WALLET INTELLIGENCE, AGENTS, STRATEGY MARKETPLACE & ALIVE TRADES
+  // ================================================================
+
+  const walletIntelligence = new WalletIntelligenceService({
+    repository: dependencies.repository,
+    marketDataProvider: dependencies.marketData,
+  });
+
+  const marketplace = new StrategyMarketplaceService(dependencies.repository);
+
+  const agentEngine = new AgentEngine({
+    repository: dependencies.repository,
+    walletIntelligence,
+    marketplace,
+    llm: dependencies.llm,
+  });
+
+  app.get<{ Params: { address: string }; Querystring: { force?: string } }>(
+    "/api/wallet/:address/context",
+    async (request, reply) => {
+      const address = request.params.address;
+      const force = request.query.force === "true";
+      try {
+        const context = await walletIntelligence.getWalletContext(address, force);
+        return context;
+      } catch (error) {
+        reply.status(500);
+        return { error: { code: "WALLET_CONTEXT_ERROR", message: error instanceof Error ? error.message : "Failed to load wallet context." } };
+      }
+    },
+  );
+
+  app.post<{ Params: { address: string } }>(
+    "/api/wallet/:address/sync",
+    async (request, reply) => {
+      const address = request.params.address;
+      try {
+        const context = await walletIntelligence.getWalletContext(address, true);
+        return context;
+      } catch (error) {
+        reply.status(500);
+        return { error: { code: "WALLET_SYNC_ERROR", message: error instanceof Error ? error.message : "Failed to sync wallet." } };
+      }
+    },
+  );
+
+  app.get<{ Params: { address: string } }>(
+    "/api/agents/:address/snapshot",
+    async (request, reply) => {
+      const address = request.params.address;
+      try {
+        const snapshot = await agentEngine.evaluateWallet(address);
+        return snapshot;
+      } catch (error) {
+        reply.status(500);
+        return { error: { code: "AGENT_SNAPSHOT_ERROR", message: error instanceof Error ? error.message : "Failed to generate agent snapshot." } };
+      }
+    },
+  );
+
+  app.post<{ Params: { address: string }; Querystring: { force?: string } }>(
+    "/api/agents/:address/evaluate",
+    async (request, reply) => {
+      const address = request.params.address;
+      const force = request.query.force === "true";
+      try {
+        const snapshot = await agentEngine.evaluateWallet(address, force);
+        return snapshot;
+      } catch (error) {
+        reply.status(500);
+        return { error: { code: "AGENT_EVALUATION_ERROR", message: error instanceof Error ? error.message : "Failed to evaluate agent." } };
+      }
+    },
+  );
+
+  app.post<{ Params: { address: string }; Body: unknown }>(
+    "/api/agents/:address/interactions",
+    async (request, reply) => {
+      const address = request.params.address;
+      const parsed = AgentInteractionSchema.safeParse({
+        ...(request.body as object),
+        walletAddress: address,
+      });
+      if (!parsed.success) {
+        reply.status(400);
+        return { error: { code: "INVALID_INTERACTION", message: "Invalid agent interaction payload.", details: parsed.error.issues } };
+      }
+      dependencies.repository.saveAgentInteraction(parsed.data);
+      reply.status(201);
+      return { success: true, interaction: parsed.data };
+    },
+  );
+
+  app.post<{ Params: { address: string }; Body: { question: string } }>(
+    "/api/agents/:address/ask",
+    async (request, reply) => {
+      const address = request.params.address;
+      const question = (request.body as { question?: string })?.question;
+      if (!question || typeof question !== "string" || question.trim().length === 0) {
+        reply.status(400);
+        return { error: { code: "INVALID_QUESTION", message: "Question is required." } };
+      }
+      try {
+        const result = await agentEngine.askAgent(address, question);
+        return result;
+      } catch (error) {
+        reply.status(500);
+        return { error: { code: "AGENT_QA_ERROR", message: error instanceof Error ? error.message : "Agent Q&A failed." } };
+      }
+    },
+  );
+
+  app.get("/api/strategies/marketplace", async () => {
+    return { strategies: marketplace.listMarketplace() };
+  });
+
+  app.get<{ Params: { address: string } }>(
+    "/api/strategies/wallet/:address",
+    async (request) => {
+      return { strategies: marketplace.listForWallet(request.params.address) };
+    },
+  );
+
+  app.post<{ Body: { strategyId: string; walletAddress: string; customName?: string } }>(
+    "/api/strategies/clone",
+    async (request, reply) => {
+      const { strategyId, walletAddress, customName } = request.body || {};
+      if (!strategyId || !walletAddress) {
+        reply.status(400);
+        return { error: { code: "INVALID_PARAMS", message: "strategyId and walletAddress are required." } };
+      }
+      const cloned = marketplace.cloneStrategy(strategyId, walletAddress, customName);
+      if (!cloned) {
+        reply.status(404);
+        return { error: { code: "STRATEGY_NOT_FOUND", message: "Strategy not found to clone." } };
+      }
+      reply.status(201);
+      return { strategy: cloned };
+    },
+  );
+
+  app.post<{ Body: { strategyId: string; walletAddress: string } }>(
+    "/api/strategies/active",
+    async (request, reply) => {
+      const { strategyId, walletAddress } = request.body || {};
+      if (!strategyId || !walletAddress) {
+        reply.status(400);
+        return { error: { code: "INVALID_PARAMS", message: "strategyId and walletAddress are required." } };
+      }
+      const ok = marketplace.setActiveStrategy(walletAddress, strategyId);
+      if (!ok) {
+        reply.status(404);
+        return { error: { code: "STRATEGY_NOT_FOUND", message: "Strategy not found or access denied." } };
+      }
+      return { success: true, activeStrategyId: strategyId };
+    },
+  );
+
+  app.post<{ Body: unknown }>(
+    "/api/trade/record-alive-trade",
+    async (request, reply) => {
+      const parsed = AliveTradeRecordSchema.safeParse(request.body);
+      if (!parsed.success) {
+        reply.status(400);
+        return { error: { code: "INVALID_TRADE_RECORD", message: "Invalid trade record payload.", details: parsed.error.issues } };
+      }
+      dependencies.repository.saveAliveTrade(parsed.data);
+      reply.status(201);
+      return { success: true, trade: parsed.data };
+    },
+  );
 
   app.addHook("onClose", async () => {
     dependencies.repository.close();

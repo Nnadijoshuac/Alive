@@ -1469,11 +1469,41 @@ export class IntelligenceRepository {
   }
 
   saveAgentStrategy(
-    strategy: AgentStrategy,
-    walletAddress?: string,
-    isActive = false,
-    isMarketplace = false,
+    params:
+      | AgentStrategy
+      | {
+          strategy: AgentStrategy;
+          walletAddress?: string | undefined;
+          isActive?: boolean | undefined;
+          isMarketplace?: boolean | undefined;
+        },
+    legacyWalletAddress?: string,
+    legacyIsActive = false,
+    legacyIsMarketplace = false,
   ): void {
+    let strategy: AgentStrategy;
+    let walletAddress: string | undefined;
+    let isActive = false;
+    let isMarketplace = false;
+
+    if ("id" in params && "rules" in params) {
+      strategy = params as AgentStrategy;
+      walletAddress = legacyWalletAddress;
+      isActive = legacyIsActive;
+      isMarketplace = legacyIsMarketplace;
+    } else {
+      const opts = params as {
+        strategy: AgentStrategy;
+        walletAddress?: string | undefined;
+        isActive?: boolean | undefined;
+        isMarketplace?: boolean | undefined;
+      };
+      strategy = opts.strategy;
+      walletAddress = opts.walletAddress;
+      isActive = opts.isActive ?? false;
+      isMarketplace = opts.isMarketplace ?? false;
+    }
+
     const normalized = walletAddress ? walletAddress.toLowerCase() : null;
     const now = new Date().toISOString();
     this.#database
@@ -1535,7 +1565,7 @@ export class IntelligenceRepository {
   listMarketplaceStrategies(): AgentStrategy[] {
     const rows = this.#database
       .prepare(
-        "SELECT strategy_json FROM agent_strategies WHERE is_marketplace = 1 ORDER BY created_at DESC",
+        "SELECT strategy_json FROM agent_strategies WHERE is_marketplace = 1 ORDER BY created_at ASC",
       )
       .all() as { strategy_json: string }[];
     const result: AgentStrategy[] = [];
