@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 0;
+  margin: 16px 0 0;
   padding: 0;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
@@ -15,8 +15,9 @@
   align-items: center;
   justify-content: space-between;
   border-top: 1px solid var(--hairline);
-  padding: 12px 18px;
+  padding: 14px 18px;
   font-size: 13px;
+  gap: 16px;
 }
 
 .item:first-child {
@@ -26,16 +27,29 @@
 .itemMain {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
-.itemMain a {
+.iconCol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.titleLink {
   color: var(--ink);
   font-weight: 650;
+  text-decoration: none;
 }
 
-.itemMain span {
-  color: var(--muted-2);
+.titleLink:hover {
+  color: var(--positive);
+  text-decoration: underline;
 }
 
 .result {
@@ -43,9 +57,12 @@
   padding: 2px 9px;
   font-size: 11px;
   font-weight: 650;
+  text-transform: uppercase;
+  margin-left: 8px;
 }
 
-.result[data-tone="ELIGIBLE"] {
+.result[data-tone="ELIGIBLE"],
+.result[data-tone="ACTIVE"] {
   color: var(--positive);
   background: var(--positive-bg);
 }
@@ -63,4 +80,33 @@
 .timestamp {
   color: var(--faint);
   font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.filterBtn {
+  background: var(--paper-2);
+  border: 1px solid var(--hairline);
+  color: var(--muted-2);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filterBtn:hover {
+  border-color: var(--faint);
+  color: var(--ink);
+}
+
+.filterActive {
+  background: var(--positive-bg);
+  border: 1px solid var(--positive);
+  color: var(--positive);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }

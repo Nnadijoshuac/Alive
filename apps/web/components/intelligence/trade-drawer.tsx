@@ -27,7 +27,7 @@ import styles from "./trade-drawer.module.css";
 export type TradeDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
-  asset: RwaAsset;
+  asset: RwaAsset | null | undefined;
   liveQuote?: MarketQuote | undefined;
   marketContext?: CoinMarketCapMarketContext | undefined;
   initialPaymentTokenAddress?: string | undefined;
@@ -70,7 +70,7 @@ export function TradeDrawer({
   const isPending = isQuoting || isApproving || isSubmitting;
 
   // Verified X Layer target deployment
-  const xlayerDeployment = asset.deployments?.find(
+  const xlayerDeployment = asset?.deployments?.find(
     (d) => d.chainId === 196 && d.deploymentStatus === "VERIFIED",
   );
   const targetContract = xlayerDeployment?.contractAddress ?? "";
@@ -110,7 +110,7 @@ export function TradeDrawer({
 
   // 3. Fetch Quote on Amount / Token Change
   useEffect(() => {
-    if (!isOpen || !selectedTokenAddr || !debouncedAmount || parseFloat(debouncedAmount) <= 0) {
+    if (!isOpen || !asset || !selectedTokenAddr || !debouncedAmount || parseFloat(debouncedAmount) <= 0) {
       setQuote(null);
       setQuoteError(null);
       return;
@@ -140,7 +140,7 @@ export function TradeDrawer({
       .finally(() => {
         setIsQuoting(false);
       });
-  }, [isOpen, asset.id, selectedTokenAddr, debouncedAmount]);
+  }, [isOpen, asset?.id, selectedTokenAddr, debouncedAmount]);
 
   // 4. Update Token Balance & Allowance when Wallet or Token changes
   useEffect(() => {
@@ -220,7 +220,7 @@ export function TradeDrawer({
   };
 
   const handleTrade = async () => {
-    if (!walletAddress || !quote || !selectedTokenAddr) return;
+    if (!walletAddress || !quote || !selectedTokenAddr || !asset) return;
     setActionError(null);
     setIsSubmitting(true);
     setTradeSuccess(false);
@@ -259,7 +259,7 @@ export function TradeDrawer({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !asset) return null;
 
   const currentPaymentToken = paymentTokens.find(
     (t) => t.contractAddress.toLowerCase() === selectedTokenAddr.toLowerCase(),

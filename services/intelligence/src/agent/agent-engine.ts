@@ -263,20 +263,26 @@ export class AgentEngine {
     };
   }
 
-  #compare(value: number, operator: StrategyRule["operator"], threshold: number): boolean {
+  #compare(
+    value: number | null | undefined,
+    operator: StrategyRule["operator"],
+    threshold: number | string,
+  ): boolean {
+    const val = value ?? 0;
+    const thresh = typeof threshold === "number" ? threshold : parseFloat(threshold) || 0;
     switch (operator) {
       case ">":
-        return value > threshold;
+        return val > thresh;
       case ">=":
-        return value >= threshold;
+        return val >= thresh;
       case "<":
-        return value < threshold;
+        return val < thresh;
       case "<=":
-        return value <= threshold;
+        return val <= thresh;
       case "==":
-        return value === threshold;
+        return val === thresh;
       case "!=":
-        return value !== threshold;
+        return val !== thresh;
       default:
         return false;
     }

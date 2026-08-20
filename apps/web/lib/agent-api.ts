@@ -164,3 +164,9 @@ export async function recordAliveTrade(
     body: JSON.stringify(trade),
   });
 }
+
+// Aliases for component convenience
+export const getAgentSnapshot = fetchAgentSnapshot;
+export const evaluateAgentStrategy = (address: string) => fetchAgentSnapshot(address, true);
+export const askAgentQuestion = askAgent;
+export const getMarketplaceStrategies = async () => ({ strategies: await fetchMarketplaceStrategies() });

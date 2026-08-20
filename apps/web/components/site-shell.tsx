@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   PlayCircleIcon,
   RobotIcon,
+  SlidersHorizontalIcon,
   StarIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -19,16 +20,17 @@ import { getIntelligenceHealth } from "@/lib/rwa-api";
 import styles from "./shell.module.css";
 
 const primaryNav = [
-  { href: "/overview", label: "Overview", icon: HouseIcon },
   { href: "/explore", label: "Explore", icon: CompassIcon },
   { href: "/agents", label: "Agents", icon: RobotIcon },
-  { href: "/watchlist", label: "Watchlist", icon: StarIcon },
+  { href: "/strategies", label: "Strategies", icon: SlidersHorizontalIcon },
   { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
 ] as const;
 
-const demoNav = [
-  { href: "/demo", label: "Demo", icon: PlayCircleIcon },
+const secondaryNav = [
+  { href: "/overview", label: "Overview", icon: HouseIcon },
+  { href: "/watchlist", label: "Watchlist", icon: StarIcon },
   { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
+  { href: "/demo", label: "Demo Sandbox", icon: PlayCircleIcon },
 ] as const;
 
 const advancedLinks = [
@@ -111,7 +113,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }
 
-  const allNavItems = [...primaryNav, ...demoNav];
+  const allNavItems = [...primaryNav, ...secondaryNav];
 
   return (
     <div className={styles.shell}>
@@ -130,14 +132,17 @@ export function SiteShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <hr className={styles.navSeparator} />
-          <nav className={styles.nav} aria-label="Demo navigation">
-            {demoNav.map((item) => (
-              <NavItem key={item.href} {...item} active={isActive(item.href)} />
-            ))}
-          </nav>
+          <div className={styles.advancedGroup} style={{ marginTop: "4px" }}>
+            <p className={styles.advancedLabel}>Research & Sandbox</p>
+            <nav className={styles.nav} aria-label="Secondary navigation">
+              {secondaryNav.map((item) => (
+                <NavItem key={item.href} {...item} active={isActive(item.href)} />
+              ))}
+            </nav>
+          </div>
           <hr className={styles.navSeparator} />
           <div className={styles.advancedGroup}>
-            <p className={styles.advancedLabel}>Advanced</p>
+            <p className={styles.advancedLabel}>Advanced Tools</p>
             {advancedLinks.map((item) => (
               <Link
                 key={item.href}
