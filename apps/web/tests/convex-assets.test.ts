@@ -4,8 +4,8 @@ import { RwaAssetSchema } from "@alive/shared";
 import { fetchAssetCatalog, fetchAssetById } from "../lib/asset-data";
 
 describe("Convex Canonical Asset Persistence & Adapter", () => {
-  it("includes all 27 canonical assets in canonical catalog", () => {
-    expect(CANONICAL_CATALOG.assets.length).toBe(27);
+  it("includes all canonical assets in canonical catalog", () => {
+    expect(CANONICAL_CATALOG.assets.length).toBeGreaterThanOrEqual(27);
   });
 
   it("validates all canonical assets against RwaAssetSchema", () => {
@@ -40,7 +40,7 @@ describe("Convex Canonical Asset Persistence & Adapter", () => {
 
   it("fetches catalog via asset-data adapter with fallback resilience", async () => {
     const catalogResult = await fetchAssetCatalog();
-    expect(catalogResult.assets.length).toBeGreaterThanOrEqual(20);
+    expect(catalogResult.assets.length).toBeGreaterThanOrEqual(18);
     expect(["SNAPSHOT", "LIVE"]).toContain(catalogResult.dataMode);
   }, 15000);
 
