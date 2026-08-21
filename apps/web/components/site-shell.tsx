@@ -27,22 +27,22 @@ import { Separator } from "@/components/ui/separator";
 import { getIntelligenceHealth } from "@/lib/rwa-api";
 import styles from "./shell.module.css";
 
-const workspaceNav = [
-  { href: "/overview", label: "Verify", icon: MagnifyingGlassIcon },
+const intelligenceNav = [
   { href: "/explore", label: "Discover", icon: CompassIcon },
-  { href: "/create", label: "Mandate", icon: SlidersHorizontalIcon },
+  { href: "/overview", label: "Verify", icon: MagnifyingGlassIcon },
   { href: "/dashboard", label: "Portfolio", icon: HouseIcon },
-] as const;
-
-const observeNav = [
-  { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
   { href: "/watchlist", label: "Watchlist", icon: StarIcon },
-  { href: "/attack-lab", label: "Proof lab", icon: FlaskIcon },
+  { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
 ] as const;
 
-const labNav = [
-  { href: "/agents", label: "Agent preview", icon: RobotIcon },
-  { href: "/strategies", label: "Strategy library", icon: PlayCircleIcon },
+const policyControlNav = [
+  { href: "/create", label: "Mandate", icon: SlidersHorizontalIcon },
+  { href: "/attack-lab", label: "Proof Lab", icon: FlaskIcon },
+] as const;
+
+const labsNav = [
+  { href: "/agents", label: "Agent Preview", icon: RobotIcon },
+  { href: "/strategies", label: "Strategy Library", icon: PlayCircleIcon },
 ] as const;
 
 const advancedLinks = [
@@ -53,9 +53,9 @@ const advancedLinks = [
 ] as const;
 
 type NavItemDefinition =
-  | (typeof workspaceNav)[number]
-  | (typeof observeNav)[number]
-  | (typeof labNav)[number];
+  | (typeof intelligenceNav)[number]
+  | (typeof policyControlNav)[number]
+  | (typeof labsNav)[number];
 
 function NavItem({
   href,
@@ -175,7 +175,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
   function isActive(href: string) {
     return href === "/overview"
-      ? pathname === "/overview" || pathname.startsWith("/assets/")
+      ? pathname === "/overview" || pathname.startsWith("/assets/") || pathname.startsWith("/verify")
       : pathname.startsWith(href);
   }
 
@@ -188,7 +188,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }
 
-  const allNavItems = [...workspaceNav, ...observeNav, ...labNav];
+  const allNavItems = [...intelligenceNav, ...policyControlNav, ...labsNav];
   const currentLabel = (() => {
     const direct = [...allNavItems, ...advancedLinks].find((item) =>
       isActive(item.href),
@@ -223,27 +223,27 @@ export function SiteShell({ children }: { children: ReactNode }) {
           </Link>
 
           <div className={styles.navGroup}>
-            <p className={styles.navLabel}>Workspace</p>
-            <nav className={styles.nav} aria-label="Workspace navigation">
-              {workspaceNav.map((item) => (
+            <p className={styles.navLabel}>Intelligence</p>
+            <nav className={styles.nav} aria-label="Intelligence navigation">
+              {intelligenceNav.map((item) => (
                 <NavItem key={item.href} {...item} active={isActive(item.href)} />
               ))}
             </nav>
           </div>
 
           <div className={styles.navGroup}>
-            <p className={styles.navLabel}>Observe</p>
-            <nav className={styles.nav} aria-label="Observation navigation">
-              {observeNav.map((item) => (
+            <p className={styles.navLabel}>Policy &amp; Control</p>
+            <nav className={styles.nav} aria-label="Policy and control navigation">
+              {policyControlNav.map((item) => (
                 <NavItem key={item.href} {...item} active={isActive(item.href)} />
               ))}
             </nav>
           </div>
 
           <div className={styles.navGroup}>
-            <p className={styles.navLabel}>Labs / preview</p>
-            <nav className={styles.nav} aria-label="Preview navigation">
-              {labNav.map((item) => (
+            <p className={styles.navLabel}>Labs</p>
+            <nav className={styles.nav} aria-label="Labs navigation">
+              {labsNav.map((item) => (
                 <NavItem key={item.href} {...item} active={isActive(item.href)} />
               ))}
             </nav>
