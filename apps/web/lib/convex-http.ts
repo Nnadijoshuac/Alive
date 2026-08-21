@@ -45,12 +45,15 @@ export async function convexQuery<T = unknown>(
     throw new Error(`Convex query failed (${res.status}): ${errorText}`);
   }
 
-  const json = (await res.json()) as ConvexQueryResponse<T>;
+  const json = (await res.json().catch(() => null)) as ConvexQueryResponse<T> | null;
+  if (!json) {
+    throw new Error("Invalid response from Convex");
+  }
   if (json.status === "error") {
     throw new Error(`Convex query error: ${json.errorMessage || "Unknown error"}`);
   }
 
-  return json.value as T;
+  return (json.value !== undefined ? json.value : (json as unknown as T)) as T;
 }
 
 /**
@@ -82,10 +85,13 @@ export async function convexMutation<T = unknown>(
     throw new Error(`Convex mutation failed (${res.status}): ${errorText}`);
   }
 
-  const json = (await res.json()) as ConvexQueryResponse<T>;
+  const json = (await res.json().catch(() => null)) as ConvexQueryResponse<T> | null;
+  if (!json) {
+    throw new Error("Invalid response from Convex");
+  }
   if (json.status === "error") {
     throw new Error(`Convex mutation error: ${json.errorMessage || "Unknown error"}`);
   }
 
-  return json.value as T;
+  return (json.value !== undefined ? json.value : (json as unknown as T)) as T;
 }

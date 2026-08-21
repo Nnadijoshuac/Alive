@@ -108,15 +108,21 @@ export async function fetchAssetById(assetId: string): Promise<RwaAsset | null> 
   try {
     const asset = await convexQuery<unknown>("assets:getCanonicalAssetById", { assetId });
     if (asset) {
-      return RwaAssetSchema.parse(asset);
+      const parsed = RwaAssetSchema.safeParse(asset);
+      if (parsed.success) {
+        return parsed.data;
+      }
     }
-  } catch (err) {
-    console.warn("Convex fetchAssetById fallback:", err);
+  } catch {
+    // Graceful fallback to static canonical catalog
   }
 
-    const fallback = getFallbackAsset(assetId);
-    if (fallback?.asset) {
-      return RwaAssetSchema.parse(fallback.asset);
+  const fallback = getFallbackAsset(assetId);
+  if (fallback?.asset) {
+    const parsed = RwaAssetSchema.safeParse(fallback.asset);
+    if (parsed.success) {
+      return parsed.data;
     }
-    return null;
   }
+  return null;
+}

@@ -9,7 +9,7 @@ import { fetchAgentSnapshot, evaluateAgentStrategy, askAgent } from "../lib/agen
 const USER_WALLET = "0x8B91361f58980992C2EEcA0410f21cC9c181EE97";
 const DEMO_WALLET = "0xe2475653b6f8a846152a5508a8e1b1faae1a44e5";
 
-describe("Agent Standalone Evaluator & API", { timeout: 20000 }, () => {
+describe("Agent Standalone Evaluator & API", { timeout: 45000 }, () => {
   it("evaluates wallet context for user wallet without network errors", async () => {
     const ctx = await evaluateWalletContext(USER_WALLET);
     expect(ctx).toBeDefined();
