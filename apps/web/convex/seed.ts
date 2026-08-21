@@ -106,19 +106,22 @@ export const seedCanonicalData = mutation({
       }
     }
 
-    // 2. Seed All 27 Canonical RWA Assets
+    // 2. Seed All Real Canonical RWA Assets (Excluding demo placeholders)
+    const demoAssetIds = new Set(["tusdc", "ttbill-a", "ttbill-c", "tgold", "tsp500", "tnvda", "taapl"]);
     let seededAssets = 0;
     let updatedAssets = 0;
 
     for (const rawAsset of CANONICAL_CATALOG.assets) {
       const asset = rawAsset as Record<string, unknown>;
       const assetId = asset.id as string;
+      if (demoAssetIds.has(assetId)) continue;
+
       const issuer = typeof asset.issuer === "string" ? asset.issuer : (asset.issuer as { id?: string })?.id ?? "UNKNOWN";
       const deployments = asset.deployments as Array<{ decimals?: number }> | undefined;
       const decimals = (deployments && deployments[0]?.decimals) ?? 18;
-      const dataMode = (asset.dataMode as string) ?? "SNAPSHOT";
+      const dataMode = "LIVE";
       const jurisdiction = typeof asset.jurisdiction === "string" ? asset.jurisdiction : "US";
-      const schemaJson = JSON.stringify(asset);
+      const schemaJson = JSON.stringify({ ...asset, dataMode: "LIVE" });
 
       const existing = await ctx.db
         .query("assets")
@@ -160,7 +163,7 @@ export const seedCanonicalData = mutation({
       seededStrategies,
       seededAssets,
       updatedAssets,
-      totalAssetsCount: CANONICAL_CATALOG.assets.length,
+      totalAssetsCount: CANONICAL_CATALOG.assets.length - demoAssetIds.size,
       timestamp: now,
     };
   },

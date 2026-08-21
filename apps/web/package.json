@@ -17,6 +17,9 @@
     "seed:demo": "node -e \"console.log('Open /demo and use Reset local presentation state.')\""
   },
   "dependencies": {
+    "@alive/eligibility-engine": "workspace:*",
+    "@alive/market-data": "workspace:*",
+    "@alive/optimizer": "workspace:*",
     "@alive/shared": "workspace:*",
     "@hugeicons/core-free-icons": "^4.2.3",
     "@hugeicons/react": "^1.1.9",

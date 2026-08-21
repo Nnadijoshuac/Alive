@@ -241,6 +241,13 @@ export const CANONICAL_CATALOG = {
       "catalogStatus": "IDENTIFIED",
       "analysisCapability": "READY",
       "enforcementCapability": "X_LAYER",
+      "extraction": {
+        "pipelineVersion": "v2.1",
+        "extractedAt": "2026-08-20T00:00:00.000Z",
+        "model": "llama-3.3-70b-versatile",
+        "promptVersion": "passport-v2.1",
+        "mode": "DETERMINISTIC_FALLBACK"
+      },
       "backing": {
         "backingType": "FUND_SHARE",
         "underlyingAssets": "Short-duration U.S. Treasury Bills held by the fund",
@@ -2064,6 +2071,110 @@ export const CANONICAL_CATALOG = {
         "logoContractAddress": "0xf8c5308f80e459bb53d9ebe689854d9cbb2caa6f",
         "logoNetwork": "X Layer",
         "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      }
+    },
+    {
+      "id": "meta-xstock",
+      "symbol": "wMETAx",
+      "name": "Wrapped Meta Platforms xStock",
+      "assetClass": "EQUITY",
+      "issuer": "xstocks-tokenized",
+      "issuerName": "xStocks Tokenized Securities / Backed",
+      "underlying": "Meta Platforms Inc. Class A Common Stock (NASDAQ: META)",
+      "liquidity": {
+        "score": 88,
+        "redemptionWindow": "DEX liquidity on OKX DEX / X Layer Mainnet"
+      },
+      "risk": {
+        "score": 28,
+        "issuerRisk": 22,
+        "liquidityRisk": 24,
+        "marketRisk": 32,
+        "oracleRisk": 20,
+        "redemptionRisk": 25,
+        "productComplexityRisk": 26,
+        "methodology": "ALIVE_RISK_V1"
+      },
+      "restrictions": [
+        "Wrapped token represents 1:1 economic exposure to Backed bMETA / Meta Platforms Class A shares.",
+        "Trading occurs 24/7 on X Layer DEX with instant settlement."
+      ],
+      "sources": [
+        {
+          "id": "xstocks-docs-legal-overview-meta-xstock",
+          "title": "xStocks Product Legal Overview & Custody Structure",
+          "sourceType": "ISSUER_DOCUMENTATION",
+          "sourceUrl": "https://docs.xstocks.fi/docs/product-legal-overview",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "PRIMARY",
+          "supportedFields": [
+            "symbol",
+            "name",
+            "assetClass",
+            "issuer",
+            "issuerName",
+            "underlying",
+            "restrictions",
+            "lastUpdatedAt"
+          ]
+        },
+        {
+          "id": "xlayer-onchain-verified-meta-xstock",
+          "title": "Wrapped Meta Platforms xStock (WMETAx) | X Layer Mainnet Verified Bytecode",
+          "sourceType": "ONCHAIN",
+          "sourceUrl": "https://www.oklink.com/x-layer/address/0x6431985ee9aa55d141e9766bb7392bead868a262",
+          "retrievedAt": "2026-08-18T00:00:00.000Z",
+          "sourceTier": "CHAIN_EXPLORER",
+          "supportedFields": [
+            "deployments"
+          ]
+        }
+      ],
+      "lastUpdatedAt": "2026-08-18T00:00:00.000Z",
+      "dataMode": "LIVE",
+      "visual": {
+        "logoStatus": "RESOLVED",
+        "logoUrl": "https://coin-images.coingecko.com/coins/images/55798/large/Ticker_META__Company_Name_Meta_Platforms_Inc.__size_200x200_2x.png",
+        "logoSource": "COINGECKO",
+        "logoSourceId": "wrapped-meta-platforms-xstock",
+        "logoContractAddress": "0x6431985ee9aa55d141e9766bb7392bead868a262",
+        "logoNetwork": "X Layer",
+        "logoVerifiedAt": "2026-08-18T12:00:00.000Z"
+      },
+      "deployments": [
+        {
+          "chainId": 196,
+          "chainName": "X Layer Mainnet",
+          "contractAddress": "0x6431985ee9aa55d141e9766bb7392bead868a262",
+          "tokenStandard": "ERC-20",
+          "deploymentStatus": "VERIFIED",
+          "explorerUrl": "https://www.oklink.com/x-layer/address/0x6431985ee9aa55d141e9766bb7392bead868a262",
+          "sourceIds": [
+            "xlayer-onchain-verified-meta-xstock"
+          ],
+          "verifiedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "catalogStatus": "IDENTIFIED",
+      "analysisCapability": "READY",
+      "enforcementCapability": "X_LAYER",
+      "extraction": {
+        "pipelineVersion": "v2.1",
+        "extractedAt": "2026-08-20T00:00:00.000Z",
+        "model": "llama-3.3-70b-versatile",
+        "promptVersion": "passport-v2.1",
+        "mode": "DETERMINISTIC_FALLBACK"
+      },
+      "backing": {
+        "backingType": "COLLATERAL_BACKED",
+        "underlyingAssets": "Meta Platforms Inc. Common Stock (NASDAQ: META)",
+        "directLegalClaim": true,
+        "redemptionIntoUnderlying": false,
+        "custodian": "Maerki Baumann & Co. AG / InCore Bank AG",
+        "sourceIds": [
+          "xstocks-docs-legal-overview-meta-xstock"
+        ],
+        "asOf": "2026-08-18T00:00:00.000Z"
       }
     }
   ]

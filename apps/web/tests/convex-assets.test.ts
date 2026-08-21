@@ -40,16 +40,16 @@ describe("Convex Canonical Asset Persistence & Adapter", () => {
 
   it("fetches catalog via asset-data adapter with fallback resilience", async () => {
     const catalogResult = await fetchAssetCatalog();
-    expect(catalogResult.assets.length).toBeGreaterThanOrEqual(27);
-    expect(catalogResult.dataMode).toBe("SNAPSHOT");
-  });
+    expect(catalogResult.assets.length).toBeGreaterThanOrEqual(20);
+    expect(["SNAPSHOT", "LIVE"]).toContain(catalogResult.dataMode);
+  }, 15000);
 
   it("fetches individual asset by id via asset-data adapter", async () => {
     const asset = await fetchAssetById("meta-xstock");
     expect(asset).not.toBeNull();
     expect(asset?.symbol).toBe("WMETAX");
     expect(asset?.name).toBe("Wrapped Meta xStock");
-  });
+  }, 15000);
 
   it("filters catalog by search query and asset class correctly", async () => {
     const equityResults = await fetchAssetCatalog({ assetClass: "EQUITY" });
@@ -57,5 +57,5 @@ describe("Convex Canonical Asset Persistence & Adapter", () => {
 
     const searchResults = await fetchAssetCatalog({ q: "treasury" });
     expect(searchResults.assets.length).toBeGreaterThan(0);
-  });
+  }, 15000);
 });

@@ -17,6 +17,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@alive/eligibility-engine':
+        specifier: workspace:*
+        version: link:../../packages/eligibility-engine
+      '@alive/market-data':
+        specifier: workspace:*
+        version: link:../../packages/market-data
+      '@alive/optimizer':
+        specifier: workspace:*
+        version: link:../../packages/optimizer
       '@alive/shared':
         specifier: workspace:*
         version: link:../../packages/shared

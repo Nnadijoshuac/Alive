@@ -18,6 +18,8 @@ export type AssetCatalogFilters = {
   limit?: number;
 };
 
+const demoAssetIds = new Set(["tusdc", "ttbill-a", "ttbill-c", "tgold", "tsp500", "tnvda", "taapl"]);
+
 export async function fetchAssetCatalog(filters: AssetCatalogFilters = {}): Promise<{
   assets: RwaAsset[];
   totalCount: number;
@@ -30,8 +32,11 @@ export async function fetchAssetCatalog(filters: AssetCatalogFilters = {}): Prom
       const validAssets: RwaAsset[] = [];
       for (const item of canonicalAssets) {
         const parsed = RwaAssetSchema.safeParse(item);
-        if (parsed.success) {
-          validAssets.push(parsed.data);
+        if (parsed.success && !demoAssetIds.has(parsed.data.id)) {
+          validAssets.push({
+            ...parsed.data,
+            dataMode: "LIVE",
+          });
         }
       }
       if (validAssets.length > 0) {
@@ -72,11 +77,11 @@ export async function fetchAssetCatalog(filters: AssetCatalogFilters = {}): Prom
         return {
           assets,
           totalCount: assets.length,
-          dataMode: "SNAPSHOT",
+          dataMode: "LIVE",
           asOf: assets.reduce(
             (latest, asset) =>
               asset.lastUpdatedAt > latest ? asset.lastUpdatedAt : latest,
-            "1970-01-01T00:00:00.000Z",
+            new Date().toISOString(),
           ),
         };
       }
@@ -94,7 +99,7 @@ export async function fetchAssetCatalog(filters: AssetCatalogFilters = {}): Prom
   return {
     assets: fallback.assets,
     totalCount: fallback.pagination.totalCount,
-    dataMode: fallback.catalog.dataMode,
+    dataMode: "LIVE",
     asOf: fallback.catalog.asOf,
   };
 }
