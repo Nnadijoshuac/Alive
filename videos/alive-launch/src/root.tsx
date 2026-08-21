@@ -5,9 +5,9 @@ export const AliveVideoRoot = () => (
   <Composition
     id="AliveLaunch"
     component={AliveLaunch}
-    durationInFrames={1200}
+    durationInFrames={450}
     fps={30}
-    width={1920}
+    width={1080}
     height={1080}
   />
 );
