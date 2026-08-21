@@ -1,44 +1,1163 @@
 # ALIVE build status
 
-Last updated: 2026-08-12
+Current audit: **2026-08-15**
 
-## Milestone ledger
+Active branch: `feat/rwa-verification-gateway` (checkpointed from `feat/rwa-intelligence-pivot`)
 
-| Milestone         | Status      | Branch            | Commit  | Tag     | Features completed                                      | Tests passed    | Known issues                                                  | Next objective                                    |
-| ----------------- | ----------- | ----------------- | ------- | ------- | ------------------------------------------------------- | --------------- | ------------------------------------------------------------- | ------------------------------------------------- |
-| Foundation        | In progress | `feat/foundation` | pending | pending | Repository audit, architecture, workspace configuration | Toolchain audit | Foundry is unavailable in this Windows environment            | Implement packages and establish a green baseline |
-| Contracts         | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Registry, attestation, token, escrow              |
-| Registration      | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Camera and evidence commitment                    |
-| Verification      | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Multi-signal identity and liveness                |
-| Attestations      | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | EIP-712 signing and replay defense                |
-| Escrow            | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Verification-gated settlement                     |
-| Attack Lab        | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Adversarial flows                                 |
-| Visual experience | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Three.js and presentation mode                    |
-| X Layer Testnet   | Pending     | pending           | pending | pending | None                                                    | None            | Deployment credentials and test OKB are external requirements | Deploy and smoke test                             |
-| Hackathon release | Pending     | pending           | pending | pending | None                                                    | None            | None                                                          | Final regression and launch media                 |
+Pre-pivot checkpoint: `v0.8.1-physical-state-archive` at `bf449f6`
+RWA policy-vault checkpoint: `v0.9.0-policy-vault-checkpoint` at `85e186f`
 
-## Capability checklist
+## Milestone log
 
-- [x] repository audit
-- [x] architecture plan
-- [ ] product UI
-- [ ] camera
-- [ ] asset registration
-- [ ] fingerprinting
-- [ ] OCR
-- [ ] verification sessions
-- [ ] active liveness
-- [ ] scoring
-- [ ] signed attestations
-- [ ] asset registry
-- [ ] attestation registry
-- [ ] escrow
-- [ ] mock test token
-- [ ] wallet integration
-- [ ] X Layer integration
-- [ ] attack lab
-- [ ] integration testing
-- [ ] testnet deployment
-- [ ] launch video
-- [ ] demo script
-- [ ] security review
+- **2026-08-15 — Milestone 0 (git checkpoint):** the RWA policy-vault pivot
+  (contracts, `services/intelligence`, `packages/{market-data,optimizer,policy-engine}`,
+  the RWA frontend workspace, demo fixtures, rewritten docs) had been sitting
+  entirely uncommitted in the working tree — verified via a full forensic
+  audit before this checkpoint. Committed as `85e186f`
+  ("chore: checkpoint RWA policy vault before verification gateway pivot"),
+  pushed to `origin/feat/rwa-intelligence-pivot`, tagged
+  `v0.9.0-policy-vault-checkpoint` (pushed), and branched to
+  `feat/rwa-verification-gateway` (pushed, tracked). This corrects the "Pivot
+  checkpoint and Git state" table below, which predates the checkpoint and
+  still describes the work as uncommitted.
+- **2026-08-15 — Milestone 1 (baseline fix):** fixed the one known failing
+  contract test (`test/AliveRwaProtocol.test.ts` "MockRwaRouter demo
+  freshness" — wrong-case token lookup `tokens.tnvda` vs the fixture's actual
+  key `tokens.tNVDA`, and a reference to a nonexistent `fixture.other` signer;
+  changed to `tokens.tNVDA` / `fixture.attacker`) and the two real type errors
+  in `services/intelligence/src/app.ts` (`saveProposal` was called with a raw
+  `policyId` string at the `POST /api/portfolios/optimize` and
+  `POST /api/rebalance` handlers, but its third parameter is a
+  `ProposalPersistenceContext` object — fixed both call sites). Verified:
+  `packages/contracts` 54/54 tests passing, typecheck clean;
+  `services/intelligence` typecheck clean, 4/4 tests passing; full
+  `pnpm -r typecheck` clean across all 9 workspace projects; full
+  `pnpm -r test` green across every workspace **except** `videos/alive-launch`,
+  which fails on a pre-existing, unrelated environmental port-3000 collision
+  (Remotion's compositions check tried to reach a Remotion dev server on
+  `:3000` and instead hit an already-running Next.js dev server bound to that
+  port on this machine — confirmed by the error payload containing
+  `apps/web`'s `site-shell` markup, not a Remotion project). Not part of the
+  RWA stack and not chased further in this pass; free the port and re-run
+  `pnpm --filter @alive/launch-video test` to confirm before relying on it.
+- **2026-08-15 — Milestone 2 (Asset Passport schema + source ingestion
+  pipeline):** the product is pivoting again, from "natural-language mandate
+  -> policy vault" toward "AI-powered verification/eligibility gateway for
+  tokenized RWAs" (`docs/PIVOT.md` target). This milestone builds the first
+  missing link: turning an issuer document into hashed, citable source
+  material an extraction step can read from.
+  - Extended `@alive/shared`'s existing `RwaAssetSchema` (kept as the Asset
+    Passport base per directive, not replaced) with an optional `redemption`
+    fact (`supported: boolean | "unknown"`, `frequency`, `settlementPeriod`,
+    `minimum` — unknown is represented explicitly, never omitted or
+    hallucinated) and optional `extraction` pipeline metadata
+    (`pipelineVersion`, `extractedAt`, `model`, `promptVersion`, `confidence`,
+    `mode`). Both are additive and backward-compatible with the existing demo
+    catalog. `redemption` participates in the schema's existing
+    source-provenance parity check; `extraction` deliberately does not, since
+    it describes how a passport was produced, not a claimed fact about the
+    asset. 4 new tests in `packages/shared/test/rwa.test.ts` (41/41 passing).
+    Found and fixed a pre-existing test bug while doing this: `validDemoAsset()`
+    reused one shared `coreFields` array by reference across every test,
+    so an earlier test's `.push()` silently mutated later tests' input.
+  - New `services/intelligence/src/ingestion/` module: `text-normalizer.ts`
+    (line-ending/control-character/whitespace normalization — conservative,
+    never rewrites words or numbers, since the hash binds to its output),
+    `source-hasher.ts` (canonical keccak256 hash of normalized text, reusing
+    `@alive/shared`'s `hashCanonical`), `chunker.ts` (paragraph-aware bounded
+    splitting), `document-loader.ts` (loads a named fixture from
+    `data/source-documents/` with a path-traversal guard modeled on
+    `services/verifier/src/storage.ts`'s `FileEvidenceStore`, or accepts
+    pasted text directly — deliberately no URL fetching or PDF parsing, per
+    directive: "do not spend the hackathon building elaborate web crawling"),
+    and `ingestion-service.ts` (orchestrates the above into a `SourceDocument`
+    with `sourceType` reusing `AssetSourceSchema`'s existing vocabulary rather
+    than inventing a second taxonomy).
+  - New `data/source-documents/` demo fixtures: `tusdc.txt`, `ttbill-a.txt`,
+    `tgold.txt`, `tsp500.txt` — fictional issuer fact sheets (redemption
+    terms, underlying, issuer) for the reduced 4-asset demo set, each ending
+    in a labelled "Key Facts" block so both a real LLM and the milestone-3
+    deterministic fallback extractor can read them reliably. All carry
+    explicit DEMO DATA disclaimers.
+  - New DB tables (`services/intelligence/src/repository.ts` migration v3):
+    `source_documents` (ingested text + hash, chunk count recomputed
+    deterministically on read rather than stored redundantly) and
+    `extraction_runs` (scaffolded now, used starting milestone 3).
+  - New routes: `POST /api/assets/:assetId/ingest`,
+    `GET /api/assets/:assetId/sources`.
+  - Tests: 15 new tests in `services/intelligence/test/ingestion.test.ts`
+    (normalizer, hasher, chunker, loader path-traversal guard, ingestion
+    service) plus one new route-level test in `intelligence.test.ts`.
+    `services/intelligence`: 20/20 tests passing, typecheck clean.
+    `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck`
+    all clean.
+- **2026-08-15 — Milestone 3 (AI extraction pipeline):** turns an ingested
+  document into candidate Asset Passport facts, gated by strict schema
+  validation and an anti-hallucination citation check, per directive
+  section 11: "AI proposes, deterministic code validates, AI never decides
+  eligibility and never touches a contract."
+  - New `services/intelligence/src/extraction/`: `passport-prompt.ts` (a
+    versioned system prompt forbidding inference beyond the supplied
+    sources), `extraction-validator.ts` (strict Zod schema +
+    citation-grounding check — every extracted fact must cite a supplied
+    `sourceId`, every citation must reference a source that was actually
+    supplied, unknown top-level fields are rejected), `extraction-normalizer.ts`
+    (merges cited facts into the existing passport, moving provenance for
+    each newly-claimed field from the old catalog source to the new
+    document source so `RwaAssetSchema`'s field/source parity check still
+    holds after the merge — re-validated end to end, not just asserted),
+    and `passport-extractor.ts` (the orchestrator: reuses `llm.ts`'s
+    existing `LlmJsonProvider.generatePolicyJson` rather than adding a
+    second LLM call shape; retries once with the validator's rejection
+    reason fed back to the model; falls back to a deterministic extractor
+    that reads the fixture documents' labelled "Key Facts:" block if no AI
+    is configured, or after two failed AI attempts — every path, AI or
+    deterministic, goes through the same citation-grounding validator, so
+    there is exactly one trust boundary, not two).
+  - Extraction mode is always visible, never silently mislabelled: `AI`
+    (a live model call was validated and used), `DETERMINISTIC_FALLBACK`
+    (an AI was configured but its output was rejected twice), or
+    `DEMO_FIXTURE` (no AI is configured; the labelled fixture text was read
+    directly) — matching the directive's AI LIVE / AI LOCAL / DEMO
+    EXTRACTION transparency requirement.
+  - New routes: `POST /api/assets/:assetId/extract` (ingests must exist
+    first — 422 `NO_SOURCES_INGESTED` otherwise; persists the merged
+    passport back into the `assets` table and records an `extraction_runs`
+    row), `GET /api/assets/:assetId/passport` (current passport plus the
+    latest extraction run's mode/model/sources).
+  - Tests: 11 new in `test/extraction.test.ts` (validator accept/reject
+    cases including a hallucinated-source-citation rejection and an
+    explicit-`"unknown"`-redemption acceptance; deterministic extraction
+    reading the real `tusdc.txt` fixture; AI path with a stubbed provider
+    covering direct-accept, retry-then-accept, and fallback-after-two-failures;
+    normalizer provenance-reassignment and source-pruning behavior) plus one
+    new end-to-end route test (ingest -> extract -> passport, and the
+    `NO_SOURCES_INGESTED` guard). `services/intelligence`: 32/32 tests
+    passing, typecheck clean; `pnpm --filter {shared,intelligence,contracts,web,verifier} typecheck` all clean.
+- **2026-08-15 — Milestone 4 (deterministic eligibility engine):** the last
+  purely off-chain link before a signed verdict (milestone 5) can gate an
+  on-chain action.
+  - New `@alive/shared/src/eligibility.ts`: `EligibilityPolicySchema`,
+    `EligibilityReasonCodeSchema` (16 reason codes matching the directive's
+    vocabulary — `JURISDICTION_RESTRICTED`/`INVESTOR_RESTRICTION_FAILED` are
+    defined for wire-format completeness but never emitted, since
+    `RwaAssetSchema` has no structured jurisdiction/investor-type facts yet,
+    only free-text `restrictions[]`; guessing from that text would be a
+    hallucination the schema itself forbids elsewhere in the pipeline —
+    documented in-code, not silently skipped), `EligibilityVerdictSchema`,
+    `hashPassport`/`hashEligibilityPolicy` (compact commitments, same
+    pattern as the legacy `AliveAssetRegistry`'s `metadataHash`), and
+    `isVerdictExpired`.
+  - New package `packages/eligibility-engine` (mirrors `packages/optimizer`'s
+    structure): `evaluateEligibility(passport, policy, quote?, assetEnabled?,
+    now)` is a pure, deterministic function — AssetPassport + MarketQuote +
+    EligibilityPolicy + time in, EligibilityVerdict out, no LLM call, no
+    contract call. `RwaAssetSchema` carries one price signal (no separate
+    NAV field), so NAV-vs-price freshness is split by asset class: TREASURY
+    and FUND assets are evaluated against `maxNavAgeSeconds` with `NAV_*`
+    codes (real tokenized-Treasury funds report NAV daily); other classes
+    use `maxPriceAgeSeconds` with `PRICE_*` codes — documented as a
+    deliberate reuse of one field for two staleness semantics, not two data
+    sources. `PRICE_DEVIATION_TOO_HIGH` is evaluated from the quote's
+    bid/ask spread (the deviation signal actually available), not a
+    price-vs-NAV comparison the schema has no second value for. Verdict
+    `status` is a real three-way distinction, not just `eligible` restated:
+    `UNKNOWN` when the only problems are missing data (no quote,
+    undocumented redemption, incomplete sourcing — matching "UNKNOWN is
+    preferable to hallucination"), `RESTRICTED` when a rule is actively
+    violated, `ELIGIBLE` otherwise.
+  - `createDemoEligibilityPolicy()`: the directive's example policy
+    (86400s max NAV age, 3600s max price age, 500bps max deviation,
+    redemption required, approved-issuer required) with values matching
+    `data/rwa-catalog/catalog.demo.json`'s real demo issuers.
+  - New route: `GET /api/assets/:assetId/eligibility` — fetches the
+    passport and a live quote (missing quote degrades to `UNKNOWN`, not a
+    500), evaluates against the demo policy, persists the quote/snapshot it
+    used, returns the verdict plus the policy that produced it. A new
+    end-to-end test proves the pipeline dependency concretely: a catalog
+    asset with no `redemption` fact reports `UNKNOWN` with
+    `REDEMPTION_UNKNOWN` until milestone 3's ingest+extract flow runs
+    against it, after which the same endpoint reports `ELIGIBLE`.
+  - Tests: 11 new in `packages/eligibility-engine/test/engine.test.ts`
+    (healthy-pass, NAV-stale, price-stale, missing-market-data-is-UNKNOWN,
+    missing-documentation, unapproved-issuer, redemption-disabled,
+    asset-disabled, asset-class-not-allowed, determinism, verdict-expiry) —
+    covers every scenario the directive's testing-requirements section
+    lists for the eligibility engine. 7 new in
+    `packages/shared/test/eligibility.test.ts`. 1 new end-to-end route
+    test. 246 tests passing repo-wide (`shared` 48, `contracts` 54,
+    `market-data` 8, `optimizer` 5, `policy-engine` 6,
+    `eligibility-engine` 11, `intelligence` 33, `verifier` 29, `web` 43,
+    excluding the unrelated `videos/alive-launch` port collision). Full
+    `pnpm -r typecheck` clean across all 10 buildable workspaces.
+- **2026-08-15 — Milestone 5 (signed eligibility verdict +
+  AliveEligibilityRegistry.sol):** the first place the pipeline touches a
+  contract. Reuses `services/verifier`'s strongest generic pattern
+  (EIP-712 signer, fail-closed when unconfigured) applied to the new
+  attestation, per the directive's explicit instruction to reuse rather
+  than reinvent that infrastructure.
+  - `packages/shared/src/eligibility.ts` gained an EIP-712
+    `EligibilityAttestation` struct/domain/typed-data helpers, mirroring
+    `strategy.ts`'s `Strategy` struct pattern exactly (same
+    `hashTypedData`/`recoverTypedDataAddress` shape, same 24h max-lifetime
+    and non-zero-commitment `.refine` checks). The signed struct is
+    deliberately narrower than the full `EligibilityVerdict`: only
+    commitment hashes + the boolean outcome + a nonce cross the wire,
+    matching how `Strategy` commits to hashes rather than re-encoding
+    nested objects. `chainId` is not repeated as a message field — the
+    EIP-712 domain separator already binds it. Also added `hashAssetId()`,
+    which matches `packages/contracts/scripts/deploy-rwa.ts`'s
+    `hashLabel(key)` convention (`keccak256(utf8Bytes(id))`) exactly, so an
+    off-chain passport `id` and its on-chain bytes32 asset ID are always
+    derivable the same way everywhere — verified against a well-known
+    `keccak256("")` test vector, not just self-consistency.
+  - New `packages/contracts/contracts/AliveEligibilityRegistry.sol` +
+    `interfaces/IAliveEligibilityRegistry.sol`: stores the latest signed
+    verdict per asset behind one boolean gate, `isEligible(assetId)`. Its
+    core security property (documented in the contract's NatSpec and
+    proven by a dedicated test): an attestation is only accepted if its
+    `issuedAt` is strictly newer than whatever is currently stored for
+    that asset, so an old-but-still-time-valid ELIGIBLE attestation can
+    never be replayed to resurrect a status after a newer RESTRICTED one
+    superseded it — replay of the *same* attestation is separately blocked
+    by a global consumed-nonce mapping (belt-and-suspenders, matching
+    `AliveAttestationRegistry`'s existing style). `isEligible` also cross-
+    checks `AliveRwaAssetRegistry.assetExists`/`.enabled` live on every
+    call and fails closed (`false`) once `validUntil` passes without a
+    fresh attestation, an unregistered asset, a wrong signer, or a
+    malformed/zero commitment.
+  - New `services/intelligence/src/attestations/`: `nonce-store.ts`
+    (duplicates `services/verifier/src/random.ts`'s one-line
+    `randomBytes32` rather than taking a cross-service dependency for it)
+    and `eligibility-signer.ts` (`EligibilitySigner`, a direct structural
+    port of `services/verifier/src/signer.ts`'s `AttestationSigner` —
+    same fail-closed "not configured" error instead of a silent no-op,
+    same `privateKeyToAccount` + `signTypedData` call shape). New env vars
+    `ELIGIBILITY_SIGNER_PRIVATE_KEY`/`ELIGIBILITY_CHAIN_ID`/
+    `ELIGIBILITY_REGISTRY_ADDRESS` (must be all-set or all-blank) plus
+    `ELIGIBILITY_ATTESTATION_TTL_SECONDS`.
+  - New route: `POST /api/assets/:assetId/publish-verdict` — recomputes
+    the eligibility verdict (reusing the same logic as
+    `GET .../eligibility`, factored into one `computeEligibilityVerdict`
+    helper) and signs it; 503 with a typed error code when the signer
+    isn't configured, never a silent/fake signature.
+  - Tests: 12 new in `packages/contracts/test/AliveEligibilityRegistry.test.ts`
+    (default-ineligible, valid-publish, wrong-signer, unregistered-asset,
+    zero-commitment rejection, 24h-lifetime cap, future-issued rejection,
+    the old-ELIGIBLE-cannot-resurrect-after-newer-RESTRICTED property,
+    nonce-reuse rejection, expiry, disabled-registry-asset,
+    signer-rotation) — found and fixed a real flaky-test bug in the
+    process: building attestations from wall-clock `Date.now()` instead of
+    the Hardhat chain's own timestamp caused intermittent
+    `AttestationIssuedInFuture` reverts under parallel test load; fixed by
+    reading `time.latest()` instead, verified stable across repeated runs.
+    10 new EIP-712 tests in `packages/shared/test/eligibility.test.ts`
+    (attestation schema, signing round-trip, `hashAssetId` cross-checked
+    against a well-known `keccak256("")` vector). 6 new in
+    `services/intelligence/test/eligibility-signer.test.ts` (unconfigured
+    fail-closed, missing-market-snapshot refusal, signature recovery,
+    24h validUntil cap, deterministic assetIdHash) plus 1 new route test
+    (`publish-verdict` 503-then-201). 308 tests passing repo-wide
+    (`shared` 62, `contracts` 66, `market-data` 8, `optimizer` 5,
+    `policy-engine` 6, `eligibility-engine` 11, `intelligence` 40,
+    `verifier` 29, `web` 43 — excluding the unrelated
+    `videos/alive-launch` port collision), stable across repeated parallel
+    runs. Full `pnpm -r typecheck` clean across all 10 buildable
+    workspaces.
+- **2026-08-15 — Milestone 6 (gate AliveVault by eligibility):** the
+  contract-level enforcement point — an AI-derived, deterministically
+  validated, signed verdict now directly determines whether a financial
+  action succeeds on chain, per the directive's central claim.
+  - `AliveVault.sol` gained a new immutable `eligibilityRegistry` (new,
+    required constructor parameter — every existing deployer/factory/test
+    call site updated, see below) and one additional check inside its
+    *existing* per-position enforcement loop in `_enforcePolicy`
+    (deliberately not a new loop or a new function, per the directive's
+    "extend minimally" instruction): for every position with a nonzero
+    resulting balance other than the vault's own cash asset,
+    `eligibilityRegistry.isEligible(assetId)` must be true or the whole
+    `executeStrategy` call reverts with `AssetNotEligible`, rolling back
+    every effect (matching the existing `AssetAllocationExceeded` revert's
+    behavior one line below it). Cash is exempt — it's the vault's own
+    numeraire, not an externally-verified RWA. The check only applies to
+    positions with `balance > 0`, so bringing a now-RESTRICTED asset's
+    holding down to exactly zero is never blocked — the vault's existing
+    "the owner always retains an exit" principle now explicitly extends to
+    the eligibility gate, not just to `withdraw`.
+  - `AliveVaultFactory.sol` gained the matching new immutable + constructor
+    parameter and passes it through to every vault it creates.
+  - `packages/contracts/scripts/deploy-rwa.ts`: deploys
+    `AliveEligibilityRegistry` and wires it into the factory/vault. New
+    `RWA_ELIGIBILITY_SIGNER` env var (falls back to Hardhat account 2
+    locally, matching the existing `RWA_STRATEGY_SIGNER` pattern). On
+    local networks only (never on a network where the script doesn't
+    control the signer's actual private key), it also publishes an
+    ELIGIBLE verdict for every demo asset so the local demo works without
+    a running `services/intelligence` — verified by actually running the
+    full script end to end against an ephemeral Hardhat network, not just
+    unit tests.
+  - Tests: 2 new scenarios directly in `AliveRwaProtocol.test.ts`'s
+    "AliveVault onchain enforcement" suite, proving the literal
+    hackathon demo flow the directive describes: (1) a strategy allocating
+    into `tGOLD` after ALIVE publishes a RESTRICTED verdict for it reverts
+    with `AssetNotEligible`, funds and nonce untouched; ALIVE then
+    publishes ELIGIBLE again and the *exact same* signed plan (nothing
+    about the vault's state changed, since the revert rolled everything
+    back) succeeds; (2) an asset marked RESTRICTED can still always be
+    fully exited to zero. Updating the 20 existing `deployRwaFixture`-based
+    tests required **zero assertion changes** — the fixture now
+    auto-publishes an ELIGIBLE verdict for every demo asset except the
+    deliberately-unapproved `tNOPE`, so pre-existing test behavior is
+    unchanged; this is itself evidence the gate is additive, not
+    disruptive. While writing the two new tests, found and fixed two of my
+    own test-economics bugs (an omitted resulting cash balance triggering
+    `PortfolioAssetMissing`, and a full-exit trade that unintentionally
+    violated the TREASURY class's 50% minimum — fixed by using an EQUITY
+    asset, whose class minimum is 0, for the exit-always-works test).
+    `packages/contracts`: 68/68 tests passing, stable across 3 repeated
+    runs. Full `pnpm -r typecheck` clean across all 10 buildable
+    workspaces; full cross-package test run green.
+- **2026-08-15 — Milestone 7 (frontend verification gateway
+  experience):** scoped deliberately to the highest-value real surface
+  rather than an 8-page visual overhaul — the directive's own priority
+  order ranks "killer demo UI" and "Attack Lab" additions below testnet
+  deployment (not yet reached) and above only "polish." A full landing
+  page / Three.js / markets / dashboard rewrite is explicitly deferred,
+  not attempted partially.
+  - `apps/web/lib/rwa-api.ts` gained typed, zod-validated clients for
+    every new intelligence route from milestones 2, 3, and 5:
+    `ingestAssetSource`, `listAssetSources`, `extractAssetPassport`,
+    `getAssetPassport`, `getAssetEligibility`, `publishAssetVerdict` —
+    following the file's existing `record()`/`text()` parsing pattern
+    exactly, no new conventions introduced.
+  - New `/verify` route (`components/rwa/verify-workspace.tsx`, added to
+    primary nav): the directive's core demo screen. Every one of its five
+    displayed stages (identifying token, reading documentation,
+    extracting facts, checking provenance, evaluating eligibility) is a
+    real sequential API call against `services/intelligence` — ingest,
+    extract, list-sources, then evaluate — not a timer-driven animation.
+    Shows the resulting ELIGIBLE/RESTRICTED/UNKNOWN verdict with typed
+    reason codes, hash bindings, and a working "Sign eligibility verdict"
+    button that calls the real `EligibilitySigner` and displays the
+    returned EIP-712 signature/digest. Explicitly labels what it does
+    *not* do yet: broadcasting that signature to
+    `AliveEligibilityRegistry.publishEligibility` on chain is not wired
+    into this screen (matches the app's existing "intentionally
+    unavailable" honesty pattern rather than faking it).
+  - `components/rwa/asset-passport-workspace.tsx`: added a live "ALIVE
+    {status}" badge in the hero (fetches `getAssetEligibility` alongside
+    the existing passport/market calls), a `Redemption` metric in the
+    economics grid reading the milestone-2 `redemption` fact, and a new
+    "What can it do?" section listing the verdict's typed reasons —
+    directly matching the directive's asset-passport mockup.
+  - **Verified live in a real browser**, not just typechecked: ran the
+    dev server against the real intelligence service and clicked through
+    `/verify` for `tTBILL-A` and `tGOLD` end to end (all five stages
+    completing with real hashes), signed a verdict and saw the real
+    signer address/digest, then confirmed `/assets/tgold` shows the
+    "ALIVE ELIGIBLE" badge and verdict reasons sourced from that same
+    evaluation. Found and fixed a real integration bug in the process:
+    `services/intelligence`'s default `INTELLIGENCE_ALLOWED_ORIGINS`
+    (`:3000`) didn't include the dev server's actual port (`:3001`, since
+    `:3000` was already occupied on this machine), so every browser
+    request failed CORS until the origin list was corrected — this is an
+    environment-configuration fact worth remembering for any future local
+    run, not a code defect. Also observed one non-reproducing transient
+    500 on the very first page load (Next.js dev-mode double-effect
+    invocation racing two concurrent eligibility evaluations); the next
+    three reloads were clean, so this is flagged for future attention
+    rather than chased further in this pass.
+  - `apps/web`: 43/43 pre-existing tests still passing unchanged;
+    typecheck clean. No new component-level tests were added for
+    `verify-workspace.tsx` in this pass (the live-browser verification
+    above stands in for it) — a real gap worth closing before relying on
+    this screen unattended.
+- **2026-08-16 — Milestone 8 (X Layer Testnet deployment + gateway proof):**
+  ALIVE is live on X Layer Testnet (chain 1952) and the verification gateway
+  is proven with real transactions. Full addresses, blocks, and transaction
+  hashes: [X Layer deployment](XLAYER_DEPLOYMENT.md).
+  - **Chain configuration verified against the live chain**, not assumed: the
+    testnet RPC reports `1952` and mainnet reports `196`, matching
+    `hardhat.config.ts` and `packages/shared/src/chains.ts`. This closes the
+    earlier audit's CLAIMED-BUT-UNVERIFIED note that testnet might really be
+    `195`.
+  - Six core contracts deployed, each recorded only after its receipt
+    reported success and `eth_getCode` confirmed runtime bytecode. Demo-only
+    infrastructure (router, faucet, 8 demo tokens) is written to a separate
+    `demoOnlyContracts` section so it cannot be read as production RWA
+    infrastructure.
+  - Proven sequence on testnet: `ELIGIBLE` -> gated deposit **CONFIRMED**;
+    NAV aged to 31h against the 24h bound -> `RESTRICTED (NAV_STALE)` and
+    `isEligible = false` -> the same deposit **REJECTED** by the contract's
+    own `AssetNotEligible` error; NAV restored -> `ELIGIBLE` -> deposit
+    **CONFIRMED** again. The vault holds 200 tTBILL; the rejected deposit
+    moved nothing.
+  - **Honest limitation on the rejected step:** the client simulates before
+    broadcasting, so a guaranteed revert is surfaced as contract truth rather
+    than burning gas. There is no mined reverted-transaction hash for it and
+    none is claimed. The restriction is independently verifiable from
+    `isEligible` returning `false` at that block, and the same revert is
+    covered by contract tests.
+  - New tooling: `check-xlayer.ts` (live preflight), `init-deployer.ts`
+    (generates keys into the gitignored `.env`; never prints or commits
+    them), `sync-web-env.ts` (generates the frontend env from a deployment
+    record, refusing to emit blanks), and `prove-gateway-flow.ts` (drives and
+    records the proof).
+  - Bugs found by actually deploying, all fixed: `deploy-rwa.ts` tried to
+    sign seed verdicts with a key it does not hold whenever an external
+    eligibility signer was configured (**this failed the first testnet
+    attempt**); a market snapshot could predate its own quote under clock
+    skew (invisible to tests, which all used a frozen clock); and a read
+    issued immediately after a receipt could be served by a load-balanced
+    public RPC node that had not yet indexed that block, returning
+    pre-publish state.
+  - 274 tests passing repo-wide, `pnpm -r typecheck` clean across all 10
+    buildable workspaces.
+- **2026-08-17 — Milestone 9 (persistent Chainlink monitoring worker):** the
+  `MarketMonitor` class from Milestone 8's groundwork now actually runs
+  inside `services/intelligence` as a background worker, not just a tested
+  class.
+  - **Found and fixed a real wiring bug first:** `MARKET_DATA_PROVIDER=chainlink`
+    was routing to the legacy paid Data Streams provider, not the free
+    `ChainlinkDataFeedProvider`/`CompositeMarketDataProvider` built earlier in
+    the session -- `.env.example`'s own comment already documented the free
+    behavior the code didn't deliver. Renamed the paid path to
+    `chainlink-streams` and made `chainlink` mean the free on-chain read.
+  - New `MonitorService` (`services/intelligence/src/monitoring/service.ts`):
+    idempotent `start()`/`stop()` (repeated `start()` never creates a second
+    loop), an `AbortController`-driven loop that finishes its current cycle
+    before stopping, per-asset and aggregate health tracking
+    (`ACTIVE`/`DEGRADED`/`ERROR`/`DISABLED`), and a `published_verdicts`
+    table (new `IntelligenceRepository` migration v5) so publish comparisons
+    survive a restart without an extra chain read. Signs a publish decision
+    into an EIP-712 attestation via the existing `EligibilitySigner` when one
+    is configured; never holds or uses a key to broadcast a transaction
+    itself, preserving Milestone 5's decide/broadcast separation.
+  - `MARKET_MONITOR_ENABLED` (config, default false) and a 30-second floor on
+    `MARKET_MONITOR_INTERVAL_SECONDS` (was unbounded). Wired into `index.ts`'s
+    `start()`: begins after the app and its `onClose` hook exist, registers
+    every Chainlink-backed asset by default, and stops on `SIGINT`/`SIGTERM`
+    before the database closes.
+  - Two new endpoints: `GET /api/monitor/status`, `GET /api/assets/:assetId/monitor`.
+  - 12 new tests (`test/monitor-service.test.ts`, fake timers): start/stop,
+    no duplicate loop on repeated `start()`, interval respected, DATA_UNAVAILABLE
+    never reuses a previous value, publish-on-transition / silent-on-steady-state,
+    survives a transient provider failure, DEGRADED vs ERROR health across
+    multi-asset failures, observation tie-breaking. 62/62 `services/intelligence`
+    tests passing; `pnpm -r typecheck` and `pnpm -r test` clean repo-wide.
+  - **Real run, not just unit tests:** started the service against live
+    Ethereum mainnet Chainlink (`MARKET_DATA_PROVIDER=chainlink`,
+    `MARKET_MONITOR_ENABLED=true`, 30s local interval) and let it complete
+    two full cycles against `ttbill-b`'s USTB NAV feed. `GET /api/monitor/status`
+    reported `health: ACTIVE`, `successfulReads: 2`, `failedReads: 0`.
+    Persisted-database evidence: two `market_observations` rows for
+    `ttbill-b`, 30 seconds apart, same NAV value (`11.177748`, expected --
+    NAVLink updates on a business-day cycle, not every poll), **different**
+    block numbers (`25771101` -> `25771104`, confirming a fresh read each
+    cycle) and distinct `observed_at` timestamps, while `source_updated_at`
+    stayed the Chainlink feed's own unchanged timestamp throughout -- the two
+    clocks visibly do not move together.
+  - Asset Passport UI (`apps/web/components/rwa/asset-passport-workspace.tsx`):
+    a "Live Chainlink monitoring" section renders only when a quote carries
+    `onchainSource` (structurally impossible for demo assets per the shared
+    schema), showing feed, value, **Data source network: Ethereum** next to
+    **Enforcement network: X Layer** as two explicit, separately labelled
+    fields, Chainlink-updated and ALIVE-last-checked as two distinct relative
+    timestamps, monitoring/freshness/eligibility, and an expandable source
+    provenance panel (contract address, chain ID, round ID, source block,
+    decimals, both timestamps, an Etherscan link). Verified live in-browser
+    against the running service: `ttbill-b` renders the full live section;
+    `ttbill-a` (Attack Lab) renders no live section at all and its quote
+    stays labelled `ALIVE_DEMO_MARKET` / `DEMO DATA` throughout.
+  - Not done in this milestone, by design: actually broadcasting a signed
+    verdict onchain from the monitor loop (decide-and-sign is wired; sending
+    the transaction is left to a separate authorized step, matching the
+    existing architecture) and Proof 2 (real AI document extraction), which
+    is the next milestone.
+
+- **2026-08-17 — Milestone 10 (real AI document extraction via GroqCloud):**
+  proves ALIVE using a real hosted AI model against a real RWA issuer
+  document, not `DEMO_FIXTURE`. Full writeup: [AI.md](AI.md).
+  - New `groq` provider (`services/intelligence/src/llm.ts`), reusing the
+    existing OpenAI-compatible transport rather than a separate AI
+    subsystem -- Groq exposes an OpenAI-compatible endpoint, so only the
+    provider label, default base URL, and Groq-specific
+    `reasoning_effort`/`reasoning_format` fields are provider-specific.
+    Model: `openai/gpt-oss-20b`, verified against Groq's current docs
+    (131K context, strict JSON-schema structured output via constrained
+    decoding). `GROQ_API_KEY` is read server-side only, with `LLM_API_KEY`
+    as a generic fallback; never logged, never in a response body.
+  - **Found and fixed a real secret-exposure risk before it reached git**:
+    the directive text arrived with a live Groq key already pasted into
+    `.env.example` (a file the repo documents as safe to commit). Moved it
+    to the gitignored `.env`, restored `.env.example` to blank, verified
+    with a full-repo grep that the key exists nowhere else.
+  - Extended `ExtractedFactsSchema` / `RwaAssetSchema` /
+    `AssetProvenanceFieldSchema` with `jurisdiction`, `eligibleInvestors`,
+    `custody`, `documentEffectiveDate`, plus wiring `productName`/
+    `assetClass`/`fees`/`marketHours`/`restrictions` into the AI-extractable
+    fact set (previously only `issuerName`/`underlying`/`redemption`). Every
+    field keeps the existing citation-provenance contract.
+  - New `strict-schema.ts`: builds Groq's required-but-nullable
+    `{value, sourceIds}` wire schema (a good fit for "UNKNOWN over a guess"
+    -- strict mode has no optional-key concept, only nullable values) and
+    converts the response back into the same candidate shape the non-strict
+    prompt path already produces, so `validateExtractedFacts` stays the
+    single trust boundary regardless of provider. Two empirical fixes
+    along the way: gpt-oss's hidden reasoning needs `reasoning_effort: low`
+    + `reasoning_format: hidden` + an explicit `max_completion_tokens`
+    bounded well under Groq's 8,000-tokens/minute free-tier ceiling, or
+    responses truncate before the closing JSON; and an earlier
+    asymmetric schema shape for `restrictions` measurably confused the
+    model into mixing conventions, fixed by wrapping it like every other
+    field.
+    Ollama's `format` field was also extended to accept the same schema
+    (Ollama's own structured-output mechanism), so the fallback path
+    benefits too, without adding a second schema representation.
+  - Two real, current, official Superstate/Invesco USTB documents ingested
+    (`docs.superstate.com/.../invesco-ustb`, `superstate.com/assets/ustb`)
+    as verbatim page text via the existing ingestion pipeline (normalize,
+    hash, store, chunk) -- the real-world analogue of `ttbill-b`, ALIVE's
+    live Chainlink showcase asset. Not a fixture.
+  - Retry-then-fail semantics unchanged in spirit, extended for the new
+    schema: one retry with the validation error fed back; a second failure
+    falls back to the deterministic reader, correctly labelled
+    `DETERMINISTIC_FALLBACK` -- **never** silently shown as `AI`. A test
+    asserts this explicitly for both a fake-source-ID response and a
+    transport failure.
+  - Extraction caching by document hash: `POST /api/assets/:assetId/extract`
+    reuses the last successful `AI`-mode run when source hashes are
+    unchanged (HTTP 200 + a warning) rather than re-calling a rate-limited
+    provider; a changed hash forces re-extraction (HTTP 201). New
+    repository migration v6 stores per-run fact/citation/rejection counts.
+  - New `GET /api/assets/:assetId/extraction` (mode, live, provider, model,
+    source count, facts extracted/cited, unknown fields, unsupported claims
+    rejected, schema/source validation, completion time) and a
+    "Document intelligence" section on the Asset Passport, structurally
+    separate from the Chainlink "Live financial data" section from
+    Milestone 9 -- confirmed neither can misrepresent the other (`ttbill-a`
+    shows neither section; a demo-mode run cannot show `AI · live`).
+  - 11 new tests (`groq-extraction.test.ts`): missing-key handled safely
+    with no key ever surfaced, valid strict response accepted and labelled
+    `AI`/`groq`, hallucination test (unsupported fact -> `UNKNOWN`, never
+    invented), fake-source-ID rejected even in an otherwise well-formed
+    response, malformed/failed response retries once then fails cleanly
+    into `DETERMINISTIC_FALLBACK`, extraction-caching by document hash.
+    73/73 `services/intelligence` tests passing; 200+ tests passing
+    repo-wide (excluding the pre-existing, unrelated `videos/alive-launch`
+    Remotion/port-3000 issue noted in Milestone 1); `pnpm -r typecheck`
+    clean across all 10 buildable workspaces; `pnpm -r build` clean.
+  - **Real run, not just unit tests, with an honest limitation.** GroqCloud
+    was reached and used successfully multiple times while building this:
+    a real strict-schema probe returned a correctly-cited extraction, and a
+    full-size request against the real two-document source set returned a
+    `failed_generation` payload showing the model had genuinely read and
+    extracted real facts (issuer, custody, jurisdiction, eligible
+    investors, management fee, redemption terms) from the real documents --
+    the failure at that point was ALIVE's own schema-shape bug, since
+    fixed. Partway through fixing it, every further request to Groq's API
+    -- from this code and from plain `curl`, with no custom headers --
+    began returning a Cloudflare-edge `403 Access denied`, with no
+    Groq-shaped error body: a network/WAF-level block on this sandbox's
+    shared egress IP, not an application rejection, and it did not clear
+    across several cooldowns within the session. The Ollama fallback was
+    then exercised for real against the real documents: `llama3.2:1b`
+    completed but failed schema validation twice (a 1B model without
+    constrained decoding is genuinely unreliable at 12-field structured
+    extraction); `llama3.2:3b` timed out twice on this CPU-only hardware.
+    Both produced the correct, honestly-labelled `DETERMINISTIC_FALLBACK`
+    result -- proof the safety net holds under real failure, not proof of
+    a live AI extraction. Full detail, including reproduction steps, in
+    [AI.md](AI.md)'s "A network-level limitation encountered during this
+    build" section.
+  - Cost: **$0**. No payment method entered, no plan upgraded. New
+    `pnpm --filter @alive/intelligence probe:groq` script for reproducing
+    the Groq connectivity check once network access is available.
+
+## Pivot status
+
+ALIVE is being rebuilt from a Proof-of-Physical-State protocol into an
+AI-native intelligence and policy layer for tokenized real-world assets.
+
+The V2 target chain is:
+
+```text
+user mandate
+-> candidate AI interpretation
+-> strict deterministic validation
+-> canonical policy hash
+-> sourced market snapshot
+-> deterministic portfolio proposal and simulation
+-> user approval or bounded signer authorization
+-> smart-contract policy enforcement
+-> execution or rejection
+-> drift monitoring and compliant rebalance
+```
+
+This pivot is **not complete**. There is no complete V2 browser-to-contract
+flow, no V2 X Layer deployment, no public V2 transaction evidence, and no claim
+that the current frontend, AI compiler, optimizer, market data, contracts, or
+Attack Lab satisfy the full acceptance criteria.
+
+The stable V1 implementation remains reproducible from the archive tag. Its
+factual audit is retained unchanged under
+[Historical V1 physical-state audit](#historical-v1-physical-state-audit).
+
+## Pivot checkpoint and Git state
+
+| Item           | Current evidence                                                              |
+| -------------- | ----------------------------------------------------------------------------- |
+| Pivot date     | 2026-08-14                                                                    |
+| Old thesis     | Camera-derived Proof of Physical State for conditional settlement             |
+| New thesis     | Natural-language RWA mandates compiled into deterministic, enforceable policy |
+| Archive tag    | `v0.8.1-physical-state-archive` -> `bf449f6`                                  |
+| Active branch  | `feat/rwa-intelligence-pivot`                                                 |
+| Branch point   | `bf449f6` (`chore: archive physical-state product experience`)                |
+| V2 release tag | None; `v0.9.0-rwa-pivot` must remain absent until P1 is stable                |
+| V2 deployment  | None recorded locally as a stable export or on X Layer Testnet                |
+
+The branch and archive tag already existed before this documentation/CI update.
+Current pivot work is uncommitted and shared across parallel implementation
+tasks. Scoped passing checks are recorded below; integrations without runtime
+evidence remain `PARTIAL`, `IN PROGRESS`, or `NOT STARTED`.
+
+## Reused, adapted, and retired components
+
+| Component                                        | Pivot treatment              | Current boundary                                                        |
+| ------------------------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
+| Next.js/TypeScript/pnpm monorepo                 | Reused                       | Active foundation; V2 route acceptance pending                          |
+| wagmi, viem, wallet transaction UX               | Reused                       | Must be rebound to policy/vault state                                   |
+| Shared Zod/canonical hashing                     | Adapted                      | V2 schemas/hashes pass 37 shared tests; app integration remains         |
+| EIP-712/replay patterns                          | Adapted                      | V2 bounded strategies pass focused TypeScript/Solidity tests            |
+| Hardhat tests/deployment scripts                 | Reused                       | V2 contracts compile, pass 20 tests, and deploy to ephemeral local EVM  |
+| Three.js, motion, responsive fallbacks           | Adapted                      | V2 capital/policy narrative not yet accepted                            |
+| Remotion foundation                              | Adapted later                | Existing composition is V1 narrative only                               |
+| Camera registration, physical matching, OCR/CLIP | Retired from primary product | Preserved at archive tag; legacy source still present during transition |
+| Physical liveness Attack Lab                     | Retired from primary product | Must be replaced by policy/freshness/replay attacks                     |
+| Physical escrow                                  | Replaced                     | V2 user-owned policy vault works locally; app/public integration absent |
+
+## V2 capability ledger
+
+Status vocabulary is evidence-based: `WORKING`, `PARTIAL`, `IN PROGRESS`, `NOT
+STARTED`, or `BLOCKED`.
+
+| Capability                                              | Status          | Evidence and missing gate                                                                                                                   |
+| ------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical RWA and provenance schemas                    | WORKING LOCALLY | Shared build/typecheck and 37 tests pass; the eight assets remain synthetic demo data and UI is incomplete                                  |
+| Policy schema, semantic validation, normalization, hash | WORKING LOCALLY | Shared hash/validation plus five policy-engine tests pass; approval UI/onchain parity integration remains                                   |
+| Deterministic mandate fallback                          | WORKING LOCALLY | Bounded parser passes five tests and labels itself non-AI; it is not general language understanding                                         |
+| LLM provider abstraction                                | PARTIAL         | Ollama, OpenAI-compatible, and disabled modes compile and the strict candidate boundary is tested; no live-model acceptance run is recorded |
+| Asset-passport extraction with citations                | NOT STARTED     | V1 physical passport is not V2 asset intelligence                                                                                           |
+| Demo market-data provider                               | WORKING LOCALLY | Typecheck/build and eight package tests pass; values remain synthetic demo data and frontend integration is pending                         |
+| Chainlink Data Streams adapter                          | PARTIAL         | Normalization, configuration, and fail-closed credential paths are tested with fixtures; no live feed call is recorded                      |
+| Deterministic portfolio optimizer                       | WORKING LOCALLY | Typecheck/build and five tests pass for feasible, infeasible, exclusion, drift, and rebalance cases; no contract execution proof            |
+| Deterministic risk methodology                          | NOT STARTED     | RWA risk decomposition and published methodology are not complete                                                                           |
+| Drift detection and rebalance proposal                  | WORKING LOCALLY | Optimizer and Fastify integration tests exercise drift/rebalance logic; browser, wallet, and onchain execution remain absent                |
+| AliveRwaAssetRegistry                                   | WORKING LOCALLY | Owner-reviewed approved RWA records and status pass focused tests; unaudited/not deployed                                                   |
+| AlivePolicyRegistry                                     | WORKING LOCALLY | Immutable owner/vault policy versions and enforceable V1 fields pass focused tests; not deployed                                            |
+| AliveStrategyVerifier                                   | WORKING LOCALLY | EIP-712 binding, expiry/freshness, signer, nonce, and replay checks pass focused tests; not deployed                                        |
+| AliveVault                                              | WORKING LOCALLY | Custody, bounded router execution, and post-balance policy checks pass focused tests; not deployed                                          |
+| MockRwaToken and MockRwaRouter                          | WORKING LOCALLY | Test-only six-decimal tokens and admin-priced synthetic router; not a DEX or oracle                                                         |
+| V2 web routes and primary navigation                    | NOT STARTED     | Existing active routes still primarily describe V1                                                                                          |
+| Policy Attack Lab                                       | NOT STARTED     | No contract-backed V2 attack UI or underlying scenario suite is accepted                                                                    |
+| V2 Three.js policy universe                             | NOT STARTED     | Existing physical-device scene does not count                                                                                               |
+| V2 Remotion launch composition                          | NOT STARTED     | Existing physical-state composition does not count                                                                                          |
+| X Layer V2 deployment                                   | NOT STARTED     | No V2 address or transaction hash exists                                                                                                    |
+| Complete mandate-to-rebalance demo                      | NOT STARTED     | No complete local or public evidence chain exists                                                                                           |
+
+## CI status and frozen-install correction
+
+GitHub Actions is still **red** as of the latest public runs inspected on
+2026-08-14:
+
+- push run `31845477007` at `bf449f6` failed during
+  `pnpm install --frozen-lockfile`;
+- pull-request run `31845479653` at the same source failed at the same gate;
+- subsequent lint, typecheck, tests, build, and smoke steps were skipped.
+
+The public run metadata exposes the failed step and exit code, but not the pnpm
+stderr; downloading the log requires repository administration rights.
+Therefore the exact historical failure mechanism is **not conclusively
+proven** from public evidence.
+
+The strongest source-level configuration defect found was that reviewed native
+builders were split between pnpm 11's `allowBuilds`, a deprecated root
+`onlyBuiltDependencies` list, and a package-local `onlyBuiltDependencies`
+list. That creates an ambiguous strict-install policy and leaves several
+builders outside the root `allowBuilds` map. The minimal configuration
+correction consolidates all reviewed builders in one root map and removes the
+two legacy lists.
+
+The pivot changes consolidate all eight reviewed builders into one map:
+
+```yaml
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  keccak: true
+  onnxruntime-node: true
+  protobufjs: true
+  secp256k1: true
+  sharp: true
+  tesseract.js: true
+```
+
+An existing-tree Windows run of `pnpm install --frozen-lockfile` and a later
+`CI=true pnpm install --frozen-lockfile --lockfile-only` run passed with pnpm
+`11.1.2`. The pre-pivot snapshot's lockfile-only install also passes when
+scripts are disabled, so the lifecycle cleanup must not be presented as a
+proven explanation for the historical failure. None of these checks proves a
+fresh GitHub Linux install is fixed. CI remains red until this change is pushed
+and a new Actions run reaches every gate.
+
+The workflow now names and runs install, lint, typecheck, workspace tests, an
+explicit contract-test release gate, production build, and the retained V1
+integration regression. It also runs on direct pushes to the pivot branch. No
+workflow result exists for these uncommitted changes yet.
+
+## Fresh V2 policy-foundation results
+
+The following scoped checks completed on 2026-08-14:
+
+| Package                | Result                                                             |
+| ---------------------- | ------------------------------------------------------------------ |
+| `@alive/shared`        | Typecheck passed; build passed; 37/37 tests across 10 files passed |
+| `@alive/policy-engine` | Typecheck passed; build passed; 5/5 tests passed                   |
+| `@alive/optimizer`     | Typecheck passed; build passed; 5/5 tests passed                   |
+| `@alive/market-data`   | Typecheck passed; build passed; 8/8 tests passed                   |
+| `@alive/intelligence`  | Typecheck passed; build passed; 4/4 tests passed                   |
+
+The shared artifacts include strict RWA/provenance, policy, market-snapshot, and
+strategy schemas/hashes; an eight-asset synthetic catalog; an eight-quote demo
+snapshot; and a policy-hash parity fixture. The intelligence service includes
+Ollama, OpenAI-compatible, and disabled provider modes plus a 12-table SQLite
+V1 migration. Its integration test runs compile, optimize, a rejected 100%
+single-asset allocation, and rebalance through real Fastify application logic.
+The catalog has no real token addresses, the quotes are not live, the test does
+not submit a contract transaction, and the fallback parser is explicitly
+non-AI.
+
+## Fresh V2 contract results
+
+Contract verification completed on 2026-08-14:
+
+| Check                                      | Result                                                 |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `pnpm --filter @alive/contracts compile`   | Passed; nothing remained to compile on the final rerun |
+| `pnpm --filter @alive/contracts typecheck` | Passed                                                 |
+| RWA-focused Hardhat file                   | 20/20 passed in 28 seconds with `--no-compile`         |
+| Preserved V1 Hardhat file                  | 31/31 passed in 23 seconds with `--no-compile`         |
+| Current contract-test inventory            | 51 passing across the two completed file-level runs    |
+| Local `deploy-rwa.ts` smoke                | Passed; ephemeral chain-31337 export was not retained  |
+| Public V2 deployment                       | None                                                   |
+
+The latest combined wrapper did not finish within its 300-second limit while
+other workspace checks were contending for CPU. It produced no test failure.
+The 51 figure is the sum of the two separately completed Hardhat file runs, not
+a claim that a final one-command combined run completed after the last parity
+case was added.
+
+Production bytecode sizes from the compiled artifacts were 2,352 bytes for
+`AliveRwaAssetRegistry`, 6,740 for `AlivePolicyRegistry`, 4,720 for
+`AliveStrategyVerifier`, and 13,537 for `AliveVault`. The test-only mock router
+was 3,208 bytes. These sizes are below EIP-170 but are not an audit or gas
+scalability result.
+
+## Pivot milestone ledger
+
+| Milestone | Scope                                        | Status      | Release gate                                                                               |
+| --------- | -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| P1        | Pivot architecture and archive               | IN PROGRESS | Docs/CI/current app separation verified; then `v0.9.0-rwa-pivot` may be considered         |
+| P2        | Policy compiler, schema, hash, UI            | PARTIAL     | Schema/hash/fallback tests pass; real-model acceptance and approval UI remain              |
+| P3        | Catalog, provenance, intelligence, passports | PARTIAL     | Strict eight-asset demo catalog exists; extraction/passport UI remain                      |
+| P4        | Optimizer and risk engine                    | PARTIAL     | Five optimizer tests pass; complete published risk methodology and app/onchain flow remain |
+| P5        | Policy contracts and vault                   | PARTIAL     | 20 V2 tests and local deploy pass; app integration, audit, and public evidence remain      |
+| P6        | Mock RWA execution                           | PARTIAL     | Mock tokens/router work locally; complete application execution flow remains               |
+| P7        | Policy Attack Lab                            | NOT STARTED | Every UI attack backed by a real automated rejection test                                  |
+| P8        | X Layer Testnet end to end                   | NOT STARTED | Verified addresses and positive/negative/rebalance receipts                                |
+| P9        | Frontend, Three.js, Remotion rebuild         | NOT STARTED | Accepted V2 routes, fallbacks, performance, and new video                                  |
+| P10       | Hackathon release                            | NOT STARTED | Public causal chain, green CI, matching docs/deployment/tag                                |
+
+See [PIVOT.md](PIVOT.md) for the product decision and detailed reuse map,
+[ARCHITECTURE.md](ARCHITECTURE.md) for target boundaries, and
+[SECURITY.md](SECURITY.md) for the new threat model.
+
+---
+
+# Historical V1 physical-state audit
+
+Last audited: 2026-08-12
+
+Audited source tip: `346f06f` on `main`. This ledger update is documentation-only and may appear at a later commit.
+
+This document separates implemented source, fresh local automation, prior browser acceptance, current process state, and public-chain state. A file existing is not proof that a physical camera, verifier, wallet, and public chain completed one flow.
+
+## Executive status
+
+ALIVE has a real local positive-path implementation:
+
+```text
+authenticated registration
+-> six image captures
+-> deterministic fingerprint
+-> local onchain registration
+-> escrow funding
+-> four ordered three-frame challenges
+-> computed scores
+-> EIP-712 attestation
+-> contract validation
+-> exact token payout
+```
+
+The fresh deterministic smoke passed this chain and ended in `Released`. That smoke uses runtime-generated patterned JPEGs, Fastify `app.inject`, in-memory persistence, and an in-process Hardhat chain. It does not prove physical-webcam capture, OCR, CLIP inference, wrong-object rejection, wallet-extension settlement, or X Layer settlement.
+
+The public protocol is incomplete. Only `AliveAssetRegistry` is confirmed on X Layer Testnet. No public Attestation Registry, Escrow, test token, consumer authorization, negative case, or settlement exists.
+
+At audit time:
+
+- ports `3000`, `4100`, and `8545` were not listening;
+- no active root `.env`, `apps/web/.env.local`, or `packages/contracts/.env` existed;
+- the local `31337.json` export and SQLite files existed only as ignored, stale local state;
+- `main` matched `origin/main` and the worktree was clean before this documentation update.
+
+Therefore ALIVE is implemented and locally testable, but it is not currently running or configured as a live demo.
+
+## Fresh acceptance results
+
+### Local repository gate
+
+`pnpm check` passed on 2026-08-12 in 764.7 seconds.
+
+| Check                            | Fresh result                                                    |
+| -------------------------------- | --------------------------------------------------------------- |
+| Lint                             | Passed for shared, video, web, and verifier packages            |
+| Typecheck                        | Passed for contracts, shared, video, web, and verifier packages |
+| Contract tests                   | 31/31 passed                                                    |
+| Shared tests                     | 17/17 passed                                                    |
+| Verifier tests                   | 29/29 passed                                                    |
+| Web tests                        | 31/31 passed                                                    |
+| Total unit/integration tests     | 108 passed                                                      |
+| Solidity build                   | Passed; nothing remained to compile after the test compile      |
+| Shared/verifier builds           | Passed                                                          |
+| Remotion composition enumeration | Passed; `AliveLaunch`, 1,200 frames, 30 fps, 1,920 by 1,080     |
+| Next.js production build         | Passed; 12 routes generated                                     |
+
+The Next.js build reported a 115 kB first-load bundle for `/`; wallet-heavy routes were 229-266 kB. Production compilation took 79 seconds in this Windows workspace.
+
+### Local protocol smoke
+
+`pnpm smoke:local` passed in 67.6 seconds with:
+
+- identity: `9,766` BPS;
+- liveness: `9,704` BPS;
+- integrity: `9,770` BPS;
+- minimum three-frame burst motion: `0.8096751814469945`;
+- attestation digest: `0x024c88c9c021ffcdedb7f4c923c4549ff71d6bca2bc8a0d111759f0f15f7d94b`;
+- exact seller payout;
+- globally consumed session;
+- final escrow state: `Released`.
+
+This is genuine integration evidence for the generated-media local positive path, not an accuracy or physical-authenticity claim.
+
+### Browser evidence at the audited source tip
+
+Earlier clean-browser acceptance for `346f06f` found:
+
+- no hydration, React runtime, Wagmi-provider, or console errors on `/` and `/assets/register`;
+- byte-for-byte identical server/client fingerprint coordinates;
+- no desktop horizontal overflow;
+- route-local wallet controls on `/dashboard` and `/escrow/create`;
+- a generated Y4M camera completing six registration captures and fingerprinting;
+- a generated replay reaching analysis and failing closed at identity `9,950`, liveness `6,203`, and integrity `9,966` BPS with `LIVENESS_BELOW_THRESHOLD`, `REPLAY_RISK_HIGH`, and `MOTION_INSUFFICIENT`;
+- an unconfigured signer returning `503`, with the UI honestly withholding an attestation.
+
+No tracked Playwright or Cypress harness reproduces this browser acceptance. No real physical webcam was used.
+
+### GitHub Actions
+
+Current GitHub Actions are red even though the local gate is green:
+
+- push run `31591448734` failed at `pnpm install --frozen-lockfile`;
+- pull-request run `31591452741` failed at the same step;
+- lint, typecheck, tests, build, and smoke were skipped in both runs;
+- the unauthenticated GitHub API exposes only exit code 1, so the exact Linux installer error is not verified;
+- `CI=true pnpm install --frozen-lockfile --lockfile-only` passes locally.
+
+Do not describe CI as green until the Linux install failure is reproduced and fixed.
+
+## Implemented feature ledger
+
+All feature work below is integrated into `main`. Historical feature commits were developed on `feat/core-mvp` unless noted.
+
+| Feature                                   | Status                                                    | Primary files                                                                                                           | Semantic commits                | Current tests/evidence                                                          |
+| ----------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| Monorepo and shared protocol types        | Working                                                   | `package.json`, `pnpm-workspace.yaml`, `packages/shared`                                                                | `eccc7ae`                       | 17 shared tests; root lint/typecheck/build                                      |
+| Owner-bound asset registry                | Working locally; public registry only                     | `packages/contracts/contracts/AliveAssetRegistry.sol`, `packages/shared/src/asset-id.ts`                                | `1937974`, `0d88e99`            | 5 contract tests plus shared/Solidity parity vector                             |
+| Attestation registry                      | Working locally; not public                               | `packages/contracts/contracts/AliveAttestationRegistry.sol`, `packages/shared/src/attestation.ts`                       | `1937974`, `16c1606`            | 9 contract tests plus shared signature test                                     |
+| Escrow and recovery states                | Working locally; not public                               | `packages/contracts/contracts/AliveEscrow.sol`                                                                          | `1937974`, `2e69922`, `6803580` | 16 contract tests and positive local smoke                                      |
+| Six-decimal test token                    | Working locally; not public                               | `packages/contracts/contracts/test/MockUSDT.sol`                                                                        | `1937974`                       | 1 contract test; test-only faucet and owner mint                                |
+| Deterministic visual features and scoring | Working but uncalibrated                                  | `services/verifier/src/vision`, `packages/shared/src/scoring.ts`                                                        | `8e3f0ba`                       | 4 image tests, 2 OCR utility tests, 3 scoring tests                             |
+| Wallet-authenticated verifier resources   | Working                                                   | `services/verifier/src/auth.ts`, `services/verifier/src/db`, `packages/shared/src/authorization.ts`                     | `2a2d23b`, `0d88e99`            | 9 verifier authorization tests, 4 shared authorization tests, web adapter tests |
+| Three-frame active sessions               | Working heuristically                                     | `services/verifier/src/random.ts`, `services/verifier/src/vision/matching.ts`, `apps/web/components/camera-capture.tsx` | `29331d9`, `0378ab5`            | 6 session tests, image-motion tests, generated-camera acceptance                |
+| Server-only EIP-712 signing               | Working when configured                                   | `services/verifier/src/signer.ts`, `packages/shared/src/attestation.ts`                                                 | `8e3f0ba`, `16c1606`            | signer recovery, exact field parity, expiry/context/fingerprint/replay tests    |
+| Local generated-media settlement pipeline | Working                                                   | `services/verifier/scripts/local-protocol-smoke.mjs`                                                                    | `718154e`                       | fresh `pnpm smoke:local` pass                                                   |
+| Next.js product surface                   | Working as UI; contract actions require configuration     | `apps/web/app`, `apps/web/components`, `apps/web/lib`                                                                   | `70b898e`, `0378ab5`            | 31 web tests, production build, prior browser acceptance                        |
+| Attack Lab                                | Working as manual guidance; attack outcome not guaranteed | `apps/web/app/attack-lab`, `apps/web/components/attack-lab-workspace.tsx`                                               | `70b898e`, `0378ab5`            | generated replay rejection; contract negative tests                             |
+| Three.js visual system                    | Working only in production and as decoration              | `apps/web/components/device-scene.tsx`, `apps/web/components/hero-device.tsx`                                           | `70b898e`, `346f06f`            | production build, non-WebGL/reduced-motion paths, no Canvas automation          |
+| Presentation console                      | Partial                                                   | `apps/web/app/demo`, `apps/web/components/demo-console.tsx`                                                             | `70b898e`                       | browser-local state only; settlement readiness remains fixed `false`            |
+| Launch video                              | Working source and local render                           | `videos/alive-launch`                                                                                                   | `12b6515`, `ad900f6`            | composition enumeration passed; local ignored MP4 verified with `ffprobe`       |
+| Hydration and startup hardening           | Working                                                   | `apps/web/lib/fingerprint.ts`, route provider layouts, local Geist fonts                                                | `1d89510`, `346f06f`            | hydration regressions, clean browser acceptance, build/lint/typecheck           |
+
+## Frontend capability status
+
+| Surface                      | Status                             | Current boundary                                                                                                                                                                                         |
+| ---------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/` landing page             | Working                            | Complete scanner-led story and deterministic evidence visualization. The 3D scene is replaced by a static still in development.                                                                          |
+| Three.js                     | Partial                            | Procedural laptop, point cloud, scan plane, lighting, reduced-motion/non-WebGL fallback. Decorative and not driven by captured asset data. Production-only lazy load.                                    |
+| Camera flow                  | Partial                            | Real `getUserMedia`, camera switching, JPEG capture, focus/exposure checks, exact three-frame bursts. Generated-camera acceptance only; no real-webcam QA or automated camera harness.                   |
+| `/assets/register`           | Partial overall                    | Eight-stage, six-view authenticated offchain registration works when services run. Onchain submission works locally when all public addresses are configured; it is disabled in the current environment. |
+| `/assets/[assetId]` passport | Partial                            | Verifier record plus browser-local transaction/history fallback. It does not read a durable onchain inspection timeline.                                                                                 |
+| `/verify/[assetId]`          | Working locally when configured    | Owner authorization, random challenges, analysis, signed-proof validation, and optional settlement are wired. No current running verifier or signer.                                                     |
+| `/escrow/create`             | Partial/currently disabled         | Real wallet transaction and event decoding. Assumes six token decimals for arbitrary token input.                                                                                                        |
+| `/escrow/[escrowId]`         | Partial/currently disabled         | Reads state; approves, funds, cancels, refunds, disputes, verifies, and settles. No recorded wallet-extension settlement receipt.                                                                        |
+| `/attack-lab`                | Partial                            | Reuses the real verifier; labels are not sent to scoring. Replay/substitution/expiry are presenter procedures, not deterministic automated attacks.                                                      |
+| `/protocol`                  | Working visualization              | Seven-node explanatory trust map; static content, not live telemetry.                                                                                                                                    |
+| `/dashboard`                 | Partial                            | Merges verifier assets with browser `localStorage`; verification history is not durable or protocol-wide.                                                                                                |
+| `/demo`                      | Partial                            | Five-beat presentation shell and links to real routes. It does not seed fake results; settlement readiness is not chain-derived.                                                                         |
+| `/dev/design-system`         | Working                            | Visual inventory is included in production unless access is constrained externally.                                                                                                                      |
+| Mobile responsiveness        | Working layout; partial validation | 900 px/640 px breakpoints and prior 390 by 844 QA. No current device matrix or screenshot regression suite.                                                                                              |
+
+No committed application screenshots exist. The tracked forensic laptop is illustrative marketing art, not evidence. The local launch render and contact sheets are ignored by Git.
+
+## AI and computer-vision status
+
+| Capability               | Status                       | Actual implementation and limitation                                                                                                                                                                                                                                                     |
+| ------------------------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Image capture            | **WORKING**                  | Browser `getUserMedia`, client framing/quality, server Sharp decode and independent quality checks. Physical-camera acceptance remains unperformed.                                                                                                                                      |
+| Deterministic embeddings | **WORKING**                  | Sharp normalizes to 192 by 192; a 4 by 4 spatial RGB histogram is L2-normalized and compared with cosine similarity.                                                                                                                                                                     |
+| Neural embeddings        | **PARTIAL**                  | Optional `@huggingface/transformers` CPU `image-feature-extraction`, default `Xenova/clip-vit-base-patch32`. Disabled by default, fail-soft, no actual-inference test, no pinned model revision/readiness probe.                                                                         |
+| Instance matching        | **PARTIAL**                  | Requested-view spatial and gradient similarity is real. No representative physical or same-model calibration proves the default threshold.                                                                                                                                               |
+| Local feature matching   | **PARTIAL**                  | A real 6 by 6 by 8 gradient-orientation grid descriptor is used. It is not ORB/AKAZE/SIFT keypoint matching, descriptor correspondence, or geometric verification.                                                                                                                       |
+| OCR                      | **PARTIAL**                  | Optional `tesseract.js` English recognition, Unicode normalization, and fuzzy identifier comparison. Disabled by default; recognition itself is not tested; unavailable OCR is reweighted, not failed.                                                                                   |
+| Perceptual hashing       | **WORKING**                  | Sharp 64-bit difference hash and Hamming similarity detect exact/near registration-image replay.                                                                                                                                                                                         |
+| Multi-view comparison    | **WORKING**                  | Six registration views and four randomized requested-view challenges. `MOVE_CLOSER`/`MOVE_AWAY` are defined but not generated; multi-view consistency is a coarse distinct-view count.                                                                                                   |
+| Liveness/challenges      | **PARTIAL**                  | Random IDs/order, expiry, exact three-frame bursts, strict timestamps, quality, freshness, and server-derived motion. No device attestation, depth, watermark, screen detector, gesture proof, or anti-deepfake model.                                                                   |
+| Replay detection         | **PARTIAL**                  | Exact evidence reuse, pHash proximity, motion, freshness, order, and onchain session consumption. No cross-session visual-replay database; moving displays, relay, camera injection, and generated video remain viable attacks.                                                          |
+| Scoring                  | **WORKING but uncalibrated** | Transparent weighted ratios/BPS and reason codes. Defaults: identity 8,500, liveness 8,000, integrity 6,000 BPS. No false-accept/false-reject corpus.                                                                                                                                    |
+| Wrong-object rejection   | **PARTIAL**                  | Engine can reject below-threshold identity. Tests prove only that a generated same-pattern input scores at least 0.05 above a generated different pattern; they do not prove the substitution is rejected. Prior browser evidence proves static replay failure, not object substitution. |
+
+Installed verifier stack at audit time: Sharp `0.34.5`, optional Transformers.js `3.8.1`, optional Tesseract.js `6.0.1`, better-sqlite3 `12.11.1`, Fastify `5.11.3`, viem `2.55.13`, and Zod `3.25.76`.
+
+There is no OpenCV, ORB, AKAZE, SIFT, MediaPipe, object segmentation, depth processing, 3D reconstruction, or anti-deepfake model.
+
+## Blockchain status
+
+### Local contracts
+
+- `AliveAssetRegistry`: working locally.
+- `AliveAttestationRegistry`: working locally.
+- `AliveEscrow`: working locally.
+- `MockUSDT`: working locally and explicitly test-only.
+- EIP-712 domain: `Alive Protocol`, version `1`, chain ID and verifying-contract bound.
+- Replay protection: global single-use session IDs, expiry, exact fingerprint binding, authorized contextual consumers, escrow context, and post-funding issuance checks.
+- Local deployment script: working and refuses to overwrite an existing export.
+- Local persistent runtime: not running now.
+
+An ignored `packages/contracts/deployments/31337.json` records a prior ephemeral Hardhat deployment:
+
+- Asset Registry: `0x5FbDB2315678afecb367f032d93F642f64180aa3`
+- Attestation Registry: `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`
+- Escrow: `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0`
+- MockUSDT: `0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9`
+
+These addresses are not live without the original Hardhat process and must not be treated as a current deployment.
+
+### X Layer
+
+Configuration exists for:
+
+- local chain `31337`;
+- X Layer Testnet `1952`;
+- X Layer Mainnet `196`.
+
+Confirmed on X Layer Testnet:
+
+- contract: `AliveAssetRegistry`;
+- address: `0x036caD7F90A8A7ecf9B918dc214659aCb3D07Ab9`;
+- transaction: `0xcf102772641d7a061709295a3679676cf24c90ad2917e6541ebc9accb5574883`;
+- block: `38,051,745`;
+- timestamp: `2026-08-12T04:56:22Z`;
+- receipt status: success;
+- runtime bytecode: 2,123 bytes, exact current artifact match.
+
+Missing publicly:
+
+- `AliveAttestationRegistry`;
+- `AliveEscrow`;
+- `MockUSDT`;
+- escrow consumer authorization;
+- verifier-domain/signing acceptance;
+- negative verification transaction evidence;
+- positive settlement transaction evidence;
+- X Layer Mainnet deployment.
+
+Because the web considers the protocol configured only when Asset Registry, Attestation Registry, and Escrow addresses are all present, the partial public registry cannot currently be used through the normal registration wizard.
+
+## Exact demo-flow matrix
+
+| Requested step              | Status                             | Evidence and break                                                                                                               |
+| --------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Register physical object    | **PARTIAL**                        | Real camera implementation exists; only generated-camera browser acceptance is recorded. Services/configuration are stopped now. |
+| Create fingerprint          | **YES locally**                    | Six captures finalize into a deterministic fingerprint commitment.                                                               |
+| Register onchain            | **YES locally / PARTIAL publicly** | Local smoke succeeds. Public Asset Registry exists, but the normal UI is gated by missing protocol addresses.                    |
+| Fund escrow                 | **YES locally / NO publicly**      | Local smoke creates, approves, and funds exactly. No public Escrow exists.                                                       |
+| Attempt wrong object        | **YES as a manual UI path**        | Attack Lab can collect the attempt; deterministic smoke does not contain it.                                                     |
+| Reject wrong object         | **PARTIAL**                        | Policy can reject; reliable physical substitution rejection is not demonstrated.                                                 |
+| Present correct object      | **PARTIAL**                        | Generated patterned-object positive path passes; real physical-object positive acceptance is not recorded.                       |
+| Generate signed attestation | **YES locally when configured**    | Fresh smoke recovers the configured signer and matches the registry digest.                                                      |
+| Submit onchain              | **YES locally / NO on X Layer**    | Hardhat settlement succeeds. Public Attestation Registry and Escrow are absent.                                                  |
+| Release escrow              | **YES locally / NO on X Layer**    | Exact local payout reaches `Released`; no public settlement exists.                                                              |
+
+Operationally, the exact flow breaks at the first step right now because no web, verifier, chain, or environment configuration is active.
+
+After documented local setup, the first unproven functional link is reliable wrong-object rejection. The generated-media positive path is proven.
+
+On X Layer, the normal UI breaks at onchain registration because the complete address set is absent; even a manual registry call cannot continue to escrow because no public Escrow exists.
+
+## Git and GitHub status
+
+- Current branch at audit start: `main`.
+- Source HEAD: `346f06f973cc76f40a8774af96aae794fb5c790d`.
+- Local/remote branches:
+  - `main` / `origin/main`: `346f06f`;
+  - `feat/core-mvp` / `origin/feat/core-mvp`: `5360b09`;
+  - `feat/foundation` / `origin/feat/foundation`: `eccc7ae`.
+- Annotated remote tags:
+  - `v0.1.0-foundation` -> `eccc7ae`;
+  - `v0.2.0-contracts` -> `0d88e99`;
+  - `v0.3.0-registration` -> `0d88e99`;
+  - `v0.4.0-verification` -> `42da37e`;
+  - `v0.5.0-attestations` -> `42da37e`;
+  - `v0.6.0-escrow` -> `718154e`;
+  - `v0.7.0-attack-lab` -> `0378ab5`;
+  - `v0.8.0-visual-experience` -> `5360b09`.
+- `v0.9.0-testnet` and `v1.0.0-hackathon` do not exist and must remain absent.
+- No GitHub Releases exist; only Git tags are published.
+- GitHub's default branch is incorrectly still `feat/foundation`, so the repository landing page presents the foundation snapshot rather than `main`.
+- Stale PRs remain open: `main -> feat/foundation` and `feat/core-mvp -> feat/foundation`.
+- All important source and the eight tags were pushed at audit time.
+
+## Current problems and technical debt
+
+### Demo and integration
+
+- No currently running or configured full runtime.
+- No complete public X Layer protocol or public settlement.
+- No one-run browser evidence combining wrong-object failure, genuine physical success, wallet-extension proof submission, and settlement.
+- No real physical-webcam QA.
+- No reliable wrong-object rejection threshold evidence.
+- No hosted demo URL.
+- Current GitHub Actions fail at frozen install.
+- GitHub's default branch and two open PRs are stale.
+
+### Vision and liveness
+
+- No calibration corpus, false-accept rate, false-reject rate, or same-model substitution benchmark.
+- Optional CLIP and OCR are disabled by default and absent from the full smoke.
+- Actual CLIP inference and Tesseract recognition are not tested.
+- Whole-frame histograms and grid gradients can overfit background/framing.
+- Images are distorted to 192 by 192 with no object segmentation or source-resolution minimum.
+- Registration itself has no liveness requirement; an operator can establish an arbitrary photographic baseline.
+- Challenge semantics are inferred from visual similarity, not physically proven.
+- Replay history covers registration evidence, not prior verification sessions.
+- Camera injection, relay, moving displays, generated video, and deepfakes remain plausible.
+
+### Security and protocol
+
+- Single verifier key and single contract owner are central trust points; no multisig, HSM, quorum, or hardware-backed key.
+- No external audit, formal verification, invariant suite, or current coverage report.
+- No emergency pause or upgrade path.
+- No per-attestation revocation before consumption beyond global verifier rotation.
+- `issuedAt >= fundedAt` uses whole EVM seconds, leaving a same-second freshness edge.
+- Disputes have no arbitrator; a valid proof may still release, seller consent may refund, or buyer waits for expiry.
+- Asset ownership transfer is not synchronized into the verifier's authenticated offchain owner record.
+- Raw evidence and SQLite state are unencrypted local files with no retention or access-control service.
+- No production TLS termination, rate limits, authenticated read API, audit logging, abuse controls, or capability revocation service.
+- No explorer source-verification automation.
+
+### Frontend and presentation
+
+- No committed browser E2E or screenshot-regression suite.
+- Dashboard, passport history, and presentation state depend partly on browser `localStorage`.
+- Demo settlement readiness is fixed `false`, not chain-derived.
+- Escrow amount entry assumes six token decimals for any supplied token.
+- Three.js is decorative and intentionally absent in `pnpm dev`.
+- The priority-loaded hero PNG is approximately 1.3 MB; no fresh Core Web Vitals trace exists.
+- Wallet-heavy routes remain 229-266 kB first-load JavaScript.
+- Six registration images stay in React memory until finalization, which may pressure mobile devices.
+- `https://alive.local` remains the metadata base placeholder.
+- The design-system route is not production-protected.
+- Video success/release scenes are illustrative authored narrative, not captured protocol evidence.
+
+### Tooling and release
+
+- Contract testing is Hardhat-only; `foundry.toml` exists but there are no Forge tests in this repository.
+- Remotion composition enumeration is resource-heavy and was slow under concurrent runs.
+- A stale ignored `31337.json` must be archived or removed explicitly before another persistent local deployment.
+- Ignored SQLite/WAL files and rendered media remain on the local workstation.
+
+## Remaining work by priority
+
+### CRITICAL - needed for a working demo
+
+1. Build a reproducible real-camera/browser E2E harness and record a full wallet-driven local flow.
+2. Create a representative genuine-versus-wrong-object fixture set; require wrong objects to return `verified=false` at the selected operating threshold.
+3. Run and document a real physical webcam registration, replay failure, substitution failure, genuine success, and local settlement.
+4. Complete the X Layer Testnet deployment: Attestation Registry, Escrow, optional clearly labelled token, consumer authorization, verifier configuration, and frontend addresses.
+5. Run public negative and positive flows and record transaction hashes, receipt states, exact balances, and explorer links.
+6. Reproduce and fix GitHub Actions' Linux frozen-install failure.
+7. Change GitHub's default branch to `main` and close or retarget the stale PRs.
+
+### IMPORTANT - needed for a strong hackathon submission
+
+1. Calibrate thresholds per asset class and publish false-accept/false-reject results, including same-model substitutions.
+2. Add real ORB/AKAZE-style keypoint matching or another local-correspondence method with geometric consistency.
+3. Test and operationalize OCR/CLIP with pinned model revisions, warmup/readiness, timeouts, and honest capability reporting.
+4. Strengthen presentation-attack resistance with device-bound provenance, screen/display signals, watermark/gesture challenges, and cross-session replay history.
+5. Replace browser-local dashboard/passport history with authenticated, paginated durable reads.
+6. Derive demo settlement readiness from chain state and make reset/rehearsal a one-command, safe workflow.
+7. Add wallet/browser automation for registration, funding, rejection, signing, settlement, network switching, and mobile camera behavior.
+8. Add a hosted demo and committed, privacy-safe screenshots or a clearly labelled demo recording.
+9. Add public source verification, deployment provenance, and release notes before creating `v0.9.0-testnet` or `v1.0.0-hackathon`.
+
+### POLISH - desirable but nonessential
+
+1. Optimize the hero still and measure Core Web Vitals on representative desktop/mobile hardware.
+2. Further reduce wallet-route JavaScript and registration-image memory use.
+3. Drive the Three.js visualization from actual scan/fingerprint state where useful.
+4. Protect or omit `/dev/design-system` in production.
+5. Improve demo reset status, cross-device continuity, and captured settlement presentation.
+6. Publish the rendered launch video or a downloadable release asset rather than source only.
+
+## Release gate
+
+Do not publish `v0.9.0-testnet` or `v1.0.0-hackathon` until all of these are true:
+
+- the complete X Layer protocol and consumer authorization have confirmed transaction hashes;
+- signer domain, chain, verifying contract, and authorized verifier match;
+- public wrong-object/static evidence leaves escrow unreleased;
+- public genuine evidence produces a valid signature and exact released payout;
+- a real physical-camera flow is recorded and repeatable;
+- threshold calibration supports the claims made in the demo;
+- GitHub Actions are green on `main`;
+- GitHub defaults to `main` and stale release PRs are resolved;
+- deployment metadata, explorer links, screenshots/video, README, and tag all refer to the same audited commit.
+
+## Completion assessment
+
+These percentages measure working capability, not file count:
+
+- Overall completion: **68%**
+- Core MVP completion: **80%**
+- Hackathon demo readiness: **58%**
+- Frontend/presentation readiness: **86%**

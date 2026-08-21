@@ -1,0 +1,137 @@
+.scopeNote {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--ink-soft);
+  background: var(--milk);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.scopeNote strong {
+  color: var(--ink);
+  font:
+    650 9px/1.3 var(--font-geist-mono),
+    monospace;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.steps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  list-style: none;
+  background: var(--paper-2);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 78px;
+  border-top: 1px solid var(--hairline);
+  padding: 13px 15px;
+}
+
+.step:first-child {
+  border-top: 0;
+}
+
+.step:hover {
+  background: var(--milk);
+}
+
+.stepIndex {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--milk);
+  font:
+    650 10px/1 var(--font-geist-mono),
+    monospace;
+}
+
+.stepBody {
+  min-width: 0;
+}
+
+.phase {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted-2);
+  font:
+    650 8px/1 var(--font-geist-mono),
+    monospace;
+  letter-spacing: 0.08em;
+}
+
+.stepBody h2 {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.stepBody p {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.stepLink {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: var(--paper-2);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.stepLink:hover {
+  background: var(--milk-deep);
+}
+
+@media (max-width: 640px) {
+  .scopeNote {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .step {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px 12px;
+    padding: 14px 12px;
+  }
+
+  .stepIndex {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stepLink {
+    grid-column: 2;
+    width: fit-content;
+    white-space: normal;
+  }
+}

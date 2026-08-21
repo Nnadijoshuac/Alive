@@ -1,0 +1,29 @@
+{
+  "fixtureVersion": 1,
+  "mandate": "Protect my capital. Keep at least half in Treasuries. Give me some gold. Equities can be at most 20%. Never put more than 25% with one issuer. Keep 10% liquid. Never put more than 20% in one asset.",
+  "compilerMode": "DETERMINISTIC_FALLBACK",
+  "policy": {
+    "version": 1,
+    "objective": "CAPITAL_PRESERVATION",
+    "minimumCashBps": 1000,
+    "assetClassLimits": [
+      { "assetClass": "CASH", "minimumBps": 1000, "maximumBps": 10000 },
+      { "assetClass": "TREASURY", "minimumBps": 5000, "maximumBps": 10000 },
+      { "assetClass": "EQUITY", "minimumBps": 0, "maximumBps": 2000 },
+      { "assetClass": "GOLD", "minimumBps": 500, "maximumBps": 2000 }
+    ],
+    "maximumSingleAssetBps": 2000,
+    "maximumSingleIssuerBps": 2500,
+    "minimumLiquidityScore": 70,
+    "maximumPortfolioRiskScore": 40,
+    "maximumPriceAgeSeconds": 120,
+    "maximumSlippageBps": 100,
+    "allowedAssetIds": [],
+    "blockedAssetIds": [],
+    "allowedIssuers": [],
+    "blockedIssuers": [],
+    "userApprovalRequired": true
+  },
+  "policyHash": "0xcc3181ed9e6166f3c594de5edb03ab4d6952b498875b1e26f7272c190566a720",
+  "notice": "Synthetic local and testnet demo policy. This is not investment advice."
+}

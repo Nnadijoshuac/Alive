@@ -1,0 +1,40 @@
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.heroAvatar {
+  flex: none;
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-2);
+  font: 620 10.5px/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.symbol {
+  margin: 0;
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.name {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}

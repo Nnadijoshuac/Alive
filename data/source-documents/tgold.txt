@@ -1,0 +1,32 @@
+DEMO DATA — NOT LIVE MARKET DATA. This is a fictional demo fact sheet.
+
+ALIVE DEMO GOLD ISSUER
+Product Fact Sheet: Test Gold (tGOLD)
+
+Test Gold (symbol: tGOLD) is a synthetic, fully fictional tokenized gold
+reference product created solely to exercise the ALIVE demo pipeline. It is
+issued by "ALIVE Demo Gold Issuer," a fictional entity with no affiliation
+to any real bullion custodian, vault operator, or commodities exchange.
+tGOLD makes no claim on physical gold, an allocated bullion account, or any
+real commodity-backed instrument.
+
+Asset class: GOLD. Underlying reference: a synthetic gold spot price
+reference maintained by the ALIVE demo router.
+
+Redemption: redemption is supported and settles immediately within the
+ALIVE demo router (MockRwaRouter). A production physically-backed gold
+token would typically require a redemption request routed through an
+authorized participant with several business days of settlement; this demo
+instrument does not model that process and instead settles instantly.
+
+Documentation status: this fact sheet, together with the ALIVE demo market
+snapshot, is the complete and only source of information for tGOLD.
+
+Key Facts:
+- Issuer: ALIVE Demo Gold Issuer
+- Asset class: GOLD
+- Underlying: Synthetic gold spot reference
+- Redemption supported: true
+- Redemption frequency: Continuous
+- Redemption settlement period: Immediate
+- Redemption minimum: 0

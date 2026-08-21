@@ -1,0 +1,33 @@
+DEMO DATA — NOT LIVE MARKET DATA. This is a fictional demo fact sheet.
+
+ALIVE DEMO TREASURY ISSUER A
+Product Fact Sheet: Test Treasury Fund A (tTBILL-A)
+
+Test Treasury Fund A (symbol: tTBILL-A) is a synthetic, fully fictional
+tokenized short-duration Treasury reference product created solely to
+exercise the ALIVE demo pipeline. It is issued by "ALIVE Demo Treasury
+Issuer A," a fictional entity with no affiliation to any real government,
+broker-dealer, or fund manager. tTBILL-A makes no claim on real US
+Treasury securities.
+
+Asset class: TREASURY. Underlying reference: a synthetic short-duration US
+Treasury reference basket, with an indicative synthetic yield estimate of
+approximately 4.80% (480 basis points), snapshotted for demo purposes only.
+
+Redemption: redemption is supported. In this demo environment redemption
+settles immediately through the ALIVE demo router (MockRwaRouter), though a
+production tokenized Treasury fund of this type would typically settle on a
+T+1 basis with a daily redemption window. There is no minimum redemption
+amount configured for the demo instrument.
+
+Documentation status: this fact sheet, together with the ALIVE demo market
+snapshot, is the complete and only source of information for tTBILL-A.
+
+Key Facts:
+- Issuer: ALIVE Demo Treasury Issuer A
+- Asset class: TREASURY
+- Underlying: Synthetic short-duration US Treasury reference basket
+- Redemption supported: true
+- Redemption frequency: Daily
+- Redemption settlement period: T+1 (demo router settles immediately)
+- Redemption minimum: 0

@@ -1,0 +1,38 @@
+{
+  "name": "@alive/intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --testTimeout=20000",
+    "probe:groq": "tsx scripts/groq-probe.ts",
+    "prove:ai": "tsx scripts/prove-ai-extraction.ts",
+    "resolve:logos": "tsx scripts/resolve-token-logos.ts"
+  },
+  "dependencies": {
+    "@alive/eligibility-engine": "workspace:*",
+    "@alive/market-data": "workspace:*",
+    "@alive/optimizer": "workspace:*",
+    "@alive/policy-engine": "workspace:*",
+    "@alive/shared": "workspace:*",
+    "@fastify/cors": "^11.1.0",
+    "better-sqlite3": "^12.2.0",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.0",
+    "viem": "^2.37.6",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  }
+}
