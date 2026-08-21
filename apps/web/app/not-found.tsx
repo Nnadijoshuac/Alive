@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
-import { buttonClass } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -8,9 +8,9 @@ export default function NotFound() {
       <QuestionIcon size={43} />
       <h1>Protocol route not found.</h1>
       <p>The requested asset, escrow, or interface path does not exist.</p>
-      <Link className={`${buttonClass} button-secondary`} href="/dashboard">
-        Return to dashboard
-      </Link>
+      <Button asChild variant="outline">
+        <Link href="/dashboard">Return to dashboard</Link>
+      </Button>
     </div>
   );
 }

@@ -20,7 +20,11 @@ import {
   listRwaAssets,
   type ExtractionResult,
 } from "@/lib/rwa-api";
-import { loadAssetDocumentation, stageErrorMessage, type VerifyStageKey } from "@/lib/verify-flow";
+import {
+  loadAssetDocumentation,
+  stageErrorMessage,
+  type VerifyStageKey,
+} from "@/lib/verify-flow";
 import {
   dataStatus,
   eligibilityStatus,
@@ -63,10 +67,13 @@ export function OverviewPage() {
   const searchParams = useSearchParams();
   const [catalog, setCatalog] = useState<RwaAsset[]>();
   const [summaries, setSummaries] = useState<AssetSummary[]>();
+  const [catalogError, setCatalogError] = useState<string>();
+  const [summaryError, setSummaryError] = useState<string>();
   const [query, setQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selected, setSelected] = useState<AssetRef>();
-  const [stages, setStages] = useState<Record<StageKey, StageStatus>>(initialStages());
+  const [stages, setStages] =
+    useState<Record<StageKey, StageStatus>>(initialStages());
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<unknown>();
   const [failedStage, setFailedStage] = useState<StageKey>();
@@ -77,11 +84,31 @@ export function OverviewPage() {
 
   useEffect(() => {
     listRwaAssets()
-      .then((result) => setCatalog(result.assets.filter(isRealAsset)))
-      .catch(() => setCatalog([]));
+      .then((result) => {
+        setCatalog(result.assets.filter(isRealAsset));
+        setCatalogError(undefined);
+      })
+      .catch((requestError: unknown) => {
+        setCatalog([]);
+        setCatalogError(
+          requestError instanceof Error
+            ? requestError.message
+            : "The asset catalog could not be loaded.",
+        );
+      });
     listAssetSummaries()
-      .then(setSummaries)
-      .catch(() => setSummaries([]));
+      .then((result) => {
+        setSummaries(result);
+        setSummaryError(undefined);
+      })
+      .catch((requestError: unknown) => {
+        setSummaries([]);
+        setSummaryError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Verification coverage could not be loaded.",
+        );
+      });
   }, []);
 
   useEffect(() => {
@@ -123,18 +150,30 @@ export function OverviewPage() {
     setStages({ ...initialStages(), identify: "active" });
     try {
       await getRwaAsset(asset.id);
-      setStages((current) => ({ ...current, identify: "done", read: "active" }));
+      setStages((current) => ({
+        ...current,
+        identify: "done",
+        read: "active",
+      }));
 
       await loadAssetDocumentation(asset.id, asset.symbol);
       setStages((current) => ({ ...current, read: "done", extract: "active" }));
 
       const extractionResult = await extractAssetPassport(asset.id);
       setExtraction(extractionResult);
-      setStages((current) => ({ ...current, extract: "done", sources: "active" }));
+      setStages((current) => ({
+        ...current,
+        extract: "done",
+        sources: "active",
+      }));
 
       const sources = await listAssetSources(asset.id);
       setSourceCount(sources.length);
-      setStages((current) => ({ ...current, sources: "done", evaluate: "active" }));
+      setStages((current) => ({
+        ...current,
+        sources: "done",
+        evaluate: "active",
+      }));
 
       const eligibility = await getAssetEligibility(asset.id);
       setVerdict(eligibility.verdict);
@@ -146,9 +185,6 @@ export function OverviewPage() {
         result: eligibility.verdict.status,
       });
 
-      // Asset Intelligence opens automatically -- no extra click. The brief
-      // pause lets the final "done" state actually render first.
-      await new Promise((resolve) => setTimeout(resolve, 450));
       router.push(`/assets/${asset.id}`);
     } catch (requestError) {
       setError(requestError);
@@ -171,9 +207,12 @@ export function OverviewPage() {
     const q = searchParams.get("q");
     if (q && catalog && catalog.length > 0 && !running && !selected) {
       const needle = q.trim().toLowerCase();
+      setQuery(q);
+      setShowSuggestions(true);
       const match = catalog.find(
         (asset) =>
-          asset.symbol.toLowerCase() === needle || asset.id.toLowerCase() === needle,
+          asset.symbol.toLowerCase() === needle ||
+          asset.id.toLowerCase() === needle,
       );
       if (match) void runAnalysis({ id: match.id, symbol: match.symbol });
     }
@@ -219,21 +258,76 @@ export function OverviewPage() {
     ? [...summaries]
         .sort((left, right) => {
           const rank = { VERIFIED: 0, NOT_ANALYZED: 1, UNVERIFIED: 2 } as const;
-          return rank[verificationStatus(left)] - rank[verificationStatus(right)];
+          return (
+            rank[verificationStatus(left)] - rank[verificationStatus(right)]
+          );
         })
         .slice(0, 8)
     : undefined;
 
   return (
     <div className={styles.page}>
-      <div>
-        <p className={styles.eyebrow}>RWA Intelligence</p>
-        <h1 className={styles.heading}>Verified financial intelligence for tokenized assets.</h1>
-        <p className={styles.subheading}>
-          Search a token, issuer, or asset. ALIVE reads official documents, reads live
-          market data, and evaluates deterministic eligibility rules.
-        </p>
+      <header className={styles.pageHeader}>
+        <div className={styles.pageHeaderCopy}>
+          <p className={styles.eyebrow}>RWA Intelligence</p>
+          <h1 className={styles.heading}>
+            Verify the asset before you trust the token.
+          </h1>
+          <p className={styles.subheading}>
+            Search a token, issuer, or asset. ALIVE reads official documents and
+            market sources, then evaluates deterministic eligibility rules.
+          </p>
+        </div>
+        <div
+          className={styles.methodLedger}
+          aria-label="ALIVE analysis sequence"
+        >
+          <span>Decision sequence</span>
+          <ol>
+            <li>
+              <b>Source</b>
+              <small>Official evidence</small>
+            </li>
+            <li>
+              <b>Extract</b>
+              <small>Cited facts</small>
+            </li>
+            <li>
+              <b>Evaluate</b>
+              <small>Deterministic rules</small>
+            </li>
+          </ol>
+        </div>
+      </header>
 
+      <section
+        className={styles.analysisPanel}
+        aria-labelledby="analysis-console-title"
+      >
+        <div className={styles.panelHeader}>
+          <div>
+            <span className={styles.panelKicker}>Verification console</span>
+            <h2 id="analysis-console-title">Run a sourced asset check</h2>
+          </div>
+          <span
+            className={styles.runState}
+            data-state={
+              running || catalog === undefined
+                ? "running"
+                : error || catalogError
+                  ? "error"
+                  : "idle"
+            }
+          >
+            {running
+              ? "Running"
+              : error || catalogError
+                ? "Needs attention"
+                : catalog === undefined
+                  ? "Loading"
+                  : "Ready"}
+          </span>
+        </div>
         <form className={styles.searchForm} onSubmit={handleSubmit}>
           <div className={styles.searchBox} ref={boxRef}>
             <AliveIcon icon={Search01Icon} size="md" tone="muted" />
@@ -250,10 +344,27 @@ export function OverviewPage() {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setShowSuggestions(false);
+                if (event.key === "ArrowDown" && showSuggestions) {
+                  event.preventDefault();
+                  boxRef.current
+                    ?.querySelector<HTMLButtonElement>("[role='option']")
+                    ?.focus();
+                }
+              }}
               aria-label="Search a tokenized asset"
+              aria-autocomplete="list"
+              aria-controls="asset-search-results"
+              aria-expanded={showSuggestions && matches.length > 0}
+              role="combobox"
             />
             {showSuggestions && matches.length > 0 ? (
-              <div className={styles.suggestions} role="listbox">
+              <div
+                className={styles.suggestions}
+                id="asset-search-results"
+                role="listbox"
+              >
                 {matches.map((asset) => (
                   <button
                     key={asset.id}
@@ -269,10 +380,15 @@ export function OverviewPage() {
               </div>
             ) : null}
           </div>
-          <button className={styles.analyzeButton} type="submit" disabled={running}>
+          <button
+            className={styles.analyzeButton}
+            type="submit"
+            disabled={running || catalog === undefined || matches.length === 0}
+          >
             {running ? (
               <>
-                <AliveIcon icon={Loading03Icon} size="md" className="spin" /> Analyzing…
+                <AliveIcon icon={Loading03Icon} size="md" className="spin" />{" "}
+                Analyzing…
               </>
             ) : (
               <>
@@ -287,19 +403,37 @@ export function OverviewPage() {
             {STAGES.map((stage) => {
               const status = stages[stage.key];
               return (
-                <li className={styles.stageRow} data-status={status} key={stage.key}>
+                <li
+                  className={styles.stageRow}
+                  data-status={status}
+                  key={stage.key}
+                >
                   {status === "done" ? (
-                    <AliveIcon icon={CheckmarkCircle01Icon} size="md" tone="positive" />
+                    <AliveIcon
+                      icon={CheckmarkCircle01Icon}
+                      size="md"
+                      tone="positive"
+                    />
                   ) : status === "active" ? (
-                    <AliveIcon icon={Loading03Icon} size="md" className="spin" />
+                    <AliveIcon
+                      icon={Loading03Icon}
+                      size="md"
+                      className="spin"
+                    />
                   ) : status === "error" ? (
-                    <AliveIcon icon={CancelCircleIcon} size="md" tone="negative" />
+                    <AliveIcon
+                      icon={CancelCircleIcon}
+                      size="md"
+                      tone="negative"
+                    />
                   ) : (
                     <AliveIcon icon={CircleIcon} size="md" tone="muted" />
                   )}
                   {stage.label}
                   {stage.key === "extract" && extraction ? (
-                    <span className={styles.stageDetail}>{extraction.extraction.mode}</span>
+                    <span className={styles.stageDetail}>
+                      {extraction.extraction.mode}
+                    </span>
                   ) : null}
                   {stage.key === "sources" && sourceCount !== undefined ? (
                     <span className={styles.stageDetail}>
@@ -313,10 +447,12 @@ export function OverviewPage() {
         ) : null}
 
         {error ? (
-          <div className={styles.errorNote}>
+          <div className={styles.errorNote} role="alert">
             <strong>{stageErrorMessage(failedStage)}</strong>
             <span>
-              {error instanceof Error ? error.message : "The request could not be completed."}
+              {error instanceof Error
+                ? error.message
+                : "The request could not be completed."}
             </span>
             {selected ? (
               <button
@@ -329,45 +465,82 @@ export function OverviewPage() {
             ) : null}
           </div>
         ) : null}
-      </div>
+        {catalogError ? (
+          <p className={styles.inlineError} role="alert">
+            Search catalog unavailable: {catalogError}
+          </p>
+        ) : null}
+      </section>
 
-      <div className={styles.summaryStrip}>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Catalog assets</span>
-          <span className={styles.summaryValue}>{catalogCount ?? "—"}</span>
-        </div>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Eligible</span>
-          <span className={styles.summaryValue}>{eligibleCount ?? "—"}</span>
-        </div>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Restricted</span>
-          <span className={styles.summaryValue}>{restrictedCount ?? "—"}</span>
-        </div>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Live data sources</span>
-          <span className={styles.summaryValue}>{liveSourceCount ?? "—"}</span>
-        </div>
-        <div className={styles.summaryCell}>
-          <span className={styles.summaryLabel}>Active alerts</span>
-          <span className={styles.summaryValue}>0</span>
-        </div>
-      </div>
-
-      <div className={styles.section}>
+      <section
+        className={styles.snapshotSection}
+        aria-labelledby="catalog-snapshot-title"
+      >
         <div className={styles.sectionHeaderRow}>
-          <h2 className={styles.sectionHeading}>Recently checked</h2>
+          <div>
+            <span className={styles.panelKicker}>Current evidence</span>
+            <h2 className={styles.sectionHeading} id="catalog-snapshot-title">
+              Catalog snapshot
+            </h2>
+          </div>
+          <span className={styles.snapshotNote}>
+            Loaded catalog counts, not a live market claim.
+          </span>
+        </div>
+        <div
+          className={styles.summaryStrip}
+          aria-busy={summaries === undefined}
+        >
+          <div className={styles.summaryCell}>
+            <span className={styles.summaryLabel}>Catalog assets</span>
+            <span className={styles.summaryValue}>{catalogCount ?? "UNKNOWN"}</span>
+          </div>
+          <div className={styles.summaryCell}>
+            <span className={styles.summaryLabel}>Eligible</span>
+            <span className={styles.summaryValue}>{eligibleCount ?? "UNKNOWN"}</span>
+          </div>
+          <div className={styles.summaryCell}>
+            <span className={styles.summaryLabel}>Restricted</span>
+            <span className={styles.summaryValue}>
+              {restrictedCount ?? "UNKNOWN"}
+            </span>
+          </div>
+          <div className={styles.summaryCell}>
+            <span className={styles.summaryLabel}>Live data sources</span>
+            <span className={styles.summaryValue}>
+              {liveSourceCount ?? "UNKNOWN"}
+            </span>
+          </div>
+        </div>
+        {summaryError ? (
+          <p className={styles.inlineError} role="alert">
+            {summaryError}
+          </p>
+        ) : null}
+      </section>
+
+      <section className={styles.section} aria-labelledby="coverage-title">
+        <div className={styles.sectionHeaderRow}>
+          <div>
+            <span className={styles.panelKicker}>Proof inventory</span>
+            <h2 className={styles.sectionHeading} id="coverage-title">
+              Verification coverage
+            </h2>
+          </div>
           <Link href="/explore" className={styles.exploreLink}>
-            Browse the full real-asset catalog →
+            Browse the full asset catalog →
           </Link>
         </div>
         <div className={styles.tableCard}>
           <AssetTable
             summaries={focusedSummaries ?? []}
-            emptyLabel={summaries ? "No assets in the catalog yet." : "Loading…"}
+            loading={summaries === undefined}
+            emptyLabel={
+              summaries ? "No assets in the catalog yet." : "Loading…"
+            }
           />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

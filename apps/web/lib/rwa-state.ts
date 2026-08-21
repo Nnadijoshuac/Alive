@@ -1,6 +1,7 @@
 export type RwaPresentationState = {
   policyId?: string;
   proposalId?: string;
+  proposalPolicyId?: string;
   vaultAddress?: `0x${string}`;
 };
 
@@ -16,6 +17,9 @@ function sanitize(value: unknown): RwaPresentationState {
       : {}),
     ...(typeof record.proposalId === "string"
       ? { proposalId: record.proposalId }
+      : {}),
+    ...(typeof record.proposalPolicyId === "string"
+      ? { proposalPolicyId: record.proposalPolicyId }
       : {}),
     ...(typeof record.vaultAddress === "string" &&
     /^0x[0-9a-fA-F]{40}$/u.test(record.vaultAddress)
@@ -39,7 +43,25 @@ export function rememberRwaState(
   update: RwaPresentationState,
 ): RwaPresentationState {
   if (typeof window === "undefined") return sanitize(update);
-  const next = sanitize({ ...readRwaState(), ...update });
+  const current = readRwaState();
+  const merged: RwaPresentationState = { ...current, ...update };
+  const policyChanged =
+    typeof update.policyId === "string" &&
+    update.policyId !== current.policyId;
+
+  if (policyChanged && update.proposalId === undefined) {
+    delete merged.proposalId;
+    delete merged.proposalPolicyId;
+  }
+
+  if (
+    typeof update.policyId === "string" &&
+    typeof update.proposalId === "string"
+  ) {
+    merged.proposalPolicyId = update.policyId;
+  }
+
+  const next = sanitize(merged);
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent(RWA_STATE_EVENT, { detail: next }));
   return next;

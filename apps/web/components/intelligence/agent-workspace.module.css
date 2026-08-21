@@ -1,95 +1,106 @@
+/*
+ * Warm ALIVE agent workstation.
+ *
+ * One source of truth for connection, analysis, activation, monitoring,
+ * evidence, and chat states. Green is reserved for verified or active
+ * outcomes; all structural surfaces use the shared warm shell tokens.
+ */
+
+/* Workspace foundation and connection states */
+
 .container {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  width: 100%;
-  max-width: 1120px;
   margin: 0 auto;
-  padding: 36px 24px 96px;
+  gap: 1.25rem;
+  width: min(100%, 76rem);
+  max-width: 76rem;
+  margin-inline: auto;
+  padding: 0 0 5rem;
+  color: var(--ink);
 }
 
-/* =========================================================================
-   1. DISCONNECTED & ONBOARDING STATES
-   ========================================================================= */
 .disconnectedCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 64px 32px;
-  text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 24px;
   max-width: 680px;
-  margin: 40px auto 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  width: min(100%, 42rem);
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin: 1.5rem auto 0;
+  padding: 2.5rem;
+  text-align: left;
 }
 
 .disconnectedIconWrap {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: #111512;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  color: var(--ink-soft);
+  background: var(--milk-deep);
 }
 
 .disconnectedTitleGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.5rem;
 }
 
 .disconnectedBadge {
-  align-self: center;
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
+  align-self: flex-start;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: var(--muted-2);
+  background: transparent;
+  font: 600 0.625rem/1.4 var(--font-geist-mono), monospace;
   letter-spacing: 0.08em;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 3px 10px;
-  border-radius: 9999px;
+  text-transform: uppercase;
 }
 
 .disconnectedTitle {
-  font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #fff;
   margin: 0;
-  line-height: 1.3;
+  color: var(--ink);
+  max-width: 28ch;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 .disconnectedDesc {
   font-size: 0.95rem;
-  color: #94a3b8;
   line-height: 1.6;
   max-width: 480px;
   margin: 0;
+  color: var(--ink-soft);
 }
 
 .disconnectedButtonGroup {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: none;
+  align-items: flex-start;
 }
 
 .primaryConnectBtn {
-  width: 100%;
-  background: #fff;
-  color: #050806;
-  border: none;
   padding: 14px 24px;
-  border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
@@ -97,58 +108,71 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  min-height: 2.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  color: var(--milk);
+  background: var(--ink);
+  box-shadow: none;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  width: auto;
+  padding-inline: 1rem;
 }
 
 .primaryConnectBtn:hover {
-  background: #e2e8f0;
+  color: var(--milk);
+  background: color-mix(in srgb, var(--ink) 88%, white);
 }
 
 .sampleWalletBtn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #94a3b8;
   padding: 10px 18px;
-  border-radius: 8px;
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
+
+/* Wallet synchronization */
 
 .sampleWalletBtn:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
 }
 
-/* =========================================================================
-   2. PROGRESSIVE UNDERSTANDING TRANSITION
-   ========================================================================= */
 .syncProgressCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 56px 32px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 28px;
   max-width: 640px;
-  margin: 40px auto 0;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  width: min(100%, 42rem);
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin: 1.5rem auto 0;
+  padding: 2.5rem;
+  text-align: left;
 }
 
 .syncProgressTitle {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
+  color: var(--ink);
 }
 
 .syncProgressSubtitle {
   font-size: 0.92rem;
-  color: #94a3b8;
   margin: 0;
+  color: var(--ink-soft);
 }
 
 .syncStepsList {
@@ -156,8 +180,8 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 380px;
   text-align: left;
+  max-width: none;
 }
 
 .syncStepRow {
@@ -165,142 +189,130 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-radius: 8px;
-  background: #050806;
-  border: 1px solid rgba(255, 255, 255, 0.04);
   font-size: 0.88rem;
-}
-
-.stepDotPending {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #334155;
+  border: 1px solid var(--hairline);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: var(--milk);
 }
 
 .stepDotActive {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
-  animation: pulse 1.5s infinite;
+  background: var(--positive);
+  box-shadow: none;
+  animation: agent-breathe 1.6s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0% { opacity: 0.4; }
-  50% { opacity: 1; }
-  100% { opacity: 0.4; }
-}
-
-.syncStepLabelPending {
-  color: #64748b;
-}
+/* First analysis reveal and strategy selection */
 
 .syncStepLabelActive {
-  color: #fff;
   font-weight: 600;
+  color: var(--ink);
 }
 
-.syncStepLabelDone {
-  color: #e2e8f0;
-  font-weight: 600;
-}
-
-/* =========================================================================
-   3. FIRST CONTEXT REVEAL & STRATEGY SELECTION
-   ========================================================================= */
 .firstRevealCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 40px 36px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  max-width: 840px;
-  margin: 20px auto 0;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  max-width: 56rem;
+  gap: 1.5rem;
+  margin: 1rem auto 0;
+  padding: 2rem;
 }
 
 .revealHeader {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.875rem;
 }
 
 .revealBadge {
   font-size: 0.72rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  padding: 3px 10px;
-  border-radius: 9999px;
   align-self: flex-start;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: var(--muted-2);
+  background: transparent;
+  font: 600 0.625rem/1.4 var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .revealTitle {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
   letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
 .revealStatsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  background: var(--paper-2);
 }
 
 .revealStatItem {
-  background: #050806;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border: 0;
+  border-radius: 0;
+  padding: 1rem;
+  background: transparent;
 }
 
 .revealStatValue {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
   font-family: var(--font-geist-mono), monospace;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .revealStatLabel {
   font-size: 0.74rem;
   text-transform: uppercase;
-  color: #64748b;
   font-weight: 600;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
   letter-spacing: 0.04em;
 }
 
 .revealStrategySection {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.875rem;
 }
 
 .revealSectionPrompt {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
+  color: var(--ink);
 }
 
 .strategyCardFeatured {
-  background: #050806;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  padding: 1.25rem;
+  background: var(--milk);
 }
 
 .strategyCardHeader {
@@ -314,27 +326,29 @@
 .strategyCardTitle {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
+  color: var(--ink);
 }
 
 .strategyBadgeRecommended {
   font-size: 0.7rem;
   font-weight: 700;
+  align-self: flex-start;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: var(--muted-2);
+  background: transparent;
+  font: 600 0.625rem/1.4 var(--font-geist-mono), monospace;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  padding: 2px 8px;
-  border-radius: 4px;
 }
 
 .strategyCardDesc {
   font-size: 0.9rem;
-  color: #94a3b8;
   line-height: 1.5;
   margin: 0;
+  color: var(--ink-soft);
 }
 
 .strategyRulesSummaryList {
@@ -342,44 +356,48 @@
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--hairline);
+  border-color: var(--hairline);
 }
 
 .strategyRulePill {
   font-size: 0.8rem;
-  color: #cbd5e1;
   display: flex;
   align-items: center;
   gap: 6px;
+  color: var(--ink-soft);
 }
 
 .advancedToggleBtn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
   align-self: flex-start;
   transition: color 0.15s ease;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  text-decoration: none;
 }
 
 .advancedToggleBtn:hover {
-  color: #fff;
+  color: var(--ink);
 }
 
 .advancedSettingsDrawer {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
   padding: 16px 20px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
+  margin-top: 0.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.5rem;
+  background: var(--paper-2);
 }
 
 .advancedSettingItem {
@@ -391,14 +409,17 @@
 .advancedSettingLabel {
   font-size: 0.72rem;
   text-transform: uppercase;
-  color: #64748b;
   font-weight: 600;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
 }
 
 .advancedSettingValue {
   font-size: 0.85rem;
-  color: #e2e8f0;
   font-family: var(--font-geist-mono), monospace;
+  overflow-wrap: anywhere;
+  color: var(--ink);
 }
 
 .revealActionsRow {
@@ -409,104 +430,118 @@
 }
 
 .activatePrimaryBtn {
-  background: #22c55e;
-  color: #050806;
-  border: none;
   padding: 14px 28px;
-  border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  min-height: 2.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  color: var(--milk);
+  background: var(--ink);
+  box-shadow: none;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .activatePrimaryBtn:hover {
-  background: #16a34a;
+  color: var(--milk);
+  background: color-mix(in srgb, var(--ink) 88%, white);
 }
 
 .exploreSecondaryBtn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #cbd5e1;
   padding: 14px 22px;
-  border-radius: 10px;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
+
+/* Activation state */
 
 .exploreSecondaryBtn:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
 }
 
-/* =========================================================================
-   4. ACTIVATION MOMENT CONFIRMATION
-   ========================================================================= */
 .activationMomentCard {
-  background: #090c0a;
-  border: 1px solid rgba(34, 197, 94, 0.35);
-  border-radius: 20px;
-  padding: 64px 32px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 20px;
   max-width: 600px;
-  margin: 40px auto 0;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  width: min(100%, 38rem);
+  align-items: flex-start;
+  gap: 0.875rem;
+  margin: 1.5rem auto 0;
+  padding: 2.5rem;
+  text-align: left;
 }
 
 .activationBadge {
   font-size: 0.74rem;
   font-weight: 700;
-  text-transform: uppercase;
+  align-self: flex-start;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  color: var(--muted-2);
+  background: transparent;
+  font: 600 0.625rem/1.4 var(--font-geist-mono), monospace;
   letter-spacing: 0.08em;
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  padding: 4px 12px;
-  border-radius: 9999px;
+  text-transform: uppercase;
 }
 
 .activationTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
+  color: var(--ink);
 }
+
+/* Active agent header and portfolio summary */
 
 .activationDesc {
   font-size: 0.95rem;
-  color: #94a3b8;
   margin: 0;
   max-width: 440px;
   line-height: 1.5;
+  color: var(--ink-soft);
 }
 
 .activationProgress {
   font-size: 0.85rem;
-  color: #cbd5e1;
   font-family: var(--font-geist-mono), monospace;
   display: flex;
   align-items: center;
   gap: 8px;
   padding-top: 8px;
+  color: var(--ink-soft);
 }
 
-/* =========================================================================
-   5. ACTIVE AGENT HOME (TOP-LEVEL & SECTIONS)
-   ========================================================================= */
 .agentHeader {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   padding-bottom: 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-color: var(--hairline);
+  box-shadow: none;
+  gap: 1.25rem;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 0 0 1.5rem;
+  background: transparent;
 }
 
 .agentTitleRow {
@@ -524,109 +559,112 @@
 }
 
 .agentName {
-  font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #fff;
   margin: 0;
   display: flex;
   align-items: center;
   gap: 12px;
+  color: var(--ink);
+  flex-wrap: wrap;
+  font-size: clamp(1.5rem, 3vw, 2rem);
 }
 
 .statusPillActive {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  color: #22c55e;
-  padding: 3px 10px;
-  border-radius: 9999px;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font: 620 0.5625rem/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, var(--hairline));
+  color: var(--positive);
+  background: var(--positive-bg);
 }
 
 .statusPillPaused {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  color: #f59e0b;
-  padding: 3px 10px;
-  border-radius: 9999px;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font: 620 0.5625rem/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--hairline));
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 
 .agentMetaRow {
   display: flex;
   align-items: center;
-  gap: 16px;
   font-size: 0.84rem;
-  color: #94a3b8;
   flex-wrap: wrap;
+  color: var(--ink-soft);
+  gap: 0.75rem;
 }
 
 .strategyLink {
-  color: #e2e8f0;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+  color: var(--ink);
 }
 
 .strategyLink:hover {
-  color: #22c55e;
+  color: var(--positive);
 }
 
 .headerControls {
+  gap: 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .pauseToggleBtn {
-  background: #111417;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
   padding: 7px 14px;
-  border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
 .pauseToggleBtn:hover {
-  background: #181d22;
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
 }
 
 .syncBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #111a14;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  color: #22c55e;
   padding: 7px 14px;
-  border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.syncBtn:hover {
-  background: rgba(34, 197, 94, 0.15);
-  border-color: #22c55e;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--ink-soft);
 }
 
 .syncBtn:disabled {
@@ -634,65 +672,73 @@
   cursor: not-allowed;
 }
 
-/* Portfolio Summary Bar (Restrained Row) */
 .summaryRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 16px 20px;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  background: var(--paper-2);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
 }
 
 .summaryItem {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border: 0;
+  border-radius: 0;
+  padding: 1rem;
+  background: transparent;
 }
 
 .summaryLabel {
   font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
   font-weight: 600;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
 }
+
+/* Recommendation and action states */
 
 .summaryValue {
   font-size: 1.25rem;
   font-weight: 700;
   font-family: var(--font-geist-mono), monospace;
-  color: #fff;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .summarySub {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: var(--muted-2);
 }
 
-/* =========================================================================
-   6. DOMINANT PRIMARY AGENT INSIGHT CARD & ZERO-ACTION STATE
-   ========================================================================= */
 .insightCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 26px 30px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  gap: 1.25rem;
+  padding: 1.5rem;
 }
 
 .insightHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #22c55e;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  color: var(--ink-soft);
 }
 
 .insightContent {
@@ -705,28 +751,28 @@
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
   line-height: 1.3;
   margin: 0;
+  color: var(--ink);
 }
 
 .insightDescription {
   font-size: 0.95rem;
-  color: #cbd5e1;
   line-height: 1.6;
   max-width: 800px;
   margin: 0;
+  color: var(--ink-soft);
 }
 
 .insightMetricsRow {
   display: flex;
   align-items: center;
-  gap: 24px;
-  background: #050806;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  padding: 14px 20px;
   flex-wrap: wrap;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  background: var(--milk);
+  gap: 1rem;
+  padding: 1rem;
 }
 
 .insightMetric {
@@ -739,13 +785,15 @@
   font-size: 1.15rem;
   font-weight: 700;
   font-family: var(--font-geist-mono), monospace;
-  color: #fff;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .insightMetricLabel {
   font-size: 0.72rem;
-  color: #64748b;
   text-transform: uppercase;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
   letter-spacing: 0.04em;
 }
 
@@ -766,21 +814,25 @@
 }
 
 .badgeVerified {
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  color: #22c55e;
-  padding: 2px 8px;
-  border-radius: 4px;
   font-weight: 600;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font: 620 0.5625rem/1.2 var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, var(--hairline));
+  color: var(--positive);
+  background: var(--positive-bg);
 }
 
 .badgeRoute {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e2e8f0;
-  padding: 2px 8px;
-  border-radius: 4px;
   font-weight: 600;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font: 620 0.5625rem/1.2 var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--hairline-strong);
+  color: var(--muted-2);
+  background: var(--milk-deep);
 }
 
 .ctaButtonGroup {
@@ -790,53 +842,61 @@
 }
 
 .primaryReviewBtn {
-  background: #22c55e;
-  color: #050806;
-  border: none;
   padding: 12px 24px;
-  border-radius: 10px;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  min-height: 2.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  color: var(--milk);
+  background: var(--ink);
+  box-shadow: none;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .primaryReviewBtn:hover {
-  background: #16a34a;
+  color: var(--milk);
+  background: color-mix(in srgb, var(--ink) 88%, white);
 }
 
 .ghostActionBtn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   padding: 8px 12px;
-  transition: color 0.15s ease;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .ghostActionBtn:hover {
-  color: #fff;
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
 }
 
-/* Zero Action (Complying) State */
 .zeroActionCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 36px 30px;
   display: flex;
   align-items: flex-start;
   gap: 20px;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  padding: 1.5rem;
 }
 
 .zeroActionIcon {
-  color: #22c55e;
   margin-top: 2px;
+  color: var(--positive);
 }
 
 .zeroActionContent {
@@ -848,27 +908,26 @@
 .zeroActionTitle {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
+  color: var(--ink);
 }
+
+/* Progressive evidence disclosure */
 
 .zeroActionDesc {
   font-size: 0.92rem;
-  color: #94a3b8;
   margin: 0;
+  color: var(--ink-soft);
 }
 
-/* =========================================================================
-   7. PROGRESSIVE "WHY THIS ACTION?" PANEL
-   ========================================================================= */
 .whyContainer {
-  background: #050806;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  background: var(--milk);
+  padding: 1rem;
 }
 
 .whyTrigger {
@@ -878,20 +937,25 @@
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  width: 100%;
+  color: var(--ink-soft);
+  text-align: left;
 }
 
 .whyTrigger:hover {
-  color: #22c55e;
+  color: var(--ink);
 }
 
 .whyLevel1 {
   font-size: 0.92rem;
-  color: #cbd5e1;
   line-height: 1.5;
   margin: 0;
+  color: var(--ink-soft);
 }
 
 .whyGrid {
@@ -899,7 +963,8 @@
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--hairline);
+  border-color: var(--hairline);
 }
 
 .whyEvidenceItem {
@@ -911,43 +976,51 @@
 .whyEvidenceLabel {
   font-size: 0.72rem;
   text-transform: uppercase;
-  color: #64748b;
   font-weight: 600;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
 }
 
 .whyEvidenceValue {
   font-size: 0.85rem;
-  color: #cbd5e1;
   font-family: var(--font-geist-mono), monospace;
+  overflow-wrap: anywhere;
+  color: var(--ink);
 }
 
 .level3ToggleBtn {
-  background: transparent;
-  border: none;
-  color: #64748b;
   font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
-  text-decoration: underline;
   text-underline-offset: 3px;
-  padding: 0;
   align-self: flex-start;
   transition: color 0.15s ease;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  text-decoration: none;
 }
 
 .level3ToggleBtn:hover {
-  color: #94a3b8;
+  color: var(--ink);
 }
 
 .level3EvidenceDrawer {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
   padding: 12px 16px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   font-size: 0.78rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.5rem;
+  background: var(--paper-2);
 }
 
 .level3Item {
@@ -956,28 +1029,33 @@
   gap: 2px;
 }
 
+/* Agent knowledge */
+
 .level3Label {
   font-size: 0.68rem;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
 }
 
 .level3Val {
   font-family: var(--font-geist-mono), monospace;
-  color: #94a3b8;
+  overflow-wrap: anywhere;
+  color: var(--ink);
 }
 
-/* =========================================================================
-   8. WHAT THIS AGENT KNOWS & TECHNICAL DETAILS
-   ========================================================================= */
 .agentKnowledgeCard {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  padding: 1.25rem;
 }
 
 .knowledgeHeader {
@@ -989,10 +1067,10 @@
 .knowledgeTitle {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #fff;
   display: flex;
   align-items: center;
   gap: 10px;
+  color: var(--ink);
 }
 
 .knowledgeSummaryGrid {
@@ -1010,33 +1088,39 @@
 .knowledgeItemLabel {
   font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
   font-weight: 600;
+  color: var(--muted-2);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
 }
 
 .knowledgeItemValue {
   font-size: 0.92rem;
-  color: #e2e8f0;
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  color: var(--ink);
 }
 
 .technicalToggleBtn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  text-decoration: underline;
   text-underline-offset: 3px;
-  padding: 0;
   align-self: flex-start;
   transition: color 0.15s ease;
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+  padding: 0;
+  color: var(--ink-soft);
+  background: transparent;
+  text-decoration: none;
 }
 
 .technicalToggleBtn:hover {
-  color: #22c55e;
+  color: var(--ink);
 }
 
 .technicalDrawer {
@@ -1044,43 +1128,51 @@
   flex-direction: column;
   gap: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--hairline);
+  border-color: var(--hairline);
 }
 
 .dataTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 .dataTable th {
   text-align: left;
   padding: 8px 10px;
-  color: #64748b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--hairline);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.72rem;
+  border-color: var(--hairline);
+  color: var(--muted-2);
+  background: var(--milk);
 }
 
 .dataTable td {
   padding: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  color: #e2e8f0;
+  border-bottom: 1px solid var(--hairline);
   font-family: var(--font-geist-mono), monospace;
+  border-color: var(--hairline);
+  color: var(--ink-soft);
 }
 
-/* =========================================================================
-   9. ASK AGENT SECTION
-   ========================================================================= */
+/* Ask-the-agent conversation */
+
 .askAgentSection {
-  background: #090c0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  border-color: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 0.75rem;
+  color: var(--ink);
+  background: var(--paper-2);
+  box-shadow: none;
+  padding: 1.25rem;
 }
 
 .askHeader {
@@ -1092,12 +1184,12 @@
 .askTitle {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--ink);
 }
 
 .askSubtitle {
   font-size: 0.84rem;
-  color: #94a3b8;
+  color: var(--ink-soft);
 }
 
 .chipsRow {
@@ -1107,19 +1199,20 @@
 }
 
 .chipBtn {
-  background: #111417;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
   padding: 6px 12px;
-  border-radius: 8px;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .chipBtn:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
 }
 
 .chatBox {
@@ -1128,36 +1221,38 @@
   gap: 12px;
   max-height: 380px;
   overflow-y: auto;
-  background: #050706;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
   padding: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 0.625rem;
+  background: var(--milk);
 }
 
 .chatUserMsg {
   align-self: flex-end;
-  background: #121c15;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  color: #e2e8f0;
   padding: 10px 14px;
-  border-radius: 10px 10px 2px 10px;
   font-size: 0.88rem;
   max-width: 80%;
+  border-radius: 0.625rem;
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid var(--ink);
+  background: var(--paper-2);
 }
 
 .chatAgentMsg {
   align-self: flex-start;
-  background: #101315;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  color: #e2e8f0;
   padding: 12px 16px;
-  border-radius: 10px 10px 10px 2px;
   font-size: 0.88rem;
   max-width: 85%;
   display: flex;
   flex-direction: column;
   gap: 8px;
   line-height: 1.5;
+  border-radius: 0.625rem;
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid var(--hairline);
+  background: var(--paper-2);
 }
 
 .evidenceCitations {
@@ -1165,79 +1260,333 @@
   align-items: center;
   gap: 6px;
   font-size: 0.72rem;
-  color: #64748b;
   flex-wrap: wrap;
+  color: var(--muted-2);
 }
 
 .citationPill {
-  background: rgba(255, 255, 255, 0.06);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.68rem;
-  color: #94a3b8;
+  color: var(--ink-soft);
+  background: var(--milk-deep);
 }
 
 .askInputRow {
-  display: flex;
   gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .askInput {
   flex: 1;
-  background: #050706;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
   padding: 12px 16px;
-  color: #fff;
   font-size: 0.9rem;
   outline: none;
+  min-width: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 0.5rem;
+  color: var(--ink);
+  background: var(--paper-2);
 }
 
 .askInput:focus {
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgb(23 23 19 / 0.06);
 }
 
 .askSendBtn {
-  background: #22c55e;
-  color: #050806;
-  border: none;
   padding: 12px 20px;
-  border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  min-height: 2.75rem;
+  border: 1px solid var(--ink);
+  border-radius: 0.5rem;
+  color: var(--milk);
+  background: var(--ink);
+  box-shadow: none;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .askSendBtn:hover {
-  background: #16a34a;
+  color: var(--milk);
+  background: color-mix(in srgb, var(--ink) 88%, white);
 }
 
 .askSendBtn:disabled {
-  opacity: 0.5;
+  border-color: var(--hairline-strong);
+  color: var(--muted-2);
+  background: var(--milk-deep);
   cursor: not-allowed;
+  opacity: 1;
+}
+
+.primaryReviewBtn:disabled {
+  border-color: var(--hairline-strong);
+  color: var(--muted-2);
+  background: var(--milk-deep);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.whyTrigger:focus-visible {
+  border-radius: 5px;
+  outline: 2px solid var(--focus-2);
+  outline-offset: 4px;
+}
+
+.inlineError {
+  margin: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  border-color: color-mix(in srgb, var(--negative) 28%, var(--hairline));
+  color: var(--negative);
+  background: var(--negative-bg);
+}
+
+.primaryConnectBtn:active,
+.activatePrimaryBtn:active,
+.primaryReviewBtn:active:not(:disabled),
+.askSendBtn:active:not(:disabled),
+.sampleWalletBtn:active,
+.exploreSecondaryBtn:active,
+.pauseToggleBtn:active,
+.syncBtn:active:not(:disabled),
+.ghostActionBtn:active,
+.chipBtn:active {
+  transform: translateY(1px);
+}
+
+.syncBtn:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--milk);
+}
+
+.revealStatItem + .revealStatItem,
+.summaryItem + .summaryItem {
+  border-left: 1px solid var(--hairline);
+}
+
+.strategyRulePill svg {
+  color: var(--positive);
+}
+
+.sampleDataLabel {
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  border-radius: 0.375rem;
+  padding: 0 0.5rem;
+  font: 620 0.5625rem/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--hairline));
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.metricArrow {
+  color: var(--muted-2);
+}
+
+.proposedMetric {
+  margin-left: auto;
+}
+
+.badgeRouteAvailable {
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font: 620 0.5625rem/1.2 var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, var(--hairline));
+  color: var(--positive);
+  background: var(--positive-bg);
+}
+
+.badgeBlocked {
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font: 620 0.5625rem/1.2 var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+  border: 1px solid color-mix(in srgb, var(--negative) 30%, var(--hairline));
+  color: var(--negative);
+  background: var(--negative-bg);
+}
+
+.dataTablePrimary {
+  color: var(--ink) !important;
+  font-weight: 650;
+}
+
+.askInput::placeholder {
+  color: var(--faint);
+}
+
+.askingStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--muted-2);
+}
+
+.spinIcon {
+  animation: agent-spin 850ms linear infinite;
+}
+
+@keyframes agent-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes agent-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {
-  .container {
-    padding: 20px 16px 80px;
-    gap: 24px;
-  }
-  .disconnectedCard,
-  .firstRevealCard,
-  .syncProgressCard {
-    padding: 32px 20px;
-  }
-  .insightCard {
-    padding: 20px 18px;
-  }
   .insightFooter {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .ctaButtonGroup {
     width: 100%;
     justify-content: space-between;
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .agentTitleRow,
+  .revealActionsRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .headerControls {
+    flex-direction: column;
+  }
+
+  .agentName {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .statusPillActive,
+  .statusPillPaused {
+    align-self: flex-start;
+  }
+
+  .primaryReviewBtn,
+  .ghostActionBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 820px) {
+  .summaryRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryItem:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .summaryItem:nth-child(4) {
+    border-top: 1px solid var(--hairline);
+  }
+}
+
+@media (max-width: 600px) {
+  .container {
+    gap: 1rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .disconnectedCard,
+  .syncProgressCard,
+  .firstRevealCard,
+  .activationMomentCard {
+    margin-top: 0;
+    padding: 1.25rem;
+  }
+
+  .primaryConnectBtn,
+  .sampleWalletBtn,
+  .activatePrimaryBtn,
+  .exploreSecondaryBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .revealStatsGrid,
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .revealStatItem + .revealStatItem,
+  .summaryItem + .summaryItem,
+  .summaryItem:nth-child(3),
+  .summaryItem:nth-child(4) {
+    border-top: 1px solid var(--hairline);
+    border-left: 0;
+  }
+
+  .insightMetricsRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metricArrow {
+    transform: rotate(90deg);
+  }
+
+  .proposedMetric {
+    margin-left: 0;
+  }
+
+  .askInputRow {
+    grid-template-columns: 1fr;
+  }
+
+  .askSendBtn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container * {
+    scroll-behavior: auto;
+  }
+
+  .stepDotActive,
+  .spinIcon,
+  .primaryConnectBtn,
+  .activatePrimaryBtn,
+  .primaryReviewBtn,
+  .askSendBtn,
+  .sampleWalletBtn,
+  .exploreSecondaryBtn,
+  .pauseToggleBtn,
+  .syncBtn,
+  .ghostActionBtn,
+  .chipBtn {
+    animation: none;
+    transition: none;
   }
 }

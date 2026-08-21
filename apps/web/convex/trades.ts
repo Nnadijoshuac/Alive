@@ -63,28 +63,31 @@ export const recordAliveTrade = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      const patchDoc: Record<string, unknown> = {
         status: args.status,
-        quoteJson: args.quoteJson,
-      });
+      };
+      if (args.quoteJson !== undefined) patchDoc.quoteJson = args.quoteJson;
+
+      await ctx.db.patch(existing._id, patchDoc);
       return { id: existing._id, txHash: args.txHash };
     }
 
-    const id = await ctx.db.insert("aliveTrades", {
+    const insertDoc: Record<string, unknown> = {
       txHash: args.txHash,
       walletAddress: normalized,
-      agentId: args.agentId,
-      strategyId: args.strategyId,
       assetId: args.assetId,
       action: args.action,
       amountIn: args.amountIn,
       amountOutExpected: args.amountOutExpected,
-      quoteJson: args.quoteJson,
       chainId: args.chainId,
       status: args.status,
       executedAt: args.executedAt,
-    });
+    };
+    if (args.agentId !== undefined) insertDoc.agentId = args.agentId;
+    if (args.strategyId !== undefined) insertDoc.strategyId = args.strategyId;
+    if (args.quoteJson !== undefined) insertDoc.quoteJson = args.quoteJson;
 
+    const id = await ctx.db.insert("aliveTrades", insertDoc as any);
     return { id, txHash: args.txHash };
   },
 });

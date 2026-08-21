@@ -6,7 +6,6 @@ import {
   ArrowRightIcon,
   CheckCircleIcon,
   CirclesThreePlusIcon,
-  FunctionIcon,
   SparkleIcon,
 } from "@phosphor-icons/react";
 import {
@@ -15,17 +14,20 @@ import {
   type PolicyRecord,
   type PortfolioProposal,
 } from "@/lib/rwa-api";
-import { rememberRwaState } from "@/lib/rwa-state";
+import { clearRwaState, readRwaState, rememberRwaState } from "@/lib/rwa-state";
 import { truncateIdentifier } from "@/lib/rwa-format";
 import {
   AllocationList,
+  Disclosure,
   ErrorState,
   LoadingState,
   ModeBadge,
   Notice,
+  OperationStatus,
   PageIntro,
   PolicyRuleGrid,
   ProposalMetrics,
+  WorkflowProgress,
   styles,
 } from "./ui";
 
@@ -40,6 +42,12 @@ type ProposalRecord = {
   proposal: PortfolioProposal;
 };
 
+function clearCompiledSelection() {
+  const { vaultAddress } = readRwaState();
+  clearRwaState();
+  if (vaultAddress) rememberRwaState({ vaultAddress });
+}
+
 export function CreateWorkspace() {
   const [mandate, setMandate] = useState(exampleMandate);
   const [policy, setPolicy] = useState<PolicyRecord>();
@@ -47,6 +55,19 @@ export function CreateWorkspace() {
   const [approved, setApproved] = useState(false);
   const [busy, setBusy] = useState<"compile" | "optimize">();
   const [error, setError] = useState<unknown>();
+  const [mandateChanged, setMandateChanged] = useState(false);
+
+  function updateMandate(nextMandate: string) {
+    if (policy || proposal || approved) {
+      setPolicy(undefined);
+      setProposal(undefined);
+      setApproved(false);
+      setMandateChanged(true);
+      clearCompiledSelection();
+    }
+    setError(undefined);
+    setMandate(nextMandate);
+  }
 
   async function submitMandate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,6 +81,8 @@ export function CreateWorkspace() {
     setPolicy(undefined);
     setProposal(undefined);
     setApproved(false);
+    setMandateChanged(false);
+    clearCompiledSelection();
     try {
       const result = await compileRwaPolicy(normalized);
       setPolicy(result.policy);
@@ -75,6 +98,7 @@ export function CreateWorkspace() {
     if (!policy || !approved) return;
     setBusy("optimize");
     setError(undefined);
+    setProposal(undefined);
     try {
       const result = await optimizeRwaPortfolio(policy.id);
       setProposal(result);
@@ -100,9 +124,30 @@ export function CreateWorkspace() {
         }
       />
 
+      <WorkflowProgress
+        label="Mandate workflow"
+        steps={[
+          {
+            label: "Intent",
+            detail: policy ? "Compiled" : busy === "compile" ? "Validating" : "Write the mandate",
+            state: policy ? "complete" : "current",
+          },
+          {
+            label: "Review policy",
+            detail: approved ? "Reviewed" : policy ? "Check strict rules" : "Waiting for policy",
+            state: approved ? "complete" : policy ? "current" : "pending",
+          },
+          {
+            label: "Proposal",
+            detail: proposal ? "Calculated" : approved ? "Ready to calculate" : "Waiting for review",
+            state: proposal ? "complete" : approved ? "current" : "pending",
+          },
+        ]}
+      />
+
       <section className={styles.section} aria-labelledby="mandate-title">
         <div className={styles.grid2}>
-          <form className={styles.panel} onSubmit={submitMandate}>
+          <form className={styles.panel} onSubmit={submitMandate} aria-busy={busy === "compile"}>
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>01 / Interpret</p>
@@ -112,19 +157,29 @@ export function CreateWorkspace() {
               <SparkleIcon size={24} color="currentColor" aria-hidden="true" />
             </div>
             <div className={styles.field}>
-              <label htmlFor="mandate">What should this capital do?</label>
+              <label htmlFor="mandate">
+                {mandate === exampleMandate
+                  ? "Example mandate / edit or compile as a demo"
+                  : "Your mandate"}
+              </label>
               <textarea
                 id="mandate"
                 className={styles.textarea}
                 value={mandate}
                 minLength={3}
                 maxLength={5_000}
-                onChange={(event) => setMandate(event.target.value)}
+                onChange={(event) => updateMandate(event.target.value)}
                 aria-describedby="mandate-hint"
+                disabled={busy !== undefined}
               />
               <span id="mandate-hint" className={styles.fieldHint}>
                 {mandate.length.toLocaleString()} / 5,000 characters. This text is sent only to the configured local intelligence service.
               </span>
+              {mandateChanged ? (
+                <span className={styles.fieldWarning} role="status">
+                  The previous policy and proposal were cleared. Compile this mandate again before calculation.
+                </span>
+              ) : null}
             </div>
             <div className={styles.actions}>
               <button className={styles.button} type="submit" disabled={busy !== undefined}>
@@ -135,39 +190,37 @@ export function CreateWorkspace() {
                 className={styles.buttonQuiet}
                 type="button"
                 disabled={busy !== undefined}
-                onClick={() => setMandate(exampleMandate)}
+                onClick={() => updateMandate(exampleMandate)}
               >
                 Restore example
               </button>
             </div>
           </form>
 
-          <aside className={`${styles.panel} ${styles.panelVoid}`}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Trust boundary</p>
-                <h2>Interpretation is not execution</h2>
+          <aside>
+            <Disclosure
+              title="How ALIVE handles this mandate"
+              summary="Interpretation, validation, calculation, and execution stay separate."
+            >
+              <div className={styles.flow}>
+                {[
+                  ["01", "Candidate", "AI or labelled fallback"],
+                  ["02", "Validate", "Strict shared schema"],
+                  ["03", "Review", "Explicit user decision"],
+                  ["04", "Calculate", "Deterministic optimizer"],
+                  ["05", "Enforce", "Separate onchain action"],
+                ].map(([index, label, detail]) => (
+                  <div className={styles.flowStep} key={index}>
+                    <span>{index}</span>
+                    <strong>{label}</strong>
+                    <small>{detail}</small>
+                  </div>
+                ))}
               </div>
-              <FunctionIcon size={24} color="currentColor" aria-hidden="true" />
-            </div>
-            <div className={styles.flow}>
-              {[
-                ["01", "Candidate", "AI or labelled fallback"],
-                ["02", "Validate", "Strict shared schema"],
-                ["03", "Approve", "Explicit user decision"],
-                ["04", "Calculate", "Deterministic optimizer"],
-                ["05", "Enforce", "Separate onchain action"],
-              ].map(([index, label, detail]) => (
-                <div className={styles.flowStep} key={index}>
-                  <span>{index}</span>
-                  <strong>{label}</strong>
-                  <small>{detail}</small>
-                </div>
-              ))}
-            </div>
-            <Notice title="Current execution state" tone="warning">
-              This screen does not register a policy or fund a vault onchain. A missing contract configuration stays visible instead of becoming a fabricated transaction.
-            </Notice>
+              <Notice title="Current execution state" tone="warning">
+                This screen does not register a policy or fund a vault onchain. A missing contract configuration stays visible instead of becoming a fabricated transaction.
+              </Notice>
+            </Disclosure>
           </aside>
         </div>
       </section>
@@ -185,7 +238,12 @@ export function CreateWorkspace() {
       ) : null}
 
       {policy ? (
-        <section className={styles.section} aria-labelledby="policy-title">
+        <section className={styles.section} aria-labelledby="policy-title" aria-live="polite">
+          <OperationStatus
+            title="Strict policy candidate ready"
+            detail="Review the canonical rules below before using them for calculation."
+            tone="success"
+          />
           <div className={styles.sectionHeader}>
             <div>
               <p className={styles.kicker}>02 / Validate</p>
@@ -255,9 +313,9 @@ export function CreateWorkspace() {
           <div className={`${styles.panel} ${styles.panelAccent} ${styles.section}`}>
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>03 / Authorize calculation</p>
+                <p className={styles.kicker}>03 / Review policy</p>
                 <h2>Review before optimization</h2>
-                <p>This approval permits a deterministic proposal calculation. It is not a wallet signature, policy registration, deposit, trade, or vault execution.</p>
+                <p>This review permits a deterministic proposal calculation. It is not a wallet signature, policy registration, deposit, trade, or vault execution.</p>
               </div>
               <CheckCircleIcon size={26} color="currentColor" aria-hidden="true" />
             </div>
@@ -277,7 +335,7 @@ export function CreateWorkspace() {
                 disabled={!approved || busy !== undefined}
                 onClick={calculatePortfolio}
               >
-                {busy === "optimize" ? "Calculating portfolio" : "Approve and calculate"}
+                {busy === "optimize" ? "Calculating portfolio" : "Calculate proposal"}
                 <CirclesThreePlusIcon size={18} weight="bold" />
               </button>
               <Link className={styles.buttonQuiet} href={`/policy/${policy.id}`}>
@@ -295,7 +353,12 @@ export function CreateWorkspace() {
       ) : null}
 
       {proposal ? (
-        <section className={styles.section} aria-labelledby="proposal-title">
+        <section className={styles.section} aria-labelledby="proposal-title" aria-live="polite">
+          <OperationStatus
+            title={proposal.proposal.feasible ? "Proposal calculated within policy" : "No feasible allocation found"}
+            detail={`Snapshot ${truncateIdentifier(proposal.marketSnapshotHash, 14, 10)}`}
+            tone={proposal.proposal.feasible ? "success" : "warning"}
+          />
           <div className={styles.sectionHeader}>
             <div>
               <p className={styles.kicker}>04 / Calculate</p>

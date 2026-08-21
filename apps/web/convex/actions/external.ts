@@ -115,7 +115,7 @@ export const runGroqExtraction = action({
         throw new Error(`Groq API responded with HTTP ${res.status}`);
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
       const content = data?.choices?.[0]?.message?.content;
       return {
         success: true,

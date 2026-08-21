@@ -6,6 +6,7 @@ import {
   getTradeTransaction,
 } from "@/lib/rwa-api";
 import {
+  requestTokenApproval,
   XLAYER_MAINNET_CONFIG,
 } from "@/lib/rwa-trade";
 
@@ -25,6 +26,49 @@ describe("X Layer Trade Client & Flow", () => {
     expect(XLAYER_MAINNET_CONFIG.rpcUrls[0]).toBe("https://rpc.xlayer.tech");
     expect(XLAYER_MAINNET_CONFIG.blockExplorerUrls[0]).toContain("xlayer");
     expect(XLAYER_MAINNET_CONFIG.nativeCurrency.symbol).toBe("OKB");
+  });
+
+  it("approves only the exact quoted token amount", async () => {
+    const request = vi.fn().mockResolvedValue("0xapproval");
+    vi.stubGlobal("window", { ethereum: { request } });
+
+    const tokenAddress = "0x74b7f16337b8972027f6196a17a631ac6de26d22";
+    const spenderAddress = "0x789b70868a2d10ae8ee438992ad367f08c3d6118";
+    const walletAddress = "0x1111111111111111111111111111111111111111";
+    const amountRaw = 100_000_000n;
+
+    await expect(
+      requestTokenApproval(tokenAddress, spenderAddress, walletAddress, amountRaw),
+    ).resolves.toBe("0xapproval");
+
+    const requestArgs = request.mock.calls[0]?.[0] as {
+      method: string;
+      params: Array<{ from: string; to: string; data: string }>;
+    };
+    const encodedSpender = spenderAddress.slice(2).padStart(64, "0");
+    const encodedAmount = amountRaw.toString(16).padStart(64, "0");
+
+    expect(requestArgs.method).toBe("eth_sendTransaction");
+    expect(requestArgs.params[0]).toEqual({
+      from: walletAddress,
+      to: tokenAddress,
+      data: `0x095ea7b3${encodedSpender}${encodedAmount}`,
+    });
+  });
+
+  it("rejects a zero-value approval", async () => {
+    const request = vi.fn();
+    vi.stubGlobal("window", { ethereum: { request } });
+
+    await expect(
+      requestTokenApproval(
+        "0x74b7f16337b8972027f6196a17a631ac6de26d22",
+        "0x789b70868a2d10ae8ee438992ad367f08c3d6118",
+        "0x1111111111111111111111111111111111111111",
+        0n,
+      ),
+    ).rejects.toThrow("Approval amount must be greater than zero.");
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("fetches supported payment tokens on X Layer", async () => {

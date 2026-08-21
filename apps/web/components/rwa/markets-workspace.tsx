@@ -16,11 +16,13 @@ import {
 } from "@/lib/rwa-api";
 import { formatFreshness, formatPrice, formatTimestamp } from "@/lib/rwa-format";
 import {
+  Disclosure,
   EmptyState,
   ErrorState,
   LoadingState,
   ModeBadge,
   Notice,
+  OperationStatus,
   PageIntro,
   styles,
 } from "./ui";
@@ -37,6 +39,8 @@ export function MarketsWorkspace() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setMarket(undefined);
+    setAssets([]);
     setError(undefined);
     try {
       const [marketResult, catalogResult] = await Promise.all([
@@ -105,18 +109,24 @@ export function MarketsWorkspace() {
       {market && !loading ? (
         <>
           <section className={styles.section}>
-            <div className={styles.panel}>
-              <div className={styles.panelHeader}>
+            <div className={styles.snapshotBar}>
+              <OperationStatus
+                title="Market snapshot ready"
+                detail={`Captured ${formatTimestamp(market.capturedAt)}`}
+                tone={market.dataMode === "LIVE" ? "success" : "warning"}
+              />
+              <div className={styles.snapshotMeta}>
                 <div>
                   <p className={styles.kicker}>Current response</p>
-                  <h2>Market snapshot</h2>
-                  <p>Captured {formatTimestamp(market.capturedAt)} by the configured intelligence service.</p>
+                  <strong>Market snapshot</strong>
                 </div>
                 <ModeBadge mode={market.dataMode} />
               </div>
-              <Notice title={`${market.dataMode} data disclosure`} tone={market.dataMode === "LIVE" ? "success" : "warning"}>
-                {market.disclaimer}
-              </Notice>
+              <Disclosure title={`${market.dataMode} data disclosure`} summary="Provider mode and limitations">
+                <Notice title="Snapshot provenance" tone={market.dataMode === "LIVE" ? "success" : "warning"}>
+                  {market.disclaimer}
+                </Notice>
+              </Disclosure>
             </div>
           </section>
 
@@ -143,6 +153,18 @@ export function MarketsWorkspace() {
                     {availableClasses.map((item) => <option value={item} key={item}>{item}</option>)}
                   </select>
                 </label>
+                {query || assetClass !== "ALL" ? (
+                  <button
+                    className={styles.buttonQuiet}
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setAssetClass("ALL");
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -173,25 +195,20 @@ export function MarketsWorkspace() {
               </div>
               <p>Risk, liquidity, restrictions, and source provenance are catalog facts, not fields invented by the interface.</p>
             </div>
-            <div className={styles.grid3}>
+            <div className={styles.assetCatalog}>
               {assets.map((asset) => (
-                <Link className={styles.assetCard} href={`/assets/${asset.id}`} key={asset.id}>
-                  <div className={styles.inline}>
-                    <span className={styles.badge}>{asset.assetClass}</span>
-                    <ModeBadge mode={asset.dataMode} />
+                <Link className={styles.assetCatalogRow} href={`/assets/${asset.id}`} key={asset.id}>
+                  <div className={styles.assetCatalogIdentity}>
+                    <strong>{asset.symbol}</strong>
+                    <span>{asset.name} / {asset.issuerName}</span>
                   </div>
-                  <div>
-                    <h3>{asset.symbol}</h3>
-                    <p>{asset.name}</p>
-                    <p>{asset.issuerName}</p>
+                  <span className={styles.badge}>{asset.assetClass}</span>
+                  <ModeBadge mode={asset.dataMode} />
+                  <div className={styles.assetRisk}>
+                    <span>Risk</span>
+                    <strong>{asset.risk ? `${asset.risk.score}/100` : "Not analyzed"}</strong>
                   </div>
-                  <div className={styles.assetCardFooter}>
-                    <div>
-                      <span className={styles.label}>Risk</span>
-                      <strong>{asset.risk ? `${asset.risk.score}/100` : "Not analyzed"}</strong>
-                    </div>
-                    <ArrowRightIcon size={18} aria-hidden="true" />
-                  </div>
+                  <ArrowRightIcon size={18} aria-hidden="true" />
                 </Link>
               ))}
             </div>

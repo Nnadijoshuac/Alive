@@ -138,6 +138,14 @@ describe("listAssetSummaries", () => {
           jsonResponse({ dataMode: "SNAPSHOT", capturedAt: "2026-08-18T00:00:00Z", disclaimer: "mixed", quotes: [] }),
         );
       }
+      if (url.includes("/api/query")) {
+        return Promise.resolve(
+          jsonResponse({
+            status: "success",
+            value: catalog,
+          }),
+        );
+      }
       if (url.endsWith("/api/assets")) {
         return Promise.resolve(
           jsonResponse({

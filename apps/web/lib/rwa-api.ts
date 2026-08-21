@@ -43,11 +43,45 @@ export class RwaApiError extends Error {
   }
 }
 
+import {
+  getFallbackCatalog,
+  getFallbackAsset,
+} from "./hosted-fallback";
+import { fetchAssetCatalog, fetchAssetById } from "./asset-data";
+
+function handleHostedFallback(path: string): unknown {
+  const [pathname, queryString] = path.split("?");
+  if (!pathname) return undefined;
+  const params = queryString ? new URLSearchParams(queryString) : undefined;
+
+  if (pathname === "/api/assets") {
+    return getFallbackCatalog(params);
+  }
+  const assetMatch = pathname.match(/^\/api\/assets\/([^/]+)$/);
+  if (assetMatch && assetMatch[1]) {
+    const asset = getFallbackAsset(decodeURIComponent(assetMatch[1]));
+    if (asset) return asset;
+  }
+  return undefined;
+}
+
 type ErrorEnvelope = {
   error?: { code?: unknown; message?: unknown; issues?: unknown };
 };
 
 async function request(path: string, init?: RequestInit): Promise<unknown> {
+  const isHosted =
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1";
+
+  if (isHosted && (INTELLIGENCE_URL.includes("127.0.0.1") || INTELLIGENCE_URL.includes("localhost"))) {
+    const fallback = handleHostedFallback(path);
+    if (fallback !== undefined) {
+      return fallback;
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(`${INTELLIGENCE_URL}${path}`, {
@@ -61,6 +95,10 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
       },
     });
   } catch (error) {
+    const fallback = handleHostedFallback(path);
+    if (fallback !== undefined) {
+      return fallback;
+    }
     throw new RwaApiError(
       "INTELLIGENCE_OFFLINE",
       "The ALIVE intelligence service is offline. Start it with pnpm dev.",
@@ -284,32 +322,17 @@ export async function listRwaAssets(filters: RwaCatalogFilters = {}): Promise<{
   assets: RwaAsset[];
   totalCount: number;
 }> {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== "") params.set(key, String(value));
-  }
-  const query = params.toString();
-  const payload = record(
-    await request(`/api/assets${query ? `?${query}` : ""}`),
-    "Asset catalog",
-  );
-  const pagination = payload.pagination
-    ? record(payload.pagination, "Pagination")
-    : undefined;
-  const catalog = record(payload.catalog, "Catalog summary");
+  const result = await fetchAssetCatalog(filters);
   return {
     catalog: {
-      id: text(catalog.id, "Catalog ID"),
-      label: text(catalog.label, "Catalog label"),
-      dataMode: catalog.dataMode === "SNAPSHOT" ? "SNAPSHOT" : "DEMO",
-      asOf: text(catalog.asOf, "Catalog timestamp"),
-      disclaimer: text(catalog.disclaimer, "Catalog disclaimer"),
+      id: "alive-canonical-catalog",
+      label: "ALIVE Canonical RWA Catalog",
+      dataMode: result.dataMode === "LIVE" ? "SNAPSHOT" : result.dataMode,
+      asOf: result.asOf,
+      disclaimer: "Catalog identity records only. Inspect each asset's cited sources, extraction status, deployment verification, and freshness before relying on it.",
     },
-    assets: RwaAssetSchema.array().parse(payload.assets),
-    totalCount:
-      typeof pagination?.totalCount === "number"
-        ? pagination.totalCount
-        : RwaAssetSchema.array().parse(payload.assets).length,
+    assets: result.assets,
+    totalCount: result.totalCount,
   };
 }
 
@@ -317,6 +340,14 @@ export async function getRwaAsset(assetId: string): Promise<{
   asset: RwaAsset;
   disclaimer: string;
 }> {
+  const asset = await fetchAssetById(assetId);
+  if (asset) {
+    return {
+      asset,
+      disclaimer: "Catalog identity record. Inspect its cited sources, extraction status, and verified deployments before relying on it.",
+    };
+  }
+
   const payload = record(
     await request(`/api/assets/${encodeURIComponent(assetId)}`),
     "Asset passport",
@@ -1089,5 +1120,4 @@ export async function getTradeTransaction(params: {
   );
   return payload as unknown as TradeTransactionResult;
 }
-
 

@@ -15,4 +15,3 @@ export const viewport: Viewport = {
 export default function HomePage() {
   return <LandingPage />;
 }
-

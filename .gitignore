@@ -12,6 +12,8 @@ node_modules/
 
 # Web output
 .next/
+.open-next/
+.wrangler/
 out/
 dist/
 coverage/

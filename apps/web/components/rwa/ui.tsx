@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import {
   ArrowRightIcon,
+  CaretDownIcon,
+  CheckCircleIcon,
   CircleNotchIcon,
   InfoIcon,
   WarningCircleIcon,
@@ -49,8 +51,162 @@ export function ModeBadge({
       : mode === "AI"
         ? "AI candidate"
         : `${mode} data`;
-  const tone = mode === "LIVE" || mode === "AI" ? styles.success : mode === "DEMO" ? styles.warning : "";
+  const tone = mode === "LIVE" ? styles.success : mode === "DEMO" ? styles.warning : "";
   return <span className={`${styles.mode} ${tone}`}>{label}</span>;
+}
+
+export type WorkflowStep = {
+  label: string;
+  detail: string;
+  state: "complete" | "current" | "pending";
+};
+
+export function WorkflowProgress({
+  label,
+  steps,
+}: {
+  label: string;
+  steps: WorkflowStep[];
+}) {
+  return (
+    <nav className={styles.workflow} aria-label={label}>
+      <ol>
+        {steps.map((step, index) => (
+          <li
+            className={styles.workflowStep}
+            data-state={step.state}
+            aria-current={step.state === "current" ? "step" : undefined}
+            key={step.label}
+          >
+            <span className={styles.workflowIndex} aria-hidden="true">
+              {step.state === "complete" ? <CheckCircleIcon size={14} weight="fill" /> : index + 1}
+            </span>
+            <span>
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
+export function Disclosure({
+  title,
+  summary,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  summary?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className={styles.disclosure} open={defaultOpen || undefined}>
+      <summary>
+        <span>
+          <strong>{title}</strong>
+          {summary ? <small>{summary}</small> : null}
+        </span>
+        <CaretDownIcon className={styles.disclosureCaret} size={16} aria-hidden="true" />
+      </summary>
+      <div className={styles.disclosureBody}>{children}</div>
+    </details>
+  );
+}
+
+export function OperationStatus({
+  title,
+  detail,
+  tone = "working",
+}: {
+  title: string;
+  detail?: ReactNode;
+  tone?: "working" | "success" | "warning" | "error";
+}) {
+  const isWorking = tone === "working";
+  const Icon = isWorking ? CircleNotchIcon : tone === "success" ? CheckCircleIcon : WarningCircleIcon;
+  return (
+    <div
+      className={styles.operationStatus}
+      data-tone={tone}
+      role={tone === "error" ? "alert" : "status"}
+      aria-live={tone === "error" ? "assertive" : "polite"}
+    >
+      <Icon className={isWorking ? styles.spin : undefined} size={17} aria-hidden="true" />
+      <span>
+        <strong>{title}</strong>
+        {detail ? <small>{detail}</small> : null}
+      </span>
+    </div>
+  );
+}
+
+export function ConsequenceReview({
+  title,
+  description,
+  facts,
+  confirmLabel,
+  busyLabel,
+  busy = false,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  description: string;
+  facts: { label: string; value: string }[];
+  confirmLabel: string;
+  busyLabel?: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const titleId = useId();
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    titleRef.current?.focus();
+
+    return () => {
+      returnFocusRef.current?.focus();
+    };
+  }, []);
+
+  return (
+    <section className={styles.consequenceReview} aria-labelledby={titleId}>
+      <header className={styles.consequenceHeader}>
+        <div>
+          <p className={styles.kicker}>Wallet consequence review</p>
+          <h3 id={titleId} ref={titleRef} tabIndex={-1}>{title}</h3>
+          <p>{description}</p>
+        </div>
+        <span className={styles.badge}>Transaction</span>
+      </header>
+      <dl className={styles.reviewFacts}>
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className={styles.actions}>
+        <button className={styles.buttonQuiet} type="button" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button className={styles.button} type="button" onClick={onConfirm} disabled={busy}>
+          {busy ? busyLabel ?? "Waiting for wallet" : confirmLabel}
+        </button>
+      </div>
+    </section>
+  );
 }
 
 export function Notice({
@@ -87,14 +243,11 @@ export function Notice({
 
 export function LoadingState({ label = "Loading sourced data" }: { label?: string }) {
   return (
-    <div className={styles.loading} role="status" aria-label={label}>
-      <div className={styles.loadingLines}>
-        <i />
-        <i />
-        <i />
-      </div>
-      <span className={styles.srOnly}>
-        <CircleNotchIcon /> {label}
+    <div className={styles.loading} role="status" aria-live="polite">
+      <CircleNotchIcon className={styles.spin} size={18} aria-hidden="true" />
+      <span>
+        <strong>Working</strong>
+        <small>{label}</small>
       </span>
     </div>
   );

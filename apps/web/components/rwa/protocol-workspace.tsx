@@ -14,7 +14,7 @@ import {
 import { getIntelligenceHealth } from "@/lib/rwa-api";
 import { rwaContractAddresses, rwaContractConfiguration } from "@/lib/rwa-chain";
 import { truncateIdentifier } from "@/lib/rwa-format";
-import { ErrorState, Notice, PageIntro, styles } from "./ui";
+import { Disclosure, ErrorState, Notice, OperationStatus, PageIntro, styles } from "./ui";
 
 const stages = [
   { id: "mandate", index: "01", label: "Mandate", title: "Human intent enters as untrusted language.", body: "A user describes objectives and constraints. The text is not executable and carries no transaction authority.", invariant: "Language cannot cross the policy boundary directly.", icon: UserCircleCheckIcon },
@@ -29,11 +29,15 @@ export function ProtocolWorkspace() {
   const [active, setActive] = useState<(typeof stages)[number]>(stages[0]);
   const [health, setHealth] = useState<Record<string, unknown>>();
   const [error, setError] = useState<unknown>();
+  const [checking, setChecking] = useState(true);
 
   const load = useCallback(async () => {
+    setChecking(true);
     setError(undefined);
+    setHealth(undefined);
     try { setHealth(await getIntelligenceHealth()); }
     catch (requestError) { setError(requestError); }
+    finally { setChecking(false); }
   }, []);
 
   useEffect(() => void load(), [load]);
@@ -65,7 +69,16 @@ export function ProtocolWorkspace() {
       </section>
 
       <section className={styles.section} aria-labelledby="runtime-title">
-        <div className={styles.sectionHeader}><div><p className={styles.kicker}>Runtime status</p><h2 id="runtime-title">What is configured right now</h2></div><button className={styles.buttonQuiet} type="button" onClick={load}>Refresh service check</button></div>
+        {checking ? (
+          <OperationStatus title="Checking runtime configuration" detail="Reading service health and public contract settings." />
+        ) : health ? (
+          <OperationStatus
+            title={String(health.status ?? "UNKNOWN").toLowerCase() === "ok" ? "Runtime check complete" : "Runtime needs attention"}
+            detail="Values below come from the current service response and public environment configuration."
+            tone={String(health.status ?? "UNKNOWN").toLowerCase() === "ok" ? "success" : "warning"}
+          />
+        ) : null}
+        <div className={styles.sectionHeader}><div><p className={styles.kicker}>Runtime status</p><h2 id="runtime-title">What is configured right now</h2></div><button className={styles.buttonQuiet} type="button" onClick={load} disabled={checking}>{checking ? "Checking service" : "Refresh service check"}</button></div>
         {error ? <ErrorState error={error} retry={load} /> : null}
         <div className={styles.grid2}>
           <article className={styles.panel}>
@@ -87,11 +100,13 @@ export function ProtocolWorkspace() {
 
       <section className={styles.section} aria-labelledby="contracts-title">
         <div className={styles.sectionHeader}><div><p className={styles.kicker}>Contract topology</p><h2 id="contracts-title">Enforcement components</h2></div><p>Addresses are read only from public environment variables. Missing values stay unconfigured.</p></div>
-        <div className={styles.grid3}>
-          {Object.entries(rwaContractAddresses).map(([name, address]) => (
-            <article className={styles.rule} key={name}><span>{name.replace(/([A-Z])/gu, " $1")}</span><strong>{address ? truncateIdentifier(address, 10, 8) : "NOT CONFIGURED"}</strong><small>{address ? "Environment configuration" : "No public address supplied"}</small></article>
-          ))}
-        </div>
+        <Disclosure title="Public contract configuration" summary={`${rwaContractConfiguration.configuredCount} of ${rwaContractConfiguration.requiredCount} required addresses configured.`}>
+          <div className={styles.grid3}>
+            {Object.entries(rwaContractAddresses).map(([name, address]) => (
+              <article className={styles.rule} key={name}><span>{name.replace(/([A-Z])/gu, " $1")}</span><strong>{address ? truncateIdentifier(address, 10, 8) : "NOT CONFIGURED"}</strong><small>{address ? "Environment configuration" : "No public address supplied"}</small></article>
+            ))}
+          </div>
+        </Disclosure>
       </section>
 
       <section className={styles.section}>

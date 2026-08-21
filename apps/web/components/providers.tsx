@@ -6,7 +6,12 @@ import { useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
 import { activeChain } from "@/lib/chain";
 
-import { ConvexClientProvider } from "./convex-provider";
+import dynamic from "next/dynamic";
+
+const ConvexClientProvider = dynamic(
+  () => import("./convex-provider").then((m) => m.ConvexClientProvider),
+  { ssr: false },
+);
 
 const wagmiConfig = createConfig({
   chains: [activeChain],

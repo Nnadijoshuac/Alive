@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -17,10 +17,12 @@ import { formatBps, formatTimestamp, truncateIdentifier } from "@/lib/rwa-format
 import { rememberRwaState } from "@/lib/rwa-state";
 import {
   AllocationList,
+  Disclosure,
   ErrorState,
   LoadingState,
   ModeBadge,
   Notice,
+  OperationStatus,
   PolicyRuleGrid,
   ProposalMetrics,
   styles,
@@ -34,18 +36,29 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
   const [loading, setLoading] = useState(true);
   const [optimizing, setOptimizing] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [failedOperation, setFailedOperation] = useState<"load" | "optimize">();
+  const loadGeneration = useRef(0);
+  const optimizeGeneration = useRef(0);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
+    ++optimizeGeneration.current;
     setLoading(true);
+    setPolicy(undefined);
+    setProposal(undefined);
     setError(undefined);
+    setFailedOperation(undefined);
     try {
       const record = await getRwaPolicy(policyId);
+      if (generation !== loadGeneration.current) return;
       setPolicy(record);
       rememberRwaState({ policyId: record.id });
     } catch (requestError) {
+      if (generation !== loadGeneration.current) return;
       setError(requestError);
+      setFailedOperation("load");
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, [policyId]);
 
@@ -53,16 +66,23 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
 
   async function optimize() {
     if (!policy) return;
+    const requestedPolicy = policy;
+    const generation = ++optimizeGeneration.current;
     setOptimizing(true);
     setError(undefined);
+    setFailedOperation(undefined);
+    setProposal(undefined);
     try {
-      const result = await optimizeRwaPortfolio(policy.id);
+      const result = await optimizeRwaPortfolio(requestedPolicy.id);
+      if (generation !== optimizeGeneration.current) return;
       setProposal(result);
-      rememberRwaState({ policyId: policy.id, proposalId: result.id });
+      rememberRwaState({ policyId: requestedPolicy.id, proposalId: result.id });
     } catch (requestError) {
+      if (generation !== optimizeGeneration.current) return;
       setError(requestError);
+      setFailedOperation("optimize");
     } finally {
-      setOptimizing(false);
+      if (generation === optimizeGeneration.current) setOptimizing(false);
     }
   }
 
@@ -70,7 +90,7 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
     <div className={styles.page}>
       <Link className={styles.textButton} href="/dashboard"><ArrowLeftIcon size={15} /> Dashboard</Link>
       {loading ? <div className={styles.section}><LoadingState label="Loading canonical policy record" /></div> : null}
-      {error ? <div className={styles.section}><ErrorState error={error} retry={load} /></div> : null}
+      {error ? <div className={styles.section}><ErrorState error={error} retry={failedOperation === "optimize" ? () => void optimize() : load} /></div> : null}
       {policy && !loading ? (
         <>
           <header className={styles.passportHero}>
@@ -90,8 +110,12 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
           </header>
 
           <section className={styles.section}>
-            <div className={styles.grid2}>
-              <article className={styles.panel}>
+            <Disclosure
+              title="Provenance and registration state"
+              summary="See who produced the candidate and what has not been proven onchain."
+            >
+              <div className={styles.evidenceColumns}>
+              <article className={styles.evidenceColumn}>
                 <div className={styles.panelHeader}>
                   <div><p className={styles.kicker}>Interpretation</p><h2>How the candidate was produced</h2></div>
                   <FunctionIcon size={24} color="currentColor" />
@@ -103,16 +127,17 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
                   <div className={styles.definitionRow}><dt>Arithmetic</dt><dd>DETERMINISTIC OPTIMIZER ONLY</dd></div>
                 </dl>
               </article>
-              <article className={`${styles.panel} ${styles.panelVoid}`}>
+              <article className={styles.evidenceColumn}>
                 <div className={styles.panelHeader}>
                   <div><p className={styles.kicker}>Onchain fact</p><h2>Not registered by this interface</h2></div>
-                  <CheckSquareOffsetIcon size={24} color="#e4b96f" />
+                  <CheckSquareOffsetIcon size={24} color="currentColor" />
                 </div>
                 <Notice title="Contract state unavailable" tone="warning">
                   The policy record exists in the intelligence service. No configured Policy Registry address or confirmed transaction is attached, so ALIVE does not claim onchain registration.
                 </Notice>
               </article>
-            </div>
+              </div>
+            </Disclosure>
           </section>
 
           <section className={styles.section} aria-labelledby="rules-title">
@@ -142,16 +167,21 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
 
           {policy.explanation.length || policy.warnings.length ? (
             <section className={styles.section}>
-              <div className={styles.grid2}>
-                <article className={styles.panel}>
+              <Disclosure
+                title="Compiler notes"
+                summary={`${policy.explanation.length} explanation item${policy.explanation.length === 1 ? "" : "s"}; ${policy.warnings.length} warning${policy.warnings.length === 1 ? "" : "s"}.`}
+              >
+                <div className={styles.evidenceColumns}>
+                <article className={styles.evidenceColumn}>
                   <p className={styles.kicker}>Compiler explanation</p>
                   <ul className={styles.plainList}>{policy.explanation.map((item) => <li key={item}>{item}</li>)}</ul>
                 </article>
-                <article className={styles.panel}>
+                <article className={styles.evidenceColumn}>
                   <p className={styles.kicker}>Warnings</p>
                   {policy.warnings.length ? <ul className={styles.plainList}>{policy.warnings.map((item) => <li key={item}>{item}</li>)}</ul> : <p className={styles.subtle}>No warnings returned.</p>}
                 </article>
-              </div>
+                </div>
+              </Disclosure>
             </section>
           ) : null}
 
@@ -173,7 +203,12 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
 
           {optimizing ? <section className={styles.section}><LoadingState label="Running deterministic portfolio calculation" /></section> : null}
           {proposal ? (
-            <section className={styles.section}>
+            <section className={styles.section} aria-live="polite">
+              <OperationStatus
+                title={proposal.proposal.feasible ? "Proposal calculated within policy" : "No feasible allocation found"}
+                detail={`Proposal ${truncateIdentifier(proposal.id)}`}
+                tone={proposal.proposal.feasible ? "success" : "warning"}
+              />
               <div className={styles.sectionHeader}>
                 <div><p className={styles.kicker}>Proposal {truncateIdentifier(proposal.id)}</p><h2>Calculated allocation</h2></div>
                 <span className={`${styles.status} ${proposal.proposal.feasible ? styles.success : styles.warning}`}>{proposal.proposal.feasible ? "Within policy" : "Infeasible"}</span>
@@ -194,4 +229,3 @@ export function PolicyWorkspace({ policyId }: { policyId: string }) {
     </div>
   );
 }
-

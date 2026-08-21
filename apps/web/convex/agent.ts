@@ -99,17 +99,29 @@ export const recordAgentInteraction = mutation({
   },
   handler: async (ctx, args) => {
     const normalized = normalizeWalletAddress(args.walletAddress);
-    const id = await ctx.db.insert("agentInteractions", {
+    const insertDoc: {
+      interactionId: string;
+      agentId: string;
+      walletAddress: string;
+      actionId: string;
+      event: string;
+      originalAmount?: string;
+      editedAmount?: string;
+      reason?: string;
+      timestamp: string;
+    } = {
       interactionId: args.interactionId,
       agentId: args.agentId,
       walletAddress: normalized,
       actionId: args.actionId,
       event: args.event,
-      originalAmount: args.originalAmount,
-      editedAmount: args.editedAmount,
-      reason: args.reason,
       timestamp: args.timestamp,
-    });
+    };
+    if (args.originalAmount !== undefined) insertDoc.originalAmount = args.originalAmount;
+    if (args.editedAmount !== undefined) insertDoc.editedAmount = args.editedAmount;
+    if (args.reason !== undefined) insertDoc.reason = args.reason;
+
+    const id = await ctx.db.insert("agentInteractions", insertDoc);
     return { id };
   },
 });
@@ -163,17 +175,29 @@ export const recordAgentDecision = mutation({
   },
   handler: async (ctx, args) => {
     const normalized = normalizeWalletAddress(args.walletAddress);
-    const id = await ctx.db.insert("agentDecisions", {
+    const insertDoc: {
+      decisionId: string;
+      walletAddress: string;
+      strategyId: string;
+      triggerType: string;
+      evaluatedAt: string;
+      inputMetricsJson: string;
+      outputActionJson?: string;
+      causalChainHash: string;
+      status: string;
+    } = {
       decisionId: args.decisionId,
       walletAddress: normalized,
       strategyId: args.strategyId,
       triggerType: args.triggerType,
       evaluatedAt: args.evaluatedAt,
       inputMetricsJson: args.inputMetricsJson,
-      outputActionJson: args.outputActionJson,
       causalChainHash: args.causalChainHash,
       status: args.status,
-    });
+    };
+    if (args.outputActionJson !== undefined) insertDoc.outputActionJson = args.outputActionJson;
+
+    const id = await ctx.db.insert("agentDecisions", insertDoc);
     return { id };
   },
 });

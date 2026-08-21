@@ -75,30 +75,33 @@ export const saveStrategy = mutation({
 
     const now = new Date().toISOString();
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        walletAddress: normalizedWallet,
+      const patchDoc: Record<string, unknown> = {
         name: args.name,
         strategyJson: args.strategyJson,
         isActive: args.isActive,
         isMarketplace: args.isMarketplace,
-        pricingJson: args.pricingJson,
         updatedAt: now,
-      });
+      };
+      if (normalizedWallet !== undefined) patchDoc.walletAddress = normalizedWallet;
+      if (args.pricingJson !== undefined) patchDoc.pricingJson = args.pricingJson;
+
+      await ctx.db.patch(existing._id, patchDoc);
       return { id: existing._id, strategyId: args.strategyId };
     }
 
-    const id = await ctx.db.insert("agentStrategies", {
+    const insertDoc: Record<string, unknown> = {
       strategyId: args.strategyId,
-      walletAddress: normalizedWallet,
       name: args.name,
       strategyJson: args.strategyJson,
       isActive: args.isActive,
       isMarketplace: args.isMarketplace,
-      pricingJson: args.pricingJson,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    if (normalizedWallet !== undefined) insertDoc.walletAddress = normalizedWallet;
+    if (args.pricingJson !== undefined) insertDoc.pricingJson = args.pricingJson;
 
+    const id = await ctx.db.insert("agentStrategies", insertDoc as any);
     return { id, strategyId: args.strategyId };
   },
 });

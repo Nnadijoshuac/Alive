@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  CheckCircleIcon,
+  CircleNotchIcon,
   ClockCounterClockwiseIcon,
   CompassIcon,
   FlaskIcon,
@@ -14,32 +16,45 @@ import {
   RobotIcon,
   SlidersHorizontalIcon,
   StarIcon,
+  WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { getIntelligenceHealth } from "@/lib/rwa-api";
 import styles from "./shell.module.css";
 
-const primaryNav = [
-  { href: "/explore", label: "Explore", icon: CompassIcon },
-  { href: "/agents", label: "Agents", icon: RobotIcon },
-  { href: "/strategies", label: "Strategies", icon: SlidersHorizontalIcon },
-  { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
+const workspaceNav = [
+  { href: "/overview", label: "Verify", icon: MagnifyingGlassIcon },
+  { href: "/explore", label: "Discover", icon: CompassIcon },
+  { href: "/create", label: "Mandate", icon: SlidersHorizontalIcon },
+  { href: "/dashboard", label: "Portfolio", icon: HouseIcon },
 ] as const;
 
-const secondaryNav = [
-  { href: "/overview", label: "Overview", icon: HouseIcon },
+const observeNav = [
+  { href: "/activity", label: "Activity", icon: ClockCounterClockwiseIcon },
   { href: "/watchlist", label: "Watchlist", icon: StarIcon },
-  { href: "/attack-lab", label: "Attack Lab", icon: FlaskIcon },
-  { href: "/demo", label: "Demo Sandbox", icon: PlayCircleIcon },
+  { href: "/attack-lab", label: "Proof lab", icon: FlaskIcon },
+] as const;
+
+const labNav = [
+  { href: "/agents", label: "Agent preview", icon: RobotIcon },
+  { href: "/strategies", label: "Strategy library", icon: PlayCircleIcon },
 ] as const;
 
 const advancedLinks = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/create", label: "Policy builder" },
   { href: "/markets", label: "Markets" },
   { href: "/rebalance", label: "Rebalance" },
   { href: "/protocol", label: "Protocol" },
+  { href: "/demo", label: "Demo controls" },
 ] as const;
+
+type NavItemDefinition =
+  | (typeof workspaceNav)[number]
+  | (typeof observeNav)[number]
+  | (typeof labNav)[number];
 
 function NavItem({
   href,
@@ -47,13 +62,7 @@ function NavItem({
   icon: Icon,
   active,
   onClick,
-}: {
-  href: string;
-  label: string;
-  icon: typeof HouseIcon;
-  active: boolean;
-  onClick?: () => void;
-}) {
+}: NavItemDefinition & { active: boolean; onClick?: () => void }) {
   return (
     <Link
       href={href}
@@ -62,14 +71,59 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       className={active ? styles.navLinkActive : styles.navLink}
     >
-      <Icon size={17} weight={active ? "fill" : "regular"} aria-hidden="true" />
-      {label}
+      <Icon size={16} weight={active ? "fill" : "regular"} aria-hidden="true" />
+      <span>{label}</span>
     </Link>
+  );
+}
+
+function ServiceStatus({
+  live,
+  long = false,
+  className,
+}: {
+  live: boolean | undefined;
+  long?: boolean;
+  className?: string | undefined;
+}) {
+  const Icon =
+    live === true
+      ? CheckCircleIcon
+      : live === false
+        ? WarningCircleIcon
+        : CircleNotchIcon;
+  const label =
+    live === undefined
+      ? long
+        ? "Checking service"
+        : "Checking"
+      : live
+        ? long
+          ? "Service connected"
+          : "Connected"
+        : long
+          ? "Service offline"
+          : "Offline";
+
+  return (
+    <Badge
+      variant={live === true ? "positive" : live === false ? "destructive" : "outline"}
+      className={className}
+      data-state={live === undefined ? "checking" : live ? "online" : "offline"}
+    >
+      <Icon
+        weight={live === true ? "fill" : "regular"}
+        className={live === undefined ? styles.checkingIcon : undefined}
+        aria-hidden="true"
+      />
+      {label}
+    </Badge>
   );
 }
 
 function useIntelligenceStatus() {
   const [live, setLive] = useState<boolean | undefined>(undefined);
+
   useEffect(() => {
     let cancelled = false;
     getIntelligenceHealth()
@@ -83,25 +137,45 @@ function useIntelligenceStatus() {
       cancelled = true;
     };
   }, []);
+
   return live;
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const intelligenceLive = useIntelligenceStatus();
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
-  // If viewing the root landing page, render without the app shell
-  if (pathname === "/") {
-    return <>{children}</>;
-  }
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const isEditing = target?.matches(
+        "input, textarea, select, [contenteditable='true']",
+      );
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      if (event.key === "/" && !isEditing) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  if (pathname === "/") return <>{children}</>;
 
   function isActive(href: string) {
-    return href === "/overview" ? pathname === "/overview" || pathname === "/" : pathname.startsWith(href);
+    return href === "/overview"
+      ? pathname === "/overview" || pathname.startsWith("/assets/")
+      : pathname.startsWith(href);
   }
 
   function submitSearch(event: React.FormEvent) {
@@ -113,7 +187,16 @@ export function SiteShell({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }
 
-  const allNavItems = [...primaryNav, ...secondaryNav];
+  const allNavItems = [...workspaceNav, ...observeNav, ...labNav];
+  const currentLabel = (() => {
+    const direct = [...allNavItems, ...advancedLinks].find((item) =>
+      isActive(item.href),
+    );
+    if (pathname.startsWith("/assets/")) return "Asset passport";
+    if (pathname.startsWith("/policy/")) return "Policy record";
+    if (pathname.startsWith("/vault/")) return "Vault";
+    return direct?.label ?? "ALIVE";
+  })();
 
   return (
     <div className={styles.shell}>
@@ -124,95 +207,158 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <aside className={styles.rail}>
         <div>
           <Link href="/" className={styles.brand} aria-label="ALIVE home">
-            ALIVE <span>RWA Intelligence</span>
+            <span className={styles.brandMark} aria-hidden="true">
+              A
+            </span>
+            <span className={styles.brandCopy}>
+              <strong>ALIVE</strong>
+              <small>Policy intelligence</small>
+            </span>
           </Link>
-          <nav className={styles.nav} aria-label="Primary navigation">
-            {primaryNav.map((item) => (
-              <NavItem key={item.href} {...item} active={isActive(item.href)} />
-            ))}
-          </nav>
-          <hr className={styles.navSeparator} />
-          <div className={styles.advancedGroup} style={{ marginTop: "4px" }}>
-            <p className={styles.advancedLabel}>Research & Sandbox</p>
-            <nav className={styles.nav} aria-label="Secondary navigation">
-              {secondaryNav.map((item) => (
+
+          <div className={styles.navGroup}>
+            <p className={styles.navLabel}>Workspace</p>
+            <nav className={styles.nav} aria-label="Workspace navigation">
+              {workspaceNav.map((item) => (
                 <NavItem key={item.href} {...item} active={isActive(item.href)} />
               ))}
             </nav>
           </div>
-          <hr className={styles.navSeparator} />
-          <div className={styles.advancedGroup}>
-            <p className={styles.advancedLabel}>Advanced Tools</p>
-            {advancedLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                className={styles.advancedLink}
-              >
-                {item.label}
-              </Link>
-            ))}
+
+          <div className={styles.navGroup}>
+            <p className={styles.navLabel}>Observe</p>
+            <nav className={styles.nav} aria-label="Observation navigation">
+              {observeNav.map((item) => (
+                <NavItem key={item.href} {...item} active={isActive(item.href)} />
+              ))}
+            </nav>
           </div>
+
+          <div className={styles.navGroup}>
+            <p className={styles.navLabel}>Labs / preview</p>
+            <nav className={styles.nav} aria-label="Preview navigation">
+              {labNav.map((item) => (
+                <NavItem key={item.href} {...item} active={isActive(item.href)} />
+              ))}
+            </nav>
+          </div>
+
+          <Separator className={styles.railSeparator} />
+          <details className={styles.moreGroup}>
+            <summary>More tools</summary>
+            <div className={styles.moreLinks}>
+              {advancedLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch={false}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className={
+                    isActive(item.href)
+                      ? styles.advancedLinkActive
+                      : styles.advancedLink
+                  }
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </details>
         </div>
+
         <div className={styles.railFooter}>
-          <span>
-            <i
-              className={
-                intelligenceLive ? styles.statusDotLive : styles.statusDot
-              }
-              aria-hidden="true"
-            />
-            {intelligenceLive === undefined
-              ? "Checking intelligence service…"
-              : intelligenceLive
-                ? "Intelligence service connected"
-                : "Intelligence service offline"}
-          </span>
-          <span>Demo data is labeled</span>
+          <ServiceStatus
+            live={intelligenceLive}
+            long
+            className={styles.railStatus}
+          />
+          <span>Demo and snapshot data stay labelled</span>
         </div>
       </aside>
 
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.mobileBar}>
-            <Link href="/" className={styles.brand} aria-label="ALIVE home">
+            <Link href="/" className={styles.mobileBrand} aria-label="ALIVE home">
               ALIVE
             </Link>
-            <button
+            <span>{currentLabel}</span>
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
+              className={styles.mobileMenuButton}
               aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
               aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
               onClick={() => setMobileOpen((value) => !value)}
             >
-              {mobileOpen ? <XIcon size={20} /> : <ListIcon size={20} />}
-            </button>
+              {mobileOpen ? <XIcon size={19} /> : <ListIcon size={19} />}
+            </Button>
           </div>
+
+          <div className={styles.routeContext}>
+            <span>{currentLabel}</span>
+            <small>RWA control room</small>
+          </div>
+
           <form className={styles.topbarSearch} onSubmit={submitSearch} role="search">
             <MagnifyingGlassIcon size={15} aria-hidden="true" />
-            <input
-              type="text"
+            <Input
+              ref={searchRef}
+              type="search"
               inputMode="search"
               autoComplete="off"
-              placeholder="Search token, issuer, asset or address"
+              placeholder="Search asset, issuer or address"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Search a tokenized asset"
+              className={styles.searchInput}
             />
+            <kbd aria-hidden="true">/</kbd>
           </form>
+
+          <div className={styles.contextBadges} aria-label="Application context">
+            <Badge variant="outline" className={styles.networkBadge}>
+              X Layer
+            </Badge>
+            <ServiceStatus
+              live={intelligenceLive}
+              className={styles.serviceBadge}
+            />
+          </div>
         </header>
 
         {mobileOpen ? (
-          <nav className={styles.nav} aria-label="Mobile navigation" style={{ padding: "8px 16px" }}>
-            {allNavItems.map((item) => (
-              <NavItem
-                key={item.href}
-                {...item}
-                active={isActive(item.href)}
-                onClick={() => setMobileOpen(false)}
-              />
-            ))}
-          </nav>
+          <div id="mobile-navigation" className={styles.mobileMenu}>
+            <nav className={styles.mobileNav} aria-label="Mobile navigation">
+              {allNavItems.map((item) => (
+                <NavItem
+                  key={item.href}
+                  {...item}
+                  active={isActive(item.href)}
+                  onClick={() => setMobileOpen(false)}
+                />
+              ))}
+              <div className={styles.mobileMore}>
+                <ServiceStatus
+                  live={intelligenceLive}
+                  long
+                  className={styles.mobileService}
+                />
+                {advancedLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    aria-current={isActive(item.href) ? "page" : undefined}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          </div>
         ) : null}
 
         <main id="main-content" className={styles.content}>

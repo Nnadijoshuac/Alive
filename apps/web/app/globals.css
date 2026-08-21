@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background: var(--ui-background);
+  --color-foreground: var(--ui-foreground);
+  --color-card: var(--ui-card);
+  --color-card-foreground: var(--ui-card-foreground);
+  --color-popover: var(--ui-popover);
+  --color-popover-foreground: var(--ui-popover-foreground);
+  --color-primary: var(--ui-primary);
+  --color-primary-foreground: var(--ui-primary-foreground);
+  --color-secondary: var(--ui-secondary);
+  --color-secondary-foreground: var(--ui-secondary-foreground);
+  --color-muted: var(--ui-muted);
+  --color-muted-foreground: var(--ui-muted-foreground);
+  --color-accent: var(--ui-accent);
+  --color-accent-foreground: var(--ui-accent-foreground);
+  --color-destructive: var(--ui-destructive);
+  --color-destructive-foreground: var(--ui-destructive-foreground);
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-input);
+  --color-ring: var(--ui-ring);
+  --color-positive: var(--ui-positive);
+  --color-positive-subtle: var(--ui-positive-subtle);
+}
+
 :root {
   color-scheme: light;
   /* Every route now shares the milk + black system below. These legacy
@@ -52,32 +76,52 @@
   --focus-2: #14130f;
   --radius-md: 10px;
   --radius-lg: 14px;
+
+  /* Source-component primitives use a namespaced semantic layer so the
+     standalone landing page can keep its existing visual variables. */
+  --ui-background: #f6f3ed;
+  --ui-foreground: #171713;
+  --ui-card: #fbf9f4;
+  --ui-card-foreground: #171713;
+  --ui-popover: #fbf9f4;
+  --ui-popover-foreground: #171713;
+  --ui-primary: #171713;
+  --ui-primary-foreground: #f6f3ed;
+  --ui-secondary: #ebe6dc;
+  --ui-secondary-foreground: #25231f;
+  --ui-muted: #ebe6dc;
+  --ui-muted-foreground: #706c64;
+  --ui-accent: #e6e1d7;
+  --ui-accent-foreground: #171713;
+  --ui-destructive: #a8402a;
+  --ui-destructive-foreground: #fffaf5;
+  --ui-border: #d7d1c6;
+  --ui-input: #cfc8bc;
+  --ui-ring: #171713;
+  --ui-positive: #2f7654;
+  --ui-positive-subtle: #e5efe9;
+  --ui-control-radius: 8px;
+  --ui-panel-radius: 12px;
 }
 
 * {
   box-sizing: border-box;
 }
 html {
-  background: var(--bg);
+  background: #050806;
   scroll-behavior: smooth;
 }
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--bg);
+  background: #050806;
   color: var(--text);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
 }
 
 body::after {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  pointer-events: none;
-  content: "";
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+  display: none;
 }
 
 ::selection {

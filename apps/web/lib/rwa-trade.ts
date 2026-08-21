@@ -160,14 +160,20 @@ export async function requestTokenApproval(
   tokenAddress: string,
   spenderAddress: string,
   walletAddress: string,
+  amountRaw: bigint,
 ): Promise<string> {
   if (!isWalletAvailable() || !window.ethereum) {
     throw new Error("No Web3 wallet detected.");
   }
 
-  // Max uint256 allowance approval
-  const maxUint256 = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-  const data = `0x095ea7b3${padAddress(spenderAddress)}${maxUint256}`;
+  if (amountRaw <= 0n) {
+    throw new Error("Approval amount must be greater than zero.");
+  }
+
+  // Approve only the amount required by the current quote. The user can
+  // review a new approval if a later quote needs a different amount.
+  const encodedAmount = amountRaw.toString(16).padStart(64, "0");
+  const data = `0x095ea7b3${padAddress(spenderAddress)}${encodedAmount}`;
 
   const txHash = (await window.ethereum.request({
     method: "eth_sendTransaction",

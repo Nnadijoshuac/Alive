@@ -26,6 +26,7 @@ import {
   ErrorState,
   LoadingState,
   Notice,
+  OperationStatus,
   PageIntro,
   styles,
 } from "./ui";
@@ -64,15 +65,18 @@ export function AttackLabWorkspace() {
   const [policy, setPolicy] = useState<PolicyRecord>();
   const [assets, setAssets] = useState<RwaAsset[]>([]);
   const [selected, setSelected] = useState<AttackScenario>(scenarios[0]!);
+  const [completedScenario, setCompletedScenario] = useState<AttackScenario>();
   const [submitted, setSubmitted] = useState<Allocation[]>([]);
   const [result, setResult] = useState<AttackResult>();
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [failedOperation, setFailedOperation] = useState<"load" | "run">();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(undefined);
+    setFailedOperation(undefined);
     try {
       const state = readRwaState();
       const catalog = await listRwaAssets();
@@ -81,6 +85,7 @@ export function AttackLabWorkspace() {
       else setPolicy(undefined);
     } catch (requestError) {
       setError(requestError);
+      setFailedOperation("load");
     } finally {
       setLoading(false);
     }
@@ -90,14 +95,16 @@ export function AttackLabWorkspace() {
 
   async function runScenario() {
     if (!policy) return;
+    const scenario = selected;
     setRunning(true);
     setError(undefined);
+    setFailedOperation(undefined);
     setResult(undefined);
     try {
       let allocations: Allocation[];
-      if (selected.id === "UNAPPROVED") {
+      if (scenario.id === "UNAPPROVED") {
         allocations = [{ assetId: "unapproved-rwa", weightBps: 10_000 }];
-      } else if (selected.id === "CONCENTRATION") {
+      } else if (scenario.id === "CONCENTRATION") {
         const equity = assets.find((asset) => asset.id === "tnvda") ?? assets.find((asset) => asset.assetClass === "EQUITY") ?? assets[0];
         if (!equity) throw new Error("The approved catalog is empty.");
         allocations = [{ assetId: equity.id, weightBps: 10_000 }];
@@ -107,9 +114,12 @@ export function AttackLabWorkspace() {
         allocations = proposal.proposal.allocations.map(({ assetId, weightBps }) => ({ assetId, weightBps }));
       }
       setSubmitted(allocations);
-      setResult(await checkRwaPolicy(policy.id, allocations));
+      const checked = await checkRwaPolicy(policy.id, allocations);
+      setCompletedScenario(scenario);
+      setResult(checked);
     } catch (requestError) {
       setError(requestError);
+      setFailedOperation("run");
     } finally {
       setRunning(false);
     }
@@ -124,7 +134,7 @@ export function AttackLabWorkspace() {
         aside={<span className={styles.badge}>No transaction is broadcast</span>}
       />
       {loading ? <section className={styles.section}><LoadingState label="Loading policy attack surface" /></section> : null}
-      {error ? <section className={styles.section}><ErrorState error={error} retry={load} /></section> : null}
+      {error ? <section className={styles.section}><ErrorState error={error} retry={failedOperation === "run" ? () => void runScenario() : load} /></section> : null}
       {!loading && !policy && !error ? <section className={styles.section}><EmptyState icon={<VaultIcon size={26} />} title="No policy to attack" description="Create a strict policy before testing concentration and catalog-boundary failures." href="/create" action="Create a mandate" /></section> : null}
 
       {policy ? (
@@ -134,11 +144,19 @@ export function AttackLabWorkspace() {
               <div className={styles.stack}>
                 {scenarios.map((scenario) => (
                   <button
-                    className={`${styles.panel} ${selected.id === scenario.id ? styles.panelAccent : ""}`}
+                    className={`${styles.scenarioButton} ${selected.id === scenario.id ? styles.scenarioButtonActive : ""}`}
                     type="button"
                     key={scenario.id}
-                    onClick={() => { setSelected(scenario); setResult(undefined); setSubmitted([]); }}
+                    onClick={() => {
+                      setSelected(scenario);
+                      setCompletedScenario(undefined);
+                      setResult(undefined);
+                      setSubmitted([]);
+                      setError(undefined);
+                      setFailedOperation(undefined);
+                    }}
                     aria-pressed={selected.id === scenario.id}
+                    disabled={running}
                   >
                     <div className={styles.panelHeader}>
                       <div><p className={styles.kicker}>{scenario.id}</p><h2>{scenario.name}</h2><p>{scenario.description}</p></div>
@@ -168,9 +186,14 @@ export function AttackLabWorkspace() {
           {running ? <section className={styles.section}><LoadingState label="Checking adversarial allocation" /></section> : null}
 
           {result ? (
-            <section className={styles.section} aria-labelledby="attack-result-title">
+            <section className={styles.section} aria-labelledby="attack-result-title" aria-live="polite">
+              <OperationStatus
+                title={result.result.withinPolicy ? "Allocation accepted by the deterministic policy" : "Allocation rejected by the deterministic policy"}
+                detail={`${result.result.violations.length} reason code${result.result.violations.length === 1 ? "" : "s"} returned`}
+                tone={result.result.withinPolicy ? "success" : "warning"}
+              />
               <div className={styles.sectionHeader}>
-                <div><p className={styles.kicker}>Result / {selected.id}</p><h2 id="attack-result-title">{result.result.withinPolicy ? "The allocation stayed inside policy." : "The allocation failed policy."}</h2></div>
+                <div><p className={styles.kicker}>Result / {completedScenario?.id ?? "UNKNOWN"}</p><h2 id="attack-result-title">{result.result.withinPolicy ? "The allocation stayed inside policy." : "The allocation failed policy."}</h2></div>
                 <span className={`${styles.status} ${result.result.withinPolicy ? styles.success : styles.warning}`}>{result.result.withinPolicy ? "Accepted" : "Rejected"}</span>
               </div>
               <div className={styles.grid2}>

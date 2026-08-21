@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileSearchIcon, Search01Icon } from "@hugeicons/core-free-icons";
-import { publiclySelectableChains, type AssetClass, type BackingType } from "@alive/shared";
+import {
+  publiclySelectableChains,
+  type AssetClass,
+  type BackingType,
+} from "@alive/shared";
 import { AliveIcon, AliveIconTile } from "@/components/ui/alive-icon";
 import {
   dataStatus,
@@ -13,26 +17,42 @@ import {
   type VerificationStatus,
 } from "@/lib/asset-intelligence-summary";
 import { getWatchlist, toggleWatch } from "@/lib/watchlist-state";
+import {
+  EXPLORE_PAGE_SIZE,
+  getPaginationItems,
+} from "@/lib/explore-pagination";
 import { AssetTable } from "./asset-table";
 import styles from "./explore.module.css";
 
-export const EXPLORE_PAGE_SIZE = 8;
-
-const VERIFICATION_FILTERS = ["ALL", "VERIFIED", "NOT_ANALYZED", "UNVERIFIED"] as const;
-const VERIFICATION_LABELS: Record<(typeof VERIFICATION_FILTERS)[number], string> = {
+const VERIFICATION_FILTERS = [
+  "ALL",
+  "VERIFIED",
+  "NOT_ANALYZED",
+  "UNVERIFIED",
+] as const;
+const VERIFICATION_LABELS: Record<
+  (typeof VERIFICATION_FILTERS)[number],
+  string
+> = {
   ALL: "All verification states",
   VERIFIED: "Verified",
   NOT_ANALYZED: "Not analyzed",
   UNVERIFIED: "Unverified",
 };
 
-const MARKET_DATA_FILTERS = ["ALL", "LIVE", "AVAILABLE", "UNAVAILABLE"] as const;
-const MARKET_DATA_LABELS: Record<(typeof MARKET_DATA_FILTERS)[number], string> = {
-  ALL: "All market data",
-  LIVE: "Live",
-  AVAILABLE: "Available",
-  UNAVAILABLE: "Unavailable",
-};
+const MARKET_DATA_FILTERS = [
+  "ALL",
+  "LIVE",
+  "AVAILABLE",
+  "UNAVAILABLE",
+] as const;
+const MARKET_DATA_LABELS: Record<(typeof MARKET_DATA_FILTERS)[number], string> =
+  {
+    ALL: "All market data",
+    LIVE: "Live",
+    AVAILABLE: "Available",
+    UNAVAILABLE: "Unavailable",
+  };
 
 const BACKING_FILTERS = ["ALL", "UNCLASSIFIED"] as const;
 const BACKING_TYPES: BackingType[] = [
@@ -47,7 +67,9 @@ const BACKING_TYPES: BackingType[] = [
 ];
 
 /** LIVE/AVAILABLE/UNAVAILABLE mapped onto the existing DataStatus enum -- "DEMO" is the generic "some real, non-live-monitored source" bucket, never actually reachable for today's real catalog, kept as an option so the architecture doesn't need to change again once one exists. */
-function marketDataBucket(summary: AssetSummary): (typeof MARKET_DATA_FILTERS)[number] {
+function marketDataBucket(
+  summary: AssetSummary,
+): (typeof MARKET_DATA_FILTERS)[number] {
   const status = dataStatus(summary);
   if (status === "LIVE") return "LIVE";
   if (status === "DEMO") return "AVAILABLE";
@@ -61,38 +83,14 @@ function marketDataBucket(summary: AssetSummary): (typeof MARKET_DATA_FILTERS)[n
 // zero (or, as of this pass, seven) verified deployments there.
 const REGISTRY_CHAIN_NAMES = publiclySelectableChains().map((c) => c.chainName);
 
-/**
- * Computes compact pagination page numbers and ellipses.
- * Examples:
- * - Total <= 7: [1, 2, 3] or [1, 2, 3, 4, 5, 6, 7]
- * - Beginning: [1, 2, 3, "…", 18]
- * - Middle: [1, "…", 8, 9, 10, "…", 18]
- * - End: [1, "…", 16, 17, 18]
- */
-export function getPaginationItems(currentPage: number, totalPages: number): (number | "…")[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-
-  // Beginning: 1 2 3 … 18
-  if (currentPage <= 3) {
-    return [1, 2, 3, "…", totalPages];
-  }
-
-  // End: 1 … 16 17 18
-  if (currentPage >= totalPages - 2) {
-    return [1, "…", totalPages - 2, totalPages - 1, totalPages];
-  }
-
-  // Middle: 1 … 8 9 10 … 18
-  return [1, "…", currentPage - 1, currentPage, currentPage + 1, "…", totalPages];
-}
-
 export function ExplorePage() {
   const [summaries, setSummaries] = useState<AssetSummary[]>();
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [chainFilter, setChainFilter] = useState<string>("ALL");
-  const [assetClassFilter, setAssetClassFilter] = useState<AssetClass | "ALL">("ALL");
+  const [assetClassFilter, setAssetClassFilter] = useState<AssetClass | "ALL">(
+    "ALL",
+  );
   const [issuerFilter, setIssuerFilter] = useState<string>("ALL");
   const [verificationFilter, setVerificationFilter] =
     useState<(typeof VERIFICATION_FILTERS)[number]>("ALL");
@@ -102,17 +100,34 @@ export function ExplorePage() {
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
 
+  const loadSummaries = useCallback(() => {
+    setSummaries(undefined);
+    setLoadError(null);
+    listAssetSummaries()
+      .then((result) => {
+        setSummaries(result);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        setSummaries([]);
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "The asset catalog could not be loaded.",
+        );
+      });
+  }, []);
+
   useEffect(() => {
     setWatchedIds(new Set(getWatchlist()));
-    listAssetSummaries()
-      .then(setSummaries)
-      .catch(() => setSummaries([]));
+    loadSummaries();
     function onChange() {
       setWatchedIds(new Set(getWatchlist()));
     }
     window.addEventListener("alive:watchlist-changed", onChange);
-    return () => window.removeEventListener("alive:watchlist-changed", onChange);
-  }, []);
+    return () =>
+      window.removeEventListener("alive:watchlist-changed", onChange);
+  }, [loadSummaries]);
 
   // Chains: the full registry (X Layer always included), plus any
   // additional chain a real deployment turns up that isn't registered yet
@@ -141,16 +156,23 @@ export function ExplorePage() {
     const needle = query.trim().toLowerCase();
     return (summaries ?? []).filter((summary) => {
       const { asset } = summary;
-      if (chainFilter !== "ALL" && !verifiedChains(asset).includes(chainFilter)) return false;
-      if (assetClassFilter !== "ALL" && asset.assetClass !== assetClassFilter) return false;
-      if (issuerFilter !== "ALL" && asset.issuerName !== issuerFilter) return false;
+      if (chainFilter !== "ALL" && !verifiedChains(asset).includes(chainFilter))
+        return false;
+      if (assetClassFilter !== "ALL" && asset.assetClass !== assetClassFilter)
+        return false;
+      if (issuerFilter !== "ALL" && asset.issuerName !== issuerFilter)
+        return false;
       if (
         verificationFilter !== "ALL" &&
-        verificationStatus(summary) !== (verificationFilter as VerificationStatus)
+        verificationStatus(summary) !==
+          (verificationFilter as VerificationStatus)
       ) {
         return false;
       }
-      if (marketDataFilter !== "ALL" && marketDataBucket(summary) !== marketDataFilter) {
+      if (
+        marketDataFilter !== "ALL" &&
+        marketDataBucket(summary) !== marketDataFilter
+      ) {
         return false;
       }
       if (backingFilter === "UNCLASSIFIED" && asset.backing) return false;
@@ -162,7 +184,8 @@ export function ExplorePage() {
         return false;
       }
       if (needle) {
-        const haystack = `${asset.symbol} ${asset.name} ${asset.issuerName} ${asset.assetClass} ${(asset.deployments ?? []).map((d) => d.contractAddress).join(" ")}`.toLowerCase();
+        const haystack =
+          `${asset.symbol} ${asset.name} ${asset.issuerName} ${asset.assetClass} ${(asset.deployments ?? []).map((d) => d.contractAddress).join(" ")}`.toLowerCase();
         if (!haystack.includes(needle)) return false;
       }
       return true;
@@ -191,7 +214,10 @@ export function ExplorePage() {
     backingFilter,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / EXPLORE_PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filtered.length / EXPLORE_PAGE_SIZE),
+  );
   const safePage = Math.min(page, totalPages);
 
   const paginatedSummaries = useMemo(() => {
@@ -199,138 +225,231 @@ export function ExplorePage() {
     return filtered.slice(start, start + EXPLORE_PAGE_SIZE);
   }, [filtered, safePage]);
 
-  const isXLayerZeroState = chainFilter === "X Layer" && summaries && filtered.length === 0;
+  const isXLayerZeroState =
+    chainFilter === "X Layer" && summaries && filtered.length === 0;
+  const advancedFilterCount = [
+    assetClassFilter,
+    issuerFilter,
+    backingFilter,
+    verificationFilter,
+    marketDataFilter,
+  ].filter((value) => value !== "ALL").length;
 
   return (
     <div className={styles.page}>
-      <div>
-        <p className={styles.eyebrow}>Explore</p>
-        <h1 className={styles.heading}>The real RWA universe ALIVE has indexed.</h1>
-        <p className={styles.subheading}>
-          Search by symbol, product, issuer, category, or contract address. Filter by chain,
-          asset class, issuer, backing, verification, and market data.
-        </p>
-      </div>
-
-      <div className={styles.filterRow}>
-        <div className={styles.searchBox}>
-          <AliveIcon icon={Search01Icon} size="md" tone="muted" />
-          <input
-            type="text"
-            inputMode="search"
-            autoComplete="off"
-            placeholder="Search symbol, product, issuer, category, or contract address"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            aria-label="Search all indexed RWAs"
-          />
+      <header className={styles.pageHeader}>
+        <div>
+          <p className={styles.eyebrow}>Asset index</p>
+          <h1 className={styles.heading}>Inspect the indexed RWA universe.</h1>
+          <p className={styles.subheading}>
+            Compare identity, backing, deployment, verification, eligibility,
+            and market-data coverage without treating a catalog entry as an
+            approval.
+          </p>
         </div>
-        <select
-          value={chainFilter}
-          onChange={(event) => setChainFilter(event.target.value)}
-          aria-label="Filter by chain"
-        >
-          <option value="ALL">All chains</option>
-          {chains.map((chain) => (
-            <option key={chain} value={chain}>
-              {chain}
-            </option>
-          ))}
-        </select>
-        <select
-          value={assetClassFilter}
-          onChange={(event) => setAssetClassFilter(event.target.value as AssetClass | "ALL")}
-          aria-label="Filter by asset class"
-        >
-          <option value="ALL">All asset classes</option>
-          {assetClasses.map((assetClass) => (
-            <option key={assetClass} value={assetClass}>
-              {assetClass}
-            </option>
-          ))}
-        </select>
-        <select
-          value={issuerFilter}
-          onChange={(event) => setIssuerFilter(event.target.value)}
-          aria-label="Filter by issuer"
-        >
-          <option value="ALL">All issuers</option>
-          {issuers.map((issuer) => (
-            <option key={issuer} value={issuer}>
-              {issuer}
-            </option>
-          ))}
-        </select>
-        <select
-          value={backingFilter}
-          onChange={(event) => setBackingFilter(event.target.value)}
-          aria-label="Filter by backing classification"
-        >
-          <option value="ALL">All backing types</option>
-          {BACKING_FILTERS.filter((v) => v !== "ALL").map((v) => (
-            <option key={v} value={v}>
-              Unclassified
-            </option>
-          ))}
-          {BACKING_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type.replaceAll("_", " ")}
-            </option>
-          ))}
-        </select>
-        <select
-          value={verificationFilter}
-          onChange={(event) =>
-            setVerificationFilter(event.target.value as (typeof VERIFICATION_FILTERS)[number])
-          }
-          aria-label="Filter by verification status"
-        >
-          {VERIFICATION_FILTERS.map((status) => (
-            <option key={status} value={status}>
-              {VERIFICATION_LABELS[status]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={marketDataFilter}
-          onChange={(event) =>
-            setMarketDataFilter(event.target.value as (typeof MARKET_DATA_FILTERS)[number])
-          }
-          aria-label="Filter by market data availability"
-        >
-          {MARKET_DATA_FILTERS.map((status) => (
-            <option key={status} value={status}>
-              {MARKET_DATA_LABELS[status]}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className={styles.indexLedger}>
+          <span>Current catalog</span>
+          <strong>{summaries?.length ?? "UNKNOWN"}</strong>
+          <small>
+            {summaries === undefined
+              ? "Loading records"
+              : "Indexed asset records"}
+          </small>
+        </div>
+      </header>
+
+      <section
+        className={styles.filterPanel}
+        aria-labelledby="catalog-filters-title"
+      >
+        <div className={styles.filterHeader}>
+          <div>
+            <span>Query controls</span>
+            <h2 id="catalog-filters-title">Filter the evidence set</h2>
+          </div>
+          <output aria-live="polite">
+            {summaries === undefined
+              ? "Loading"
+              : `${filtered.length} result${filtered.length === 1 ? "" : "s"}`}
+          </output>
+        </div>
+        <div className={styles.filterRow}>
+          <div className={styles.searchBox}>
+            <AliveIcon icon={Search01Icon} size="md" tone="muted" />
+            <input
+              type="text"
+              inputMode="search"
+              autoComplete="off"
+              placeholder="Search symbol, product, issuer, category, or contract address"
+              value={query}
+              disabled={summaries === undefined}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search all indexed RWAs"
+            />
+          </div>
+          <select
+            value={chainFilter}
+            disabled={summaries === undefined}
+            onChange={(event) => setChainFilter(event.target.value)}
+            aria-label="Filter by chain"
+          >
+            <option value="ALL">All chains</option>
+            {chains.map((chain) => (
+              <option key={chain} value={chain}>
+                {chain}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <details className={styles.filterDisclosure}>
+          <summary>
+            More filters
+            {advancedFilterCount > 0 ? (
+              <span>{advancedFilterCount} applied</span>
+            ) : null}
+          </summary>
+          <div className={styles.advancedFilters}>
+            <select
+              disabled={summaries === undefined}
+              value={assetClassFilter}
+              onChange={(event) =>
+                setAssetClassFilter(event.target.value as AssetClass | "ALL")
+              }
+              aria-label="Filter by asset class"
+            >
+              <option value="ALL">All asset classes</option>
+              {assetClasses.map((assetClass) => (
+                <option key={assetClass} value={assetClass}>
+                  {assetClass}
+                </option>
+              ))}
+            </select>
+            <select
+              disabled={summaries === undefined}
+              value={issuerFilter}
+              onChange={(event) => setIssuerFilter(event.target.value)}
+              aria-label="Filter by issuer"
+            >
+              <option value="ALL">All issuers</option>
+              {issuers.map((issuer) => (
+                <option key={issuer} value={issuer}>
+                  {issuer}
+                </option>
+              ))}
+            </select>
+            <select
+              disabled={summaries === undefined}
+              value={backingFilter}
+              onChange={(event) => setBackingFilter(event.target.value)}
+              aria-label="Filter by backing classification"
+            >
+              <option value="ALL">All backing types</option>
+              {BACKING_FILTERS.filter((v) => v !== "ALL").map((v) => (
+                <option key={v} value={v}>
+                  Unclassified
+                </option>
+              ))}
+              {BACKING_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
+            <select
+              disabled={summaries === undefined}
+              value={verificationFilter}
+              onChange={(event) =>
+                setVerificationFilter(
+                  event.target.value as (typeof VERIFICATION_FILTERS)[number],
+                )
+              }
+              aria-label="Filter by verification status"
+            >
+              {VERIFICATION_FILTERS.map((status) => (
+                <option key={status} value={status}>
+                  {VERIFICATION_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            <select
+              disabled={summaries === undefined}
+              value={marketDataFilter}
+              onChange={(event) =>
+                setMarketDataFilter(
+                  event.target.value as (typeof MARKET_DATA_FILTERS)[number],
+                )
+              }
+              aria-label="Filter by market data availability"
+            >
+              {MARKET_DATA_FILTERS.map((status) => (
+                <option key={status} value={status}>
+                  {MARKET_DATA_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            {advancedFilterCount > 0 ? (
+              <button
+                type="button"
+                className={styles.clearFilters}
+                onClick={() => {
+                  setAssetClassFilter("ALL");
+                  setIssuerFilter("ALL");
+                  setBackingFilter("ALL");
+                  setVerificationFilter("ALL");
+                  setMarketDataFilter("ALL");
+                }}
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        </details>
+      </section>
 
       {chainFilter !== "ALL" ? (
         <p className={styles.resultSummary}>
-          {chainFilter.toUpperCase()} -- indexed verified deployments: {filtered.length}
+          {chainFilter.toUpperCase()} -- indexed verified deployments:{" "}
+          {filtered.length}
         </p>
       ) : null}
 
-      {isXLayerZeroState ? (
+      {loadError ? (
+        <div className={styles.errorState} role="alert">
+          <strong>Asset catalog unavailable</strong>
+          <span>{loadError}</span>
+          <button type="button" onClick={loadSummaries}>
+            Try again
+          </button>
+        </div>
+      ) : isXLayerZeroState ? (
         <div className={styles.emptyState}>
           <AliveIconTile icon={FileSearchIcon} tone="muted" />
           <p>No verified X Layer RWA deployments are indexed yet.</p>
-          <p className={styles.emptyStateSub}>ALIVE is actively indexing X Layer.</p>
+          <p className={styles.emptyStateSub}>
+            This reflects the currently loaded catalog snapshot.
+          </p>
         </div>
       ) : (
         <div className={styles.tableCard}>
           <AssetTable
             summaries={paginatedSummaries}
-            emptyLabel={summaries ? "No assets match these filters." : "Loading…"}
+            loading={summaries === undefined}
+            emptyLabel={
+              summaries ? "No assets match these filters." : "Loading…"
+            }
             watchedIds={watchedIds}
             onToggleWatch={(assetId) => toggleWatch(assetId)}
           />
           {filtered.length > EXPLORE_PAGE_SIZE ? (
-            <nav className={styles.paginationRow} aria-label="Explore assets pagination">
+            <nav
+              className={styles.paginationRow}
+              aria-label="Explore assets pagination"
+            >
               <span className={styles.paginationInfo}>
-                Showing {(safePage - 1) * EXPLORE_PAGE_SIZE + 1}–
-                {Math.min(safePage * EXPLORE_PAGE_SIZE, filtered.length)} of {filtered.length}
+                Showing {(safePage - 1) * EXPLORE_PAGE_SIZE + 1} to{" "}
+                {Math.min(safePage * EXPLORE_PAGE_SIZE, filtered.length)} of{" "}
+                {filtered.length}
               </span>
               <div className={styles.paginationControls}>
                 <button

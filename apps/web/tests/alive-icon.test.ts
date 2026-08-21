@@ -61,8 +61,8 @@ describe("Explore product-name 1-line clamp", () => {
     expect(issuerBlock).toMatch(/white-space:\s*nowrap;/);
   });
 
-  it("clicking an Explore/table result still navigates by canonical asset id, unaffected by clamping", () => {
+  it("an Explore/table result still links by canonical asset id, unaffected by clamping", () => {
     const tableSource = readComponentSource("intelligence/asset-table.tsx");
-    expect(tableSource).toContain("router.push(`/assets/${summary.asset.id}`)");
+    expect(tableSource).toContain("href={`/assets/${summary.asset.id}`}");
   });
 });

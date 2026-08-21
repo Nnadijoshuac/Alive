@@ -1,7 +1,7 @@
 "use client";
 
 import { WarningIcon } from "@phosphor-icons/react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
   error,
@@ -15,7 +15,7 @@ export default function ErrorPage({
       <WarningIcon size={43} />
       <h1>This surface could not be rendered.</h1>
       <p>{error.message}</p>
-      <Button className="button-secondary" onClick={reset}>
+      <Button variant="outline" onClick={reset}>
         Try again
       </Button>
     </div>

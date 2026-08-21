@@ -250,11 +250,18 @@ describe("RWA presentation persistence", () => {
     expect(readRwaState()).toEqual({
       policyId: "policy-1",
       proposalId: "proposal-1",
+      proposalPolicyId: "policy-1",
       vaultAddress: `0x${"ab".repeat(20)}`,
     });
     expect(values.get("alive:rwa:presentation:v1")).not.toMatch(
       /secret|private|nonce/iu,
     );
+
+    rememberRwaState({ policyId: "policy-2" });
+    expect(readRwaState()).toEqual({
+      policyId: "policy-2",
+      vaultAddress: `0x${"ab".repeat(20)}`,
+    });
 
     clearRwaState();
     expect(readRwaState()).toEqual({});

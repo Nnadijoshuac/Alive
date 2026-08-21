@@ -950,6 +950,58 @@ export async function buildIntelligenceApp(
     );
   }
 
+  async function resolveTradeAvailabilityGate(assetId: string) {
+    const asset = dependencies.repository.getAsset(assetId);
+    if (!asset) {
+      return {
+        available: false,
+        status: "ASSET_NOT_FOUND",
+        reason: "Asset passport was not found.",
+      } as const;
+    }
+
+    const deployment = getVerifiedXLayerDeployment(asset);
+    if (!deployment) {
+      return {
+        available: false,
+        status: "NO_XLAYER_DEPLOYMENT",
+        reason: "Asset has no verified deployment on X Layer (Chain 196).",
+      } as const;
+    }
+
+    const hasRealSource = asset.sources.some(
+      (source) => source.sourceType !== "DEMO_FIXTURE",
+    );
+    if (!hasRealSource) {
+      return {
+        available: false,
+        status: "NOT_VERIFIED",
+        reason: "Asset has not completed source document verification.",
+      } as const;
+    }
+
+    if (!asset.extraction) {
+      return {
+        available: false,
+        status: "NOT_ANALYZED",
+        reason: "Asset extraction has not been analyzed by ALIVE.",
+      } as const;
+    }
+
+    const eligibility = await computeEligibilityVerdict(assetId);
+    if (!eligibility || eligibility.verdict.status === "RESTRICTED") {
+      return {
+        available: false,
+        status: "NOT_ELIGIBLE",
+        reason:
+          eligibility?.verdict.reasons[0]?.message ??
+          "Asset is restricted by policy.",
+      } as const;
+    }
+
+    return { available: true, asset, deployment } as const;
+  }
+
   app.get("/api/trade/payment-tokens", async () => ({
     tokens: Object.values(XLAYER_PAYMENT_TOKENS),
   }));
@@ -958,54 +1010,26 @@ export async function buildIntelligenceApp(
     "/api/assets/:assetId/trade-availability",
     async (request, reply) => {
       const assetId = request.params.assetId;
-      const asset = dependencies.repository.getAsset(assetId);
+      const availability = await resolveTradeAvailabilityGate(assetId);
 
-      if (!asset) {
+      if (!availability.available) {
+        if (availability.status !== "ASSET_NOT_FOUND") {
+          return {
+            assetId,
+            status: availability.status,
+            reason: availability.reason,
+          };
+        }
         reply.status(404);
         return {
           error: {
-            code: "ASSET_NOT_FOUND",
-            message: "Asset passport was not found.",
+            code: availability.status,
+            message: availability.reason,
           },
         };
       }
 
-      const deployment = getVerifiedXLayerDeployment(asset);
-      if (!deployment) {
-        return {
-          assetId,
-          status: "NO_XLAYER_DEPLOYMENT" as const,
-          reason: "Asset has no verified deployment on X Layer (Chain 196).",
-        };
-      }
-
-      const hasRealSource = asset.sources.some(
-        (s) => s.sourceType !== "DEMO_FIXTURE",
-      );
-      if (!hasRealSource) {
-        return {
-          assetId,
-          status: "NOT_VERIFIED" as const,
-          reason: "Asset has not completed source document verification.",
-        };
-      }
-
-      if (!asset.extraction) {
-        return {
-          assetId,
-          status: "NOT_ANALYZED" as const,
-          reason: "Asset extraction has not been analyzed by ALIVE.",
-        };
-      }
-
-      const eligibility = await computeEligibilityVerdict(assetId);
-      if (!eligibility || eligibility.verdict.status === "RESTRICTED") {
-        return {
-          assetId,
-          status: "NOT_ELIGIBLE" as const,
-          reason: eligibility?.verdict?.reasons?.[0]?.message ?? "Asset is restricted by policy.",
-        };
-      }
+      const { asset, deployment } = availability;
 
       try {
         const quote = await tradeRouter.getQuote({
@@ -1048,28 +1072,17 @@ export async function buildIntelligenceApp(
 
   app.post("/api/trade/quote", async (request, reply) => {
     const body = TradeQuoteBodySchema.parse(request.body);
-    const asset = dependencies.repository.getAsset(body.assetId);
-    if (!asset) {
-      reply.status(404);
+    const availability = await resolveTradeAvailabilityGate(body.assetId);
+    if (!availability.available) {
+      reply.status(availability.status === "ASSET_NOT_FOUND" ? 404 : 400);
       return {
         error: {
-          code: "ASSET_NOT_FOUND",
-          message: "Asset passport was not found.",
+          code: availability.status,
+          message: availability.reason,
         },
       };
     }
-
-    const deployment = getVerifiedXLayerDeployment(asset);
-    if (!deployment) {
-      reply.status(400);
-      return {
-        error: {
-          code: "NO_XLAYER_DEPLOYMENT",
-          message:
-            "Asset does not have a verified deployment on X Layer (Chain 196).",
-        },
-      };
-    }
+    const { asset, deployment } = availability;
 
     try {
       const quote = await tradeRouter.getQuote({
@@ -1106,28 +1119,17 @@ export async function buildIntelligenceApp(
 
   app.post("/api/trade/transaction", async (request, reply) => {
     const body = TradeTransactionBodySchema.parse(request.body);
-    const asset = dependencies.repository.getAsset(body.assetId);
-    if (!asset) {
-      reply.status(404);
+    const availability = await resolveTradeAvailabilityGate(body.assetId);
+    if (!availability.available) {
+      reply.status(availability.status === "ASSET_NOT_FOUND" ? 404 : 400);
       return {
         error: {
-          code: "ASSET_NOT_FOUND",
-          message: "Asset passport was not found.",
+          code: availability.status,
+          message: availability.reason,
         },
       };
     }
-
-    const deployment = getVerifiedXLayerDeployment(asset);
-    if (!deployment) {
-      reply.status(400);
-      return {
-        error: {
-          code: "NO_XLAYER_DEPLOYMENT",
-          message:
-            "Asset does not have a verified deployment on X Layer (Chain 196).",
-        },
-      };
-    }
+    const { asset, deployment } = availability;
 
     try {
       const tx = await tradeRouter.getSwapTransaction({

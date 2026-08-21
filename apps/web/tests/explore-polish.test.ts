@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RwaAsset } from "@alive/shared";
 import { getPrimaryVerifiedDeployment } from "@/components/ui/chain-logo";
-import { getPaginationItems, EXPLORE_PAGE_SIZE } from "@/components/intelligence/explore-page";
+import {
+  getPaginationItems,
+  EXPLORE_PAGE_SIZE,
+} from "@/lib/explore-pagination";
 import {
   eligibilityStatus,
   verificationStatus,

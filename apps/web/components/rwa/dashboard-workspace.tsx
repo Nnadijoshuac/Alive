@@ -22,11 +22,13 @@ import { formatTimestamp, truncateIdentifier } from "@/lib/rwa-format";
 import { readRwaState, RWA_STATE_EVENT, type RwaPresentationState } from "@/lib/rwa-state";
 import { WalletButton } from "@/components/wallet-shell";
 import {
+  Disclosure,
   EmptyState,
   ErrorState,
   LoadingState,
   ModeBadge,
   Notice,
+  OperationStatus,
   PageIntro,
   PolicyRuleGrid,
   styles,
@@ -111,10 +113,14 @@ export function DashboardWorkspace() {
       {error ? <section className={styles.section}><ErrorState error={error} retry={load} /></section> : null}
 
       {system && !loading ? (
-        <section className={styles.section} aria-labelledby="system-title">
+        <section className={styles.section} aria-labelledby="system-title" aria-live="polite">
+          <OperationStatus
+            title={system.service === "ok" ? "Intelligence service connected" : "Intelligence service needs attention"}
+            detail={`${system.marketMode} market response captured ${formatTimestamp(system.capturedAt)}`}
+            tone={system.service === "ok" ? "success" : "warning"}
+          />
           <div className={styles.sectionHeader}>
             <div><p className={styles.kicker}>Runtime truth</p><h2 id="system-title">Service and data status</h2></div>
-            <span className={`${styles.status} ${system.service === "ok" ? styles.success : styles.warning}`}>{system.service}</span>
           </div>
           <div className={styles.metricGrid}>
             <SystemMetric icon={<BrainIcon size={18} />} label="Policy interpreter" value={system.llmMode} detail={system.llmProvider} />
@@ -153,7 +159,7 @@ export function DashboardWorkspace() {
                 <dl className={styles.definitionList}>
                   <div className={styles.definitionRow}><dt>Policy ID</dt><dd className={styles.mono}>{policy.id}</dd></div>
                   <div className={styles.definitionRow}><dt>Policy hash</dt><dd className={styles.hash}>{truncateIdentifier(policy.policyHash, 16, 12)}</dd></div>
-                  <div className={styles.definitionRow}><dt>Proposal</dt><dd>{saved.proposalId ? truncateIdentifier(saved.proposalId) : "NONE CALCULATED IN THIS BROWSER"}</dd></div>
+                  <div className={styles.definitionRow}><dt>Proposal</dt><dd>{saved.proposalId && saved.proposalPolicyId === policy.id ? truncateIdentifier(saved.proposalId) : "NONE CALCULATED FOR THIS POLICY"}</dd></div>
                   <div className={styles.definitionRow}><dt>Onchain registry</dt><dd>NOT CONFIGURED</dd></div>
                 </dl>
               </div>
@@ -165,7 +171,12 @@ export function DashboardWorkspace() {
             </div>
           </section>
           <section className={styles.section}>
-            <PolicyRuleGrid policy={policy.policy} />
+            <Disclosure
+              title="Canonical policy rules"
+              summary="Inspect the limits the optimizer cannot negotiate."
+            >
+              <PolicyRuleGrid policy={policy.policy} />
+            </Disclosure>
           </section>
           <section className={styles.section}>
             <div className={styles.grid2}>

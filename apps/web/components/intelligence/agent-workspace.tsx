@@ -8,7 +8,7 @@ import {
   ArrowsClockwiseIcon,
   PlayIcon,
   PauseIcon,
-  SparkleIcon,
+  ListChecksIcon,
   CaretDownIcon,
   CaretUpIcon,
   CheckCircleIcon,
@@ -30,14 +30,15 @@ import {
   askAgentQuestion,
   getMarketplaceStrategies,
   syncWalletContext,
-  fetchWalletContext,
+  type MarketplaceStrategySource,
 } from "@/lib/agent-api";
 import { TradeDrawer } from "@/components/intelligence/trade-drawer";
+import { getRwaAsset } from "@/lib/rwa-api";
 import styles from "./agent-workspace.module.css";
 
 const DEFAULT_DEMO_WALLET = "0xe2475653b6f8a846152a5508a8e1b1faae1a44e5" as `0x${string}`;
 
-type WorkspacePhase = "DISCONNECTED" | "UNDERSTANDING" | "FIRST_REVEAL" | "ACTIVATING" | "ACTIVE";
+type WorkspacePhase = "DISCONNECTED" | "UNDERSTANDING" | "FIRST_REVEAL" | "EVALUATING" | "ACTIVE";
 
 interface ChatMessage {
   sender: "user" | "agent";
@@ -58,14 +59,16 @@ export function AgentWorkspace() {
   }, [isWagmiConnected, wagmiAddress, demoAddressSelected]);
 
   const [phase, setPhase] = useState<WorkspacePhase>("DISCONNECTED");
-  const [syncStep, setSyncStep] = useState<number>(0);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(false);
 
   const [snapshot, setSnapshot] = useState<AgentContextSnapshot | null>(null);
   const [activeStrategy, setActiveStrategy] = useState<AgentStrategy | null>(null);
+  const [strategyDataMode, setStrategyDataMode] = useState<MarketplaceStrategySource | null>(null);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [expandedActionId, setExpandedActionId] = useState<string | null>(null);
   const [showLevel3Evidence, setShowLevel3Evidence] = useState<Record<string, boolean>>({});
@@ -83,11 +86,12 @@ export function AgentWorkspace() {
   const [tradeAmount, setTradeAmount] = useState<string | undefined>(undefined);
   const [activeExecutingActionId, setActiveExecutingActionId] = useState<string | null>(null);
 
-  // Track activated wallets in local storage / session memory
-  const [activatedWallets, setActivatedWallets] = useState<Set<string>>(new Set());
+  // Track wallets evaluated during this browser session. This is not an
+  // authorization record and does not enable autonomous monitoring.
+  const [evaluatedWallets, setEvaluatedWallets] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async (wallet: string) => {
-    if (!wallet) return;
+    if (!wallet) return false;
     try {
       const snap = await getAgentSnapshot(wallet);
       setSnapshot(snap);
@@ -95,14 +99,18 @@ export function AgentWorkspace() {
 
       if (snap.activeStrategy) {
         setActiveStrategy(snap.activeStrategy);
+        setStrategyDataMode("SERVICE");
       } else {
         const marketplace = await getMarketplaceStrategies();
+        setStrategyDataMode(marketplace.dataMode);
         if (marketplace.strategies.length > 0) {
           setActiveStrategy(marketplace.strategies[0] ?? null);
         }
       }
+      return true;
     } catch (err) {
       console.error("Failed to load agent workspace data:", err);
+      return false;
     }
   }, []);
 
@@ -111,73 +119,72 @@ export function AgentWorkspace() {
     if (!activeWalletAddress) {
       setPhase("DISCONNECTED");
       setSnapshot(null);
+      setStrategyDataMode(null);
       return;
     }
 
     const norm = activeWalletAddress.toLowerCase();
-    if (activatedWallets.has(norm)) {
-      setPhase("ACTIVE");
-      loadData(activeWalletAddress);
-    } else {
-      // Run progressive understanding flow
-      setPhase("UNDERSTANDING");
-      setSyncStep(1);
-
-      const t1 = setTimeout(() => setSyncStep(2), 450);
-      const t2 = setTimeout(() => setSyncStep(3), 900);
-      const t3 = setTimeout(() => setSyncStep(4), 1350);
-      const t4 = setTimeout(() => {
-        loadData(activeWalletAddress).then(() => {
-          setPhase("FIRST_REVEAL");
-        });
-      }, 1800);
-
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearTimeout(t4);
-      };
-    }
+    const wasEvaluated = evaluatedWallets.has(norm);
+    setSnapshot(null);
+    setActiveStrategy(null);
+    setStrategyDataMode(null);
+    setActivationError(null);
+    setPhase("UNDERSTANDING");
+    let cancelled = false;
+    void loadData(activeWalletAddress).then((loaded) => {
+      if (cancelled) return;
+      if (!loaded) {
+        setActivationError("Wallet context is unavailable. Missing values remain UNKNOWN.");
+      }
+      setPhase(loaded && wasEvaluated ? "ACTIVE" : "FIRST_REVEAL");
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeWalletAddress, activatedWallets.size]);
+  }, [activeWalletAddress, evaluatedWallets.size]);
 
   const handleConnectWallet = () => {
+    setActivationError(null);
     const connector = connectors[0];
     if (connector) {
       connect({ connector });
     } else {
-      setDemoAddressSelected(DEFAULT_DEMO_WALLET);
+      setActivationError("No compatible wallet connector is available in this browser.");
     }
   };
 
   const handleUseSampleWallet = () => {
+    setActivationError(null);
     setDemoAddressSelected(DEFAULT_DEMO_WALLET);
   };
 
-  const handleActivateAgent = async () => {
+  const handleEvaluateStrategy = async () => {
     if (!activeWalletAddress) return;
-    setPhase("ACTIVATING");
+    setActivationError(null);
+    setPhase("EVALUATING");
 
     try {
-      await evaluateAgentStrategy(activeWalletAddress);
-      setActivatedWallets((prev) => new Set([...prev, activeWalletAddress.toLowerCase()]));
-      await loadData(activeWalletAddress);
-
-      // Short consequential pause
-      setTimeout(() => {
-        setPhase("ACTIVE");
-      }, 1200);
+      const evaluated = await evaluateAgentStrategy(activeWalletAddress);
+      setSnapshot(evaluated);
+      setActiveStrategy(evaluated.activeStrategy);
+      setStrategyDataMode("SERVICE");
+      setLastSyncTime(new Date(evaluated.timestamp));
+      setEvaluatedWallets((prev) => new Set([...prev, activeWalletAddress.toLowerCase()]));
+      setPhase("ACTIVE");
     } catch (err) {
       console.error("Failed to activate agent:", err);
-      setPhase("ACTIVE");
+      setActivationError(
+        err instanceof Error ? err.message : "The strategy evaluation could not be completed.",
+      );
+      setPhase("FIRST_REVEAL");
     }
   };
 
   const handleSyncWallet = async () => {
     if (!activeWalletAddress || isSyncing) return;
     setIsSyncing(true);
-    setSyncFeedback("Syncing…");
+    setSyncFeedback("Syncing...");
 
     try {
       await syncWalletContext(activeWalletAddress);
@@ -196,79 +203,74 @@ export function AgentWorkspace() {
     }
   };
 
-  const handleReviewAction = (action: ProposedAgentAction) => {
+  const handleReviewAction = async (action: ProposedAgentAction) => {
     setActiveExecutingActionId(action.id);
-
-    const fallbackAsset: RwaAsset = {
-      id: action.assetId,
-      symbol: action.targetTokenSymbol,
-      name: action.targetTokenSymbol,
-      assetClass: "EQUITY",
-      issuer: "backing-issuer",
-      issuerName: "Backing Issuer",
-      underlying: "Underlying Asset",
-      dataMode: "LIVE",
-      lastUpdatedAt: new Date().toISOString(),
-      deployments: [
-        {
-          chainId: 196,
-          chainName: "X Layer",
-          contractAddress: action.targetTokenAddress,
-          tokenStandard: "ERC-20",
-          deploymentStatus: "VERIFIED",
-        },
-      ],
-      sources: [
-        {
-          id: "official-doc-1",
-          title: "Official Disclosure",
-          sourceType: "ISSUER_DOCUMENTATION",
-          sourceUrl: "https://xlayer.tech",
-          retrievedAt: new Date().toISOString(),
-          supportedFields: ["name", "symbol", "issuer", "underlying"],
-        },
-      ],
-    };
-
-    setSelectedAssetForTrade(fallbackAsset);
-    setTradePaymentTokenAddr(action.paymentTokenAddress);
-    setTradeAmount(action.amountFormatted);
-    setIsTradeDrawerOpen(true);
+    setReviewError(null);
+    try {
+      const passport = await getRwaAsset(action.assetId);
+      setSelectedAssetForTrade(passport.asset);
+      setTradePaymentTokenAddr(action.paymentTokenAddress);
+      setTradeAmount(action.amountFormatted);
+      setIsTradeDrawerOpen(true);
+    } catch (error) {
+      setReviewError(
+        error instanceof Error
+          ? error.message
+          : "The asset passport could not be loaded for trade review.",
+      );
+    }
   };
 
   const handleDismissAction = async (actionId: string) => {
     if (!activeWalletAddress) return;
-    await recordAgentInteraction({
-      id: `int-${Date.now()}`,
-      agentId: "agent-alive-core-v1",
-      walletAddress: activeWalletAddress as `0x${string}`,
-      actionId,
-      event: "DISMISSED",
-      timestamp: new Date().toISOString(),
-    });
-
-    if (snapshot) {
-      setSnapshot({
-        ...snapshot,
-        proposedActions: snapshot.proposedActions.filter((a) => a.id !== actionId),
-      });
-    }
-  };
-
-  const handleTradeSuccess = async (txHash: string) => {
-    if (activeExecutingActionId && activeWalletAddress) {
+    setReviewError(null);
+    try {
       await recordAgentInteraction({
         id: `int-${Date.now()}`,
         agentId: "agent-alive-core-v1",
         walletAddress: activeWalletAddress as `0x${string}`,
-        actionId: activeExecutingActionId,
-        event: "EXECUTED",
-        txHash,
+        actionId,
+        event: "DISMISSED",
         timestamp: new Date().toISOString(),
       });
+
+      if (snapshot) {
+        setSnapshot({
+          ...snapshot,
+          proposedActions: snapshot.proposedActions.filter((a) => a.id !== actionId),
+        });
+      }
+    } catch (error) {
+      setReviewError(
+        error instanceof Error
+          ? error.message
+          : "The dismissal could not be recorded. The proposal remains visible.",
+      );
     }
-    if (activeWalletAddress) {
-      await loadData(activeWalletAddress);
+  };
+
+  const handleTradeSuccess = async (txHash: string) => {
+    try {
+      if (activeExecutingActionId && activeWalletAddress) {
+        await recordAgentInteraction({
+          id: `int-${Date.now()}`,
+          agentId: "agent-alive-core-v1",
+          walletAddress: activeWalletAddress as `0x${string}`,
+          actionId: activeExecutingActionId,
+          event: "EXECUTED",
+          txHash,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      if (activeWalletAddress) {
+        await loadData(activeWalletAddress);
+      }
+    } catch (error) {
+      setReviewError(
+        error instanceof Error
+          ? `Trade confirmed, but the activity record could not refresh: ${error.message}`
+          : "Trade confirmed, but the activity record could not refresh.",
+      );
     }
   };
 
@@ -299,7 +301,7 @@ export function AgentWorkspace() {
     } catch {
       const errMsg: ChatMessage = {
         sender: "agent",
-        text: "Trading data is temporarily unavailable. Please try asking again shortly.",
+        text: "Portfolio context is temporarily unavailable. Try the question again.",
         confidence: "LOW",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
@@ -322,7 +324,25 @@ export function AgentWorkspace() {
   const stablePercent = snapshot?.walletPortfolio?.stablecoinPct?.toFixed(0) ?? "0";
   const positionCount = snapshot?.walletPortfolio?.positions?.length ?? 0;
   const tradeCount30d = snapshot?.walletHistorySummary?.tradesLast30d ?? 0;
-  const stablecoinReserve = snapshot?.walletPortfolio?.stablecoinValueUsd ?? 1840;
+  const stablecoinReserve = snapshot?.walletPortfolio?.stablecoinValueUsd;
+  const actionPosition = primaryAction
+    ? snapshot?.walletPortfolio?.positions?.find(
+        (position) => position.assetId === primaryAction.assetId,
+      )
+    : undefined;
+  const currentAllocationBps = actionPosition?.allocationBps;
+  const targetAllocationBps = primaryAction
+    ? activeStrategy?.targetAllocations?.[primaryAction.assetId] ??
+      activeStrategy?.targetAllocations?.[primaryAction.targetTokenSymbol]
+    : undefined;
+  const usingSampleWallet = Boolean(demoAddressSelected && !isWagmiConnected);
+  const strategySourceLabel =
+    strategyDataMode === "REFERENCE"
+      ? "REFERENCE TEMPLATE"
+      : strategyDataMode ?? "UNKNOWN";
+  const evaluatedAtLabel = snapshot
+    ? lastSyncTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "UNKNOWN";
 
   // =========================================================================
   // 1. DISCONNECTED STATE
@@ -335,12 +355,12 @@ export function AgentWorkspace() {
             <RobotIcon size={32} />
           </div>
           <div className={styles.disconnectedTitleGroup}>
-            <span className={styles.disconnectedBadge}>ALIVE Agent</span>
+            <span className={styles.disconnectedBadge}>Agent lab · preview</span>
             <h1 className={styles.disconnectedTitle}>
-              Your Agent needs a wallet to understand your portfolio.
+              Connect a wallet to evaluate the data available to ALIVE.
             </h1>
             <p className={styles.disconnectedDesc}>
-              Connect an X Layer wallet to enable autonomous portfolio monitoring, risk checks, and deterministic strategy proposals.
+              This read-only preview checks observed positions against deterministic strategy rules. It does not authorize monitoring or execution.
             </p>
           </div>
           <div className={styles.disconnectedButtonGroup}>
@@ -357,8 +377,11 @@ export function AgentWorkspace() {
               className={styles.sampleWalletBtn}
               onClick={handleUseSampleWallet}
             >
-              Or explore with sample portfolio
+              Use labelled sample wallet
             </button>
+            {activationError ? (
+              <p className={styles.inlineError} role="alert">{activationError}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -377,59 +400,14 @@ export function AgentWorkspace() {
           </div>
           <div>
             <h2 className={styles.syncProgressTitle}>Wallet connected</h2>
-            <p className={styles.syncProgressSubtitle}>Understanding your wallet…</p>
+            <p className={styles.syncProgressSubtitle}>Reading available wallet context...</p>
           </div>
 
           <div className={styles.syncStepsList}>
             <div className={styles.syncStepRow}>
-              {syncStep > 1 ? (
-                <CheckCircleIcon size={18} color="#22c55e" weight="fill" />
-              ) : syncStep === 1 ? (
-                <div className={styles.stepDotActive} />
-              ) : (
-                <div className={styles.stepDotPending} />
-              )}
-              <span className={syncStep >= 1 ? (syncStep > 1 ? styles.syncStepLabelDone : styles.syncStepLabelActive) : styles.syncStepLabelPending}>
-                Reading holdings
-              </span>
-            </div>
-
-            <div className={styles.syncStepRow}>
-              {syncStep > 2 ? (
-                <CheckCircleIcon size={18} color="#22c55e" weight="fill" />
-              ) : syncStep === 2 ? (
-                <div className={styles.stepDotActive} />
-              ) : (
-                <div className={styles.stepDotPending} />
-              )}
-              <span className={syncStep >= 2 ? (syncStep > 2 ? styles.syncStepLabelDone : styles.syncStepLabelActive) : styles.syncStepLabelPending}>
-                Checking recent activity
-              </span>
-            </div>
-
-            <div className={styles.syncStepRow}>
-              {syncStep > 3 ? (
-                <CheckCircleIcon size={18} color="#22c55e" weight="fill" />
-              ) : syncStep === 3 ? (
-                <div className={styles.stepDotActive} />
-              ) : (
-                <div className={styles.stepDotPending} />
-              )}
-              <span className={syncStep >= 3 ? (syncStep > 3 ? styles.syncStepLabelDone : styles.syncStepLabelActive) : styles.syncStepLabelPending}>
-                Matching ALIVE assets
-              </span>
-            </div>
-
-            <div className={styles.syncStepRow}>
-              {syncStep > 4 ? (
-                <CheckCircleIcon size={18} color="#22c55e" weight="fill" />
-              ) : syncStep === 4 ? (
-                <div className={styles.stepDotActive} />
-              ) : (
-                <div className={styles.stepDotPending} />
-              )}
-              <span className={syncStep >= 4 ? (syncStep > 4 ? styles.syncStepLabelDone : styles.syncStepLabelActive) : styles.syncStepLabelPending}>
-                Checking available routes
+              <div className={styles.stepDotActive} />
+              <span className={styles.syncStepLabelActive}>
+                Requesting the latest available snapshot
               </span>
             </div>
           </div>
@@ -446,21 +424,31 @@ export function AgentWorkspace() {
       <div className={styles.container}>
         <div className={styles.firstRevealCard}>
           <div className={styles.revealHeader}>
-            <span className={styles.revealBadge}>ALIVE found</span>
+            <span className={styles.revealBadge}>
+              {usingSampleWallet ? "Sample wallet context" : "Wallet context"}
+            </span>
             <h1 className={styles.revealTitle}>
-              Portfolio discovered on X Layer
+              Available wallet context
             </h1>
             <div className={styles.revealStatsGrid}>
               <div className={styles.revealStatItem}>
-                <span className={styles.revealStatValue}>{positionCount || 3} tracked</span>
+                <span className={styles.revealStatValue}>
+                  {snapshot ? `${positionCount} tracked` : "UNKNOWN"}
+                </span>
                 <span className={styles.revealStatLabel}>RWA Positions</span>
               </div>
               <div className={styles.revealStatItem}>
-                <span className={styles.revealStatValue}>${stablecoinReserve.toLocaleString()}</span>
+                <span className={styles.revealStatValue}>
+                  {stablecoinReserve == null
+                    ? "UNKNOWN"
+                    : `$${stablecoinReserve.toLocaleString()}`}
+                </span>
                 <span className={styles.revealStatLabel}>Stablecoin Reserve</span>
               </div>
               <div className={styles.revealStatItem}>
-                <span className={styles.revealStatValue}>{tradeCount30d || 7} trades</span>
+                <span className={styles.revealStatValue}>
+                  {snapshot ? `${tradeCount30d} trades` : "UNKNOWN"}
+                </span>
                 <span className={styles.revealStatLabel}>Last 30 Days</span>
               </div>
             </div>
@@ -468,35 +456,31 @@ export function AgentWorkspace() {
 
           <div className={styles.revealStrategySection}>
             <h2 className={styles.revealSectionPrompt}>
-              Choose how your Agent should operate.
+              Choose a strategy to evaluate.
             </h2>
 
             <div className={styles.strategyCardFeatured}>
               <div className={styles.strategyCardHeader}>
-                <h3 className={styles.strategyCardTitle}>RWA Core Balance</h3>
-                <span className={styles.strategyBadgeRecommended}>Recommended</span>
+                <h3 className={styles.strategyCardTitle}>
+                  {activeStrategy?.name ?? "Strategy unavailable"}
+                </h3>
+                <span className={styles.strategyBadgeRecommended}>{strategySourceLabel}</span>
               </div>
               <p className={styles.strategyCardDesc}>
-                Keeps verified RWA exposure diversified while maintaining a stablecoin reserve.
+                {activeStrategy?.description ?? "No strategy description is available."}
               </p>
 
               <div className={styles.strategyRulesSummaryList}>
-                <div className={styles.strategyRulePill}>
-                  <CheckCircleIcon size={14} color="#22c55e" weight="bold" />
-                  Verified assets only
-                </div>
-                <div className={styles.strategyRulePill}>
-                  <CheckCircleIcon size={14} color="#22c55e" weight="bold" />
-                  Maximum 25% per asset
-                </div>
-                <div className={styles.strategyRulePill}>
-                  <CheckCircleIcon size={14} color="#22c55e" weight="bold" />
-                  Minimum 20% stablecoin reserve
-                </div>
-                <div className={styles.strategyRulePill}>
-                  <CheckCircleIcon size={14} color="#22c55e" weight="bold" />
-                  Rebalances after 5% deviation
-                </div>
+                {activeStrategy?.rules?.length ? (
+                  activeStrategy.rules.slice(0, 4).map((rule) => (
+                    <div className={styles.strategyRulePill} key={rule.id}>
+                      <CheckCircleIcon size={14} weight="bold" />
+                      {rule.name}
+                    </div>
+                  ))
+                ) : (
+                  <div className={styles.strategyRulePill}>No rules available</div>
+                )}
               </div>
 
               {/* Collapsed Advanced Settings */}
@@ -505,28 +489,36 @@ export function AgentWorkspace() {
                   type="button"
                   className={styles.advancedToggleBtn}
                   onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  aria-expanded={showAdvancedSettings}
                 >
                   <SlidersHorizontalIcon size={14} />
-                  Advanced settings {showAdvancedSettings ? "▴" : "▾"}
+                  Strategy details
+                  {showAdvancedSettings ? <CaretUpIcon size={14} /> : <CaretDownIcon size={14} />}
                 </button>
 
                 {showAdvancedSettings && (
-                  <div className={styles.advancedSettingsDrawer} style={{ marginTop: 12 }}>
+                  <div className={styles.advancedSettingsDrawer}>
                     <div className={styles.advancedSettingItem}>
-                      <span className={styles.advancedSettingLabel}>Max Single Trade</span>
-                      <span className={styles.advancedSettingValue}>$500.00 USD</span>
+                      <span className={styles.advancedSettingLabel}>Strategy ID</span>
+                      <span className={styles.advancedSettingValue}>{activeStrategy?.id ?? "UNKNOWN"}</span>
                     </div>
                     <div className={styles.advancedSettingItem}>
-                      <span className={styles.advancedSettingLabel}>Max Daily Trade</span>
-                      <span className={styles.advancedSettingValue}>$2,500.00 USD</span>
+                      <span className={styles.advancedSettingLabel}>Rule source</span>
+                      <span className={styles.advancedSettingValue}>{strategySourceLabel}</span>
                     </div>
                     <div className={styles.advancedSettingItem}>
-                      <span className={styles.advancedSettingLabel}>Max Slippage</span>
-                      <span className={styles.advancedSettingValue}>0.50% (50 bps)</span>
+                      <span className={styles.advancedSettingLabel}>Rebalance threshold</span>
+                      <span className={styles.advancedSettingValue}>
+                        {activeStrategy?.rebalanceThresholdBps == null
+                          ? "UNKNOWN"
+                          : `${(activeStrategy.rebalanceThresholdBps / 100).toFixed(2)}%`}
+                      </span>
                     </div>
                     <div className={styles.advancedSettingItem}>
                       <span className={styles.advancedSettingLabel}>Target Universe</span>
-                      <span className={styles.advancedSettingValue}>Verified X Layer RWAs</span>
+                      <span className={styles.advancedSettingValue}>
+                        {activeStrategy?.targetAssetClasses?.join(", ") || "UNKNOWN"}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -537,15 +529,18 @@ export function AgentWorkspace() {
               <button
                 type="button"
                 className={styles.activatePrimaryBtn}
-                onClick={handleActivateAgent}
+                onClick={handleEvaluateStrategy}
               >
                 <PlayIcon size={16} weight="bold" />
-                Activate Agent
+                Open evaluation preview
               </button>
               <Link href="/strategies" className={styles.exploreSecondaryBtn}>
                 Explore strategies
               </Link>
             </div>
+            {activationError ? (
+              <p className={styles.inlineError} role="alert">{activationError}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -553,22 +548,22 @@ export function AgentWorkspace() {
   }
 
   // =========================================================================
-  // 4. ACTIVATION MOMENT CONFIRMATION
+  // 4. EVALUATION IN PROGRESS
   // =========================================================================
-  if (phase === "ACTIVATING") {
+  if (phase === "EVALUATING") {
     return (
       <div className={styles.container}>
         <div className={styles.activationMomentCard}>
-          <span className={styles.activationBadge}>Agent activated</span>
+          <span className={styles.activationBadge}>Evaluation running</span>
           <h2 className={styles.activationTitle}>
-            RWA Core Balance is now monitoring this wallet.
+            Checking this wallet against {activeStrategy?.name ?? "the selected strategy"}.
           </h2>
           <p className={styles.activationDesc}>
-            Your strategy rules and constraints are active. Evaluating live portfolio balances…
+            This is a read-only strategy evaluation. It does not authorize monitoring, trading, or delegated execution.
           </p>
           <div className={styles.activationProgress}>
             <ArrowsClockwiseIcon size={16} className="animate-spin" />
-            Analyzing your portfolio…
+            Evaluating available portfolio data...
           </div>
         </div>
       </div>
@@ -586,20 +581,21 @@ export function AgentWorkspace() {
           <div className={styles.agentTitleGroup}>
             <h1 className={styles.agentName}>
               <RobotIcon size={28} />
-              {activeStrategy?.name || "RWA Core Balance"}
+              {activeStrategy?.name ?? "Strategy unavailable"}
               <span className={isPaused ? styles.statusPillPaused : styles.statusPillActive}>
-                {isPaused ? "PAUSED" : "ACTIVE"}
+                {isPaused ? "PREVIEW PAUSED" : "PREVIEW READY"}
               </span>
             </h1>
             <div className={styles.agentMetaRow}>
               <span>
-                Operating Strategy:{" "}
+                Evaluation strategy:{" "}
                 <Link href="/strategies" className={styles.strategyLink}>
-                  {activeStrategy?.name || "RWA Core Balance v1"}
+                  {activeStrategy?.name ?? "UNKNOWN"}
                 </Link>
               </span>
-              <span>•</span>
-              <span>Last checked {Math.max(0, Math.floor((Date.now() - lastSyncTime.getTime()) / 1000))}s ago</span>
+              <span>Evaluated at {evaluatedAtLabel}</span>
+              <span>Source: {strategySourceLabel}</span>
+              {usingSampleWallet ? <span className={styles.sampleDataLabel}>Sample wallet data</span> : null}
             </div>
           </div>
 
@@ -611,11 +607,11 @@ export function AgentWorkspace() {
             >
               {isPaused ? (
                 <>
-                  <PlayIcon size={14} style={{ marginRight: 6 }} /> Resume Agent
+                  <PlayIcon size={14} /> Resume preview
                 </>
               ) : (
                 <>
-                  <PauseIcon size={14} style={{ marginRight: 6 }} /> Pause Agent
+                  <PauseIcon size={14} /> Pause preview
                 </>
               )}
             </button>
@@ -626,7 +622,7 @@ export function AgentWorkspace() {
               disabled={isSyncing}
             >
               <ArrowsClockwiseIcon size={14} className={isSyncing ? "animate-spin" : ""} />
-              {syncFeedback ? syncFeedback : isSyncing ? "Syncing…" : "Sync Wallet"}
+              {syncFeedback ? syncFeedback : isSyncing ? "Syncing..." : "Sync wallet"}
             </button>
           </div>
         </div>
@@ -636,26 +632,28 @@ export function AgentWorkspace() {
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Portfolio Value</span>
             <span className={styles.summaryValue}>
-              ${totalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {snapshot
+                ? `$${totalValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "UNKNOWN"}
             </span>
-            <span className={styles.summarySub}>Tracked X Layer holdings</span>
+            <span className={styles.summarySub}>Observed wallet data</span>
           </div>
 
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Active Positions</span>
-            <span className={styles.summaryValue}>{positionCount} RWAs</span>
-            <span className={styles.summarySub}>Live tokenized assets</span>
+            <span className={styles.summaryValue}>{snapshot ? `${positionCount} RWAs` : "UNKNOWN"}</span>
+            <span className={styles.summarySub}>Recognized tokenized assets</span>
           </div>
 
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Stablecoin Reserve</span>
-            <span className={styles.summaryValue}>{stablePercent}%</span>
+            <span className={styles.summaryValue}>{snapshot ? `${stablePercent}%` : "UNKNOWN"}</span>
             <span className={styles.summarySub}>Liquidity & rebalance floor</span>
           </div>
 
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Observable Trades</span>
-            <span className={styles.summaryValue}>{tradeCount30d}</span>
+            <span className={styles.summaryValue}>{snapshot ? tradeCount30d : "UNKNOWN"}</span>
             <span className={styles.summarySub}>Activity in last 30 days</span>
           </div>
         </div>
@@ -665,13 +663,13 @@ export function AgentWorkspace() {
       {primaryAction ? (
         <section className={styles.insightCard}>
           <div className={styles.insightHeader}>
-            <SparkleIcon size={18} />
-            Your Agent noticed something
+            <ListChecksIcon size={18} />
+            Strategy evaluation
           </div>
 
           <div className={styles.insightContent}>
             <h2 className={styles.insightTitle}>
-              {primaryAction.targetTokenSymbol} is above your allocation limit.
+              {primaryAction.actionType} proposal for {primaryAction.targetTokenSymbol}
             </h2>
             <p className={styles.insightDescription}>
               {primaryAction.explanation}
@@ -680,23 +678,27 @@ export function AgentWorkspace() {
             <div className={styles.insightMetricsRow}>
               <div className={styles.insightMetric}>
                 <span className={styles.insightMetricVal}>
-                  32%
+                  {currentAllocationBps == null
+                    ? "UNKNOWN"
+                    : `${(currentAllocationBps / 100).toFixed(1)}%`}
                 </span>
-                <span className={styles.insightMetricLabel}>Current Allocation</span>
+                <span className={styles.insightMetricLabel}>Current allocation</span>
               </div>
-              <span style={{ color: "#64748b" }}>→</span>
+              <ArrowRightIcon className={styles.metricArrow} size={16} />
               <div className={styles.insightMetric}>
                 <span className={styles.insightMetricVal}>
-                  25%
+                  {targetAllocationBps == null
+                    ? "UNKNOWN"
+                    : `${(targetAllocationBps / 100).toFixed(1)}%`}
                 </span>
-                <span className={styles.insightMetricLabel}>Target Allocation</span>
+                <span className={styles.insightMetricLabel}>Target allocation</span>
               </div>
-              <div className={styles.insightMetric} style={{ marginLeft: "auto" }}>
+              <div className={`${styles.insightMetric} ${styles.proposedMetric}`}>
                 <span className={styles.insightMetricVal}>
                   {primaryAction.amountFormatted} {primaryAction.targetTokenSymbol}
                 </span>
                 <span className={styles.insightMetricLabel}>
-                  Proposed Trade (~${primaryAction.estimatedUsdValue.toFixed(2)})
+                  Proposed trade (about ${primaryAction.estimatedUsdValue.toFixed(2)})
                 </span>
               </div>
             </div>
@@ -704,13 +706,15 @@ export function AgentWorkspace() {
 
           {/* Progressive "Why this action?" Panel */}
           <div className={styles.whyContainer}>
-            <div
+            <button
+              type="button"
               className={styles.whyTrigger}
               onClick={() =>
                 setExpandedActionId(
                   expandedActionId === primaryAction.id ? null : primaryAction.id,
                 )
               }
+              aria-expanded={expandedActionId === primaryAction.id}
             >
               <span>Why this action?</span>
               {expandedActionId === primaryAction.id ? (
@@ -718,7 +722,7 @@ export function AgentWorkspace() {
               ) : (
                 <CaretDownIcon size={16} />
               )}
-            </div>
+            </button>
 
             {expandedActionId === primaryAction.id && (
               <>
@@ -730,33 +734,37 @@ export function AgentWorkspace() {
                 {/* Level 2: Structured Evidence */}
                 <div className={styles.whyGrid}>
                   <div className={styles.whyEvidenceItem}>
-                    <span className={styles.whyEvidenceLabel}>Strategy Rule</span>
+                    <span className={styles.whyEvidenceLabel}>Strategy rule</span>
                     <span className={styles.whyEvidenceValue}>
                       {primaryAction.deterministicReason}
                     </span>
                   </div>
                   <div className={styles.whyEvidenceItem}>
-                    <span className={styles.whyEvidenceLabel}>Wallet State</span>
+                    <span className={styles.whyEvidenceLabel}>Wallet state</span>
                     <span className={styles.whyEvidenceValue}>
-                      32% of ${totalValueUsd.toFixed(0)}
+                      {currentAllocationBps == null
+                        ? "UNKNOWN"
+                        : `${(currentAllocationBps / 100).toFixed(1)}% of $${totalValueUsd.toFixed(0)}`}
                     </span>
                   </div>
                   <div className={styles.whyEvidenceItem}>
-                    <span className={styles.whyEvidenceLabel}>Recent History</span>
+                    <span className={styles.whyEvidenceLabel}>Recent history</span>
                     <span className={styles.whyEvidenceValue}>
                       {tradeCount30d} trades in 30d
                     </span>
                   </div>
                   <div className={styles.whyEvidenceItem}>
-                    <span className={styles.whyEvidenceLabel}>Asset Status</span>
-                    <span className={styles.whyEvidenceValue} style={{ color: "#22c55e" }}>
-                      ALIVE Verified · Live
+                    <span className={styles.whyEvidenceLabel}>Asset status</span>
+                    <span className={styles.whyEvidenceValue}>
+                      {actionPosition
+                        ? `${actionPosition.verificationStatus} / ${actionPosition.eligibilityStatus} / ${actionPosition.marketStatus}`
+                        : "UNKNOWN"}
                     </span>
                   </div>
                   <div className={styles.whyEvidenceItem}>
-                    <span className={styles.whyEvidenceLabel}>Execution Route</span>
+                    <span className={styles.whyEvidenceLabel}>Execution route</span>
                     <span className={styles.whyEvidenceValue}>
-                      OKX DEX · Deep Liquidity
+                      {actionPosition?.routeStatus ?? "UNKNOWN"}
                     </span>
                   </div>
                 </div>
@@ -767,14 +775,20 @@ export function AgentWorkspace() {
                     type="button"
                     className={styles.level3ToggleBtn}
                     onClick={() => toggleLevel3(primaryAction.id)}
+                    aria-expanded={Boolean(showLevel3Evidence[primaryAction.id])}
                   >
                     {showLevel3Evidence[primaryAction.id]
-                      ? "Hide technical execution details ▴"
-                      : "View technical execution details ▾"}
+                      ? "Hide technical execution details"
+                      : "View technical execution details"}
+                    {showLevel3Evidence[primaryAction.id] ? (
+                      <CaretUpIcon size={14} />
+                    ) : (
+                      <CaretDownIcon size={14} />
+                    )}
                   </button>
 
                   {showLevel3Evidence[primaryAction.id] && (
-                    <div className={styles.level3EvidenceDrawer} style={{ marginTop: 10 }}>
+                    <div className={styles.level3EvidenceDrawer}>
                       <div className={styles.level3Item}>
                         <span className={styles.level3Label}>Target Contract</span>
                         <span className={styles.level3Val}>
@@ -808,8 +822,18 @@ export function AgentWorkspace() {
 
           <div className={styles.insightFooter}>
             <div className={styles.insightBadges}>
-              <span className={styles.badgeVerified}>ALIVE VERIFIED · ELIGIBLE</span>
-              <span className={styles.badgeRoute}>OKX Route Available</span>
+              <span className={primaryAction.policyCheckPassed ? styles.badgeVerified : styles.badgeBlocked}>
+                {primaryAction.policyCheckPassed ? "POLICY CHECK PASSED" : "POLICY CHECK BLOCKED"}
+              </span>
+              <span
+                className={
+                  actionPosition?.routeStatus === "AVAILABLE"
+                    ? styles.badgeRouteAvailable
+                    : styles.badgeRoute
+                }
+              >
+                ROUTE {actionPosition?.routeStatus ?? "UNKNOWN"}
+              </span>
             </div>
 
             {/* Clear Button Hierarchy: ONE Primary CTA, Ghost secondary */}
@@ -824,13 +848,19 @@ export function AgentWorkspace() {
               <button
                 type="button"
                 className={styles.primaryReviewBtn}
-                onClick={() => handleReviewAction(primaryAction)}
+                onClick={() => void handleReviewAction(primaryAction)}
+                disabled={
+                  !primaryAction.policyCheckPassed ||
+                  actionPosition?.eligibilityStatus !== "ELIGIBLE" ||
+                  actionPosition?.routeStatus !== "AVAILABLE"
+                }
               >
                 Review trade on X Layer
                 <ArrowRightIcon size={16} weight="bold" />
               </button>
             </div>
           </div>
+          {reviewError ? <p className={styles.inlineError} role="alert">{reviewError}</p> : null}
         </section>
       ) : (
         /* Positive Zero-Action State */
@@ -838,10 +868,10 @@ export function AgentWorkspace() {
           <CheckCircleIcon size={32} className={styles.zeroActionIcon} weight="fill" />
           <div className={styles.zeroActionContent}>
             <h2 className={styles.zeroActionTitle}>
-              Portfolio is within strategy rules.
+              No strategy action was proposed.
             </h2>
             <p className={styles.zeroActionDesc}>
-              Nothing needs your attention right now. Your positions and stablecoin reserve match configured thresholds.
+              The latest evaluation returned no reviewable action. This preview does not imply continuous monitoring or future compliance.
             </p>
           </div>
         </section>
@@ -852,7 +882,7 @@ export function AgentWorkspace() {
         <div className={styles.knowledgeHeader}>
           <h2 className={styles.knowledgeTitle}>
             <DatabaseIcon size={20} />
-            What your Agent knows
+            Available context
           </h2>
         </div>
 
@@ -860,21 +890,21 @@ export function AgentWorkspace() {
           <div className={styles.knowledgeItem}>
             <span className={styles.knowledgeItemLabel}>Tracked Holdings</span>
             <span className={styles.knowledgeItemValue}>
-              {positionCount} RWAs across equities and debt on X Layer
+              {snapshot ? `${positionCount} recognized RWA positions` : "UNKNOWN"}
             </span>
           </div>
 
           <div className={styles.knowledgeItem}>
             <span className={styles.knowledgeItemLabel}>Cash & Stablecoin Buffer</span>
             <span className={styles.knowledgeItemValue}>
-              {stablePercent}% allocated to liquid reserve tokens
+              {snapshot ? `${stablePercent}% observed stablecoin allocation` : "UNKNOWN"}
             </span>
           </div>
 
           <div className={styles.knowledgeItem}>
             <span className={styles.knowledgeItemLabel}>Trading Profile</span>
             <span className={styles.knowledgeItemValue}>
-              {tradeCount30d} observed trades in 30 days
+              {snapshot ? `${tradeCount30d} observed trades in 30 days` : "UNKNOWN"}
             </span>
           </div>
         </div>
@@ -884,8 +914,10 @@ export function AgentWorkspace() {
           type="button"
           className={styles.technicalToggleBtn}
           onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+          aria-expanded={showTechnicalDetails}
         >
-          {showTechnicalDetails ? "Hide technical holdings details ▴" : "View technical holdings details ▾"}
+          {showTechnicalDetails ? "Hide technical holdings details" : "View technical holdings details"}
+          {showTechnicalDetails ? <CaretUpIcon size={14} /> : <CaretDownIcon size={14} />}
         </button>
 
         {showTechnicalDetails && (
@@ -903,13 +935,18 @@ export function AgentWorkspace() {
               <tbody>
                 {snapshot?.walletPortfolio?.positions?.map((pos) => (
                   <tr key={pos.assetId}>
-                    <td style={{ color: "#fff", fontWeight: 600 }}>{pos.assetId}</td>
+                    <td className={styles.dataTablePrimary}>{pos.assetId}</td>
                     <td>{pos.symbol}</td>
                     <td>{pos.balanceFormatted}</td>
                     <td>${(pos.valueUsd ?? 0).toFixed(2)}</td>
                     <td>{((pos.allocationBps || 0) / 100).toFixed(1)}%</td>
                   </tr>
                 ))}
+                {!snapshot?.walletPortfolio?.positions?.length ? (
+                  <tr>
+                    <td colSpan={5}>No recognized positions are available.</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -978,9 +1015,9 @@ export function AgentWorkspace() {
             ))}
             {isAsking && (
               <div className={styles.chatAgentMsg}>
-                <span style={{ color: "#94a3b8" }}>
-                  <ArrowsClockwiseIcon size={14} className="animate-spin" style={{ display: "inline", marginRight: 6 }} />
-                  Analyzing wallet context and strategy rules…
+                <span className={styles.askingStatus}>
+                  <ArrowsClockwiseIcon size={14} className={styles.spinIcon} />
+                  Analyzing wallet context and strategy rules...
                 </span>
               </div>
             )}
@@ -994,10 +1031,14 @@ export function AgentWorkspace() {
             handleAskQuestion();
           }}
         >
+          <label className="sr-only" htmlFor="agent-question">
+            Ask about portfolio allocations or strategy rules
+          </label>
           <input
             type="text"
+            id="agent-question"
             className={styles.askInput}
-            placeholder="Ask your Agent anything about your allocations or rules…"
+            placeholder="Ask about allocations or strategy rules..."
             value={inputQuestion}
             onChange={(e) => setInputQuestion(e.target.value)}
             disabled={isAsking}

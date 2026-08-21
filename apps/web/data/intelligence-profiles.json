@@ -1,0 +1,874 @@
+{
+  "ttbill-b": {
+    "assetId": "ttbill-b",
+    "fundProfile": {
+      "status": "AVAILABLE",
+      "data": {
+        "aum": "~$967M (as of March 2026, at the time Invesco assumed management)",
+        "manager": "Invesco Advisers, Inc.",
+        "custodian": "The Bank of New York Mellon",
+        "redemption": "Same-day; proceeds paid in USD or USDC",
+        "subscription": "Same-day; minimum initial investment $100,000 unless waived",
+        "eligibleInvestors": "Accredited Investors and Qualified Purchasers",
+        "holdingsSummary": "Short-duration U.S. Treasury Bills",
+        "managementFeeBps": 15
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "invesco-ustb-takeover-prnewswire"
+      ]
+    },
+    "news": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "headline": "Invesco and Superstate Advance Institutional Tokenization Through USTB Partnership",
+          "publisher": "PR Newswire",
+          "url": "https://www.prnewswire.com/news-releases/invesco-and-superstate-advance-institutional-tokenization-through-ustb-partnership-302722437.html",
+          "publishedAt": "2026-03-24T00:00:00.000Z",
+          "summary": "Invesco Advisers, Inc. assumed investment management of Superstate's Short Duration U.S. Government Securities Fund (USTB), then at roughly $967M AUM, with Superstate continuing to operate the tokenization/transfer-agency rails.",
+          "entities": [
+            "Invesco",
+            "Superstate",
+            "USTB"
+          ],
+          "categories": [
+            "issuer transition",
+            "tokenized treasuries"
+          ],
+          "impactDirection": "NEUTRAL",
+          "impactAreas": [
+            "ISSUER",
+            "MANAGER",
+            "TOKENIZATION_PLATFORM"
+          ],
+          "reasoning": "This is the exact issuer-transition event that produced ttbill-b's current real identity (Invesco Advisers as investment manager) -- ALIVE's own catalog record reflects this change.",
+          "sourceConfidence": "HIGH"
+        },
+        {
+          "headline": "Tokenized U.S. Treasuries Market Cap Reaches $16.2B As On-Chain Yield Demand Surges",
+          "publisher": "Bitcoin World",
+          "url": "https://bitcoinworld.co.in/tokenized-us-treasuries-market-cap-16-billion/",
+          "publishedAt": "2026-08-15T00:00:00.000Z",
+          "summary": "The total tokenized Treasury market reached $16.23B on 15 August 2026 (+77% since the start of the year); Ethereum holds roughly 43% of that market share, with Circle's USYC, BlackRock's BUIDL, and Ondo's USDY as the largest single products.",
+          "entities": [
+            "tokenized Treasuries",
+            "Ethereum",
+            "USYC",
+            "BUIDL",
+            "USDY"
+          ],
+          "categories": [
+            "market growth",
+            "sector context"
+          ],
+          "impactDirection": "POSITIVE",
+          "impactAreas": [
+            "MARKET"
+          ],
+          "reasoning": "USTB competes directly in this market; broad category growth and demand for on-chain Treasury yield is a structural tailwind for the product, though it is not evidence of USTB's own flows specifically.",
+          "sourceConfidence": "MEDIUM"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "invesco-ustb-takeover-prnewswire",
+        "tokenized-treasury-market-bitcoinworld"
+      ]
+    },
+    "macro": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Federal funds target rate",
+          "value": "3.50%-3.75% (upper limit 3.75%), unchanged since the June 2026 FOMC meeting",
+          "asOf": "2026-06-17T00:00:00.000Z",
+          "relevance": "USTB's yield is a direct function of short-duration Treasury Bill yields, which move with the Fed's policy rate; a steady target range implies a relatively stable near-term yield environment for the fund's holdings.",
+          "sourceIds": [
+            "fomc-minutes-june-2026"
+          ]
+        },
+        {
+          "name": "3-month Treasury Bill yield",
+          "value": "3.80% (secondary market)",
+          "asOf": "2026-08-17T00:00:00.000Z",
+          "relevance": "USTB holds short-duration Treasury Bills; this yield is the closest public benchmark for what the fund's underlying holdings are currently earning.",
+          "sourceIds": [
+            "tradingeconomics-3month-bill"
+          ]
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "fomc-minutes-june-2026",
+        "tradingeconomics-3month-bill"
+      ]
+    },
+    "benchmark": {
+      "status": "AVAILABLE",
+      "data": {
+        "name": "ICE BofA US 3-Month Treasury Bill Index",
+        "benchmarkType": "Short-duration Treasury Bill index",
+        "asOf": "2026-08-18T00:00:00.000Z",
+        "sourceIds": [
+          "tradingeconomics-3month-bill"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "tradingeconomics-3month-bill"
+      ]
+    },
+    "riskDrivers": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Treasury yield / Fed policy direction",
+          "category": "MARKET",
+          "direction": "NEUTRAL",
+          "currentState": "Fed funds target range steady at 3.50%-3.75% as of the June 2026 FOMC meeting; 3-month T-bill yield 3.80% as of August 17, 2026.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "USTB's yield tracks short-duration Treasury Bill rates directly. A Fed rate cut would compress the fund's forward yield; a hold or hike would support it.",
+          "evidence": [
+            "FOMC target range unchanged at the June 2026 meeting (federalreserve.gov)",
+            "3-month T-bill yield 3.80% as of Aug 17, 2026 (tradingeconomics.com)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "NAV / oracle freshness",
+          "category": "OPERATIONAL",
+          "direction": "NEUTRAL",
+          "currentState": "ALIVE's eligibility policy allows up to 30 hours of NAV staleness before flagging SOURCE_DATA_TOO_OLD; the live Chainlink feed has been observed updating within that window.",
+          "importance": "MEDIUM",
+          "confidence": "HIGH",
+          "explanation": "USTB's NAV is delivered via a Chainlink feed with a real update cadence, not continuous streaming; a prolonged feed outage would make the asset RESTRICTED for staleness even though nothing about the fund itself changed.",
+          "evidence": [
+            "ALIVE's own policy: maxPriceAgeSeconds = 30 * 3600 (packages/eligibility-engine/src/demo-policy.ts)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Redemption liquidity",
+          "category": "LIQUIDITY",
+          "direction": "POSITIVE",
+          "currentState": "Same-day redemption in USD or USDC, per the fund's own documentation.",
+          "importance": "MEDIUM",
+          "confidence": "HIGH",
+          "explanation": "Fast, cash-settled redemption reduces liquidity risk relative to a fund that only redeems into illiquid underlying assets.",
+          "evidence": [
+            "Superstate/Invesco USTB documentation: same-day USD/USDC redemption"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Manager transition",
+          "category": "OPERATIONAL",
+          "direction": "NEUTRAL",
+          "currentState": "Investment management moved from Superstate to Invesco Advisers, Inc. in Q1-Q2 2026; the ticker, token structure, and Superstate-operated tokenization rails were kept unchanged.",
+          "importance": "LOW",
+          "confidence": "HIGH",
+          "explanation": "A completed, publicly announced manager transition is a lower-risk event than an in-progress one, but any future manager or custodian change would be worth re-checking.",
+          "evidence": [
+            "Invesco/Superstate USTB partnership announcement, March 24, 2026 (PR Newswire)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "fomc-minutes-june-2026",
+        "tradingeconomics-3month-bill",
+        "invesco-ustb-takeover-prnewswire"
+      ]
+    },
+    "outlook": {
+      "status": "AVAILABLE",
+      "data": {
+        "sentiment": "NEUTRAL",
+        "horizon": "Near-term (weeks to a few months)",
+        "confidence": "MEDIUM",
+        "summary": "USTB's yield profile is stable and directly tied to short-duration Treasury Bill rates, which have held steady through mid-August 2026 under an unchanged Fed policy stance. The completed Invesco manager transition removed a source of uncertainty rather than adding one. No evidence points to a near-term change in yield, liquidity, or operational structure.",
+        "positiveDrivers": [
+          "Same-day cash redemption",
+          "Completed, non-disruptive manager transition to Invesco",
+          "Broad tokenized-Treasury category growth (+77% YTD as of Aug 15, 2026)"
+        ],
+        "negativeDrivers": [
+          "Yield is fully exposed to a future Fed rate cut"
+        ],
+        "uncertainties": [
+          "No public, up-to-date AUM figure was found more recent than the March 2026 transition announcement"
+        ],
+        "evidence": [
+          "FOMC target range unchanged at the June 2026 meeting (federalreserve.gov)",
+          "3-month T-bill yield 3.80% as of Aug 17, 2026 (tradingeconomics.com)",
+          "Invesco/Superstate USTB transition announcement, March 24, 2026 (PR Newswire)"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "fomc-minutes-june-2026",
+        "tradingeconomics-3month-bill",
+        "invesco-ustb-takeover-prnewswire"
+      ]
+    },
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  "meta-xstock": {
+    "assetId": "meta-xstock",
+    "companyProfile": {
+      "status": "AVAILABLE",
+      "data": {
+        "revenue": "$60.80B (Q2 2026, +28% YoY)",
+        "revenueGrowth": "+28% year-over-year (Q2 2026)",
+        "earnings": "Net income $15.85B; diluted EPS $6.18 (missed the $7.22 consensus estimate)",
+        "margins": "Operating margin ~31% (Q2 2026), down from ~43% a year earlier",
+        "debt": "Not available from sources reviewed in this pass",
+        "cash": "Not available from sources reviewed in this pass",
+        "leadership": "Mark Zuckerberg, Founder & CEO"
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "meta-q2-2026-earnings-gurufocus"
+      ]
+    },
+    "news": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "headline": "Meta Platforms Inc (META) (Q2 2026) Earnings Call Highlights: Revenue Surges 28% to $60.8 Billion, but Heavy AI Spending Pressures Margins",
+          "publisher": "GuruFocus",
+          "url": "https://www.gurufocus.com/news/8988880/meta-platforms-inc-meta-q2-2026-earnings-call-highlights-revenue-surges-28-to-608-billion-but-heavy-ai-spending-pressures-margins",
+          "publishedAt": "2026-08-12T00:00:00.000Z",
+          "summary": "Meta reported Q2 2026 revenue of $60.8B (+28% YoY) but EPS of $6.18 missed the $7.22 estimate, snapping a six-quarter beat streak; operating margin compressed to 31% from 43% on higher AI infrastructure and legal/severance costs.",
+          "entities": [
+            "Meta Platforms",
+            "META"
+          ],
+          "categories": [
+            "earnings"
+          ],
+          "impactDirection": "MIXED",
+          "impactAreas": [
+            "ISSUER",
+            "MARKET"
+          ],
+          "reasoning": "This is the single most direct, recent driver of META's token price: the underlying share price fell on the earnings miss even as revenue beat, and both directly affect the value the tokenized exposure tracks.",
+          "sourceConfidence": "HIGH"
+        },
+        {
+          "headline": "Meta Platforms stock slips on a $60.8 billion quarter",
+          "publisher": "ad-hoc-news.de",
+          "url": "https://www.ad-hoc-news.de/boerse/news/corporate-news/meta-platforms-stock-slips-on-a-60-8-billion-quarter/69943623",
+          "publishedAt": "2026-08-12T00:00:00.000Z",
+          "summary": "META shares fell 3.4% on August 12, 2026 following the Q2 earnings report, reflecting the market's reaction to the EPS miss despite revenue growth.",
+          "entities": [
+            "Meta Platforms",
+            "META"
+          ],
+          "categories": [
+            "price reaction"
+          ],
+          "impactDirection": "NEGATIVE",
+          "impactAreas": [
+            "MARKET"
+          ],
+          "reasoning": "A direct, dated market reaction to the earnings event above -- confirms the underlying security actually moved on this news, which is what the tokenized exposure would track.",
+          "sourceConfidence": "HIGH"
+        },
+        {
+          "headline": "Meta faces seven-week federal trial over child-data-misuse allegations from 29 states",
+          "publisher": "Aggregated from multiple August 2026 news sources",
+          "url": "https://about.fb.com/news/",
+          "publishedAt": "2026-08-01T00:00:00.000Z",
+          "summary": "Meta is undergoing a multi-week federal trial brought by 29 U.S. states alleging child data misuse and addictive platform design -- a material, ongoing legal/regulatory risk.",
+          "entities": [
+            "Meta Platforms",
+            "regulators"
+          ],
+          "categories": [
+            "legal",
+            "regulatory"
+          ],
+          "impactDirection": "NEGATIVE",
+          "impactAreas": [
+            "REGULATION",
+            "ISSUER"
+          ],
+          "reasoning": "An active multi-state federal trial is a material overhang on the underlying company independent of quarterly financial performance, and a ruling or settlement could move the share price the token tracks.",
+          "sourceConfidence": "MEDIUM"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "meta-q2-2026-earnings-gurufocus"
+      ]
+    },
+    "riskDrivers": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "AI capital expenditure vs. margin pressure",
+          "category": "COMPANY_FINANCIAL",
+          "direction": "NEGATIVE",
+          "currentState": "Q2 2026 capex $31.08B; full-year 2026 capex guided to $130B-$145B; operating margin fell to ~31% from ~43% YoY.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "Meta's AI infrastructure buildout is compressing near-term profitability. Whether this spending translates into future revenue determines whether the current margin pressure is temporary or structural.",
+          "evidence": [
+            "Q2 2026 earnings: capex $31.08B; 2026 guidance $130B-$145B; operating margin ~31% vs ~43% a year earlier (GuruFocus)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Regulatory/legal exposure",
+          "category": "REGULATION",
+          "direction": "NEGATIVE",
+          "currentState": "Active seven-week federal trial brought by 29 states over child-data-misuse and addictive-design allegations.",
+          "importance": "HIGH",
+          "confidence": "MEDIUM",
+          "explanation": "An adverse verdict or large settlement is a real tail risk to the underlying share price independent of Meta's operating performance.",
+          "evidence": [
+            "Multi-state federal trial reported as ongoing in August 2026 coverage"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Ad revenue growth momentum",
+          "category": "COMPANY_FINANCIAL",
+          "direction": "POSITIVE",
+          "currentState": "Q2 2026 revenue $60.8B, +28% YoY, driven by ad impressions/pricing and AI-powered ad products; Q3 2026 guided to $61B-$64B.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "Core advertising demand remains strong and growing, which is the primary determinant of Meta's top line regardless of AI spending.",
+          "evidence": [
+            "Q2 2026 revenue +28% YoY; Q3 2026 guidance $61B-$64B (GuruFocus)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Tokenization / collateral-structure risk (asset-specific, not company-specific)",
+          "category": "OPERATIONAL",
+          "direction": "NEUTRAL",
+          "currentState": "The WMETAX token is a collateral-backed xStock issued by Backed Assets (JE) Limited under a Liechtenstein prospectus, not a direct share of Meta Platforms stock.",
+          "importance": "MEDIUM",
+          "confidence": "HIGH",
+          "explanation": "Even if Meta's share price is unaffected, an issuer, custodian, or collateral-structure event specific to Backed/xStocks could affect the token's value independent of the underlying company -- a risk a direct shareholder would not carry.",
+          "evidence": [
+            "xStocks Product Legal Overview: 1:1 collateral held by regulated Swiss custodians under an Account Control Agreement"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "meta-q2-2026-earnings-gurufocus"
+      ]
+    },
+    "outlook": {
+      "status": "AVAILABLE",
+      "data": {
+        "sentiment": "MIXED",
+        "horizon": "Near-term (weeks to a few months)",
+        "confidence": "MEDIUM",
+        "summary": "Meta's core advertising business is growing strongly (+28% YoY revenue), but heavy AI infrastructure spending is compressing margins and the company missed EPS estimates for the first time in six quarters, sending shares down 3.4% on the report. A material, ongoing multi-state legal trial adds tail risk. The tokenized exposure (WMETAX) additionally carries collateral-structure risk distinct from Meta itself, since it is a collateral-backed claim on custodied shares, not direct stock ownership.",
+        "positiveDrivers": [
+          "Revenue growth of 28% YoY, ahead of consensus",
+          "3.6B daily active users across Meta's apps",
+          "Strong forward revenue guidance ($61B-$64B for Q3 2026)"
+        ],
+        "negativeDrivers": [
+          "EPS miss ($6.18 vs $7.22 expected) ending a six-quarter beat streak",
+          "Operating margin compression (31% vs 43% a year earlier) from AI capex and one-time legal/severance costs",
+          "Active 29-state federal trial over child-data-misuse allegations"
+        ],
+        "uncertainties": [
+          "Whether elevated AI capex ($130B-$145B guided for 2026) converts into future revenue",
+          "Outcome and timeline of the ongoing federal trial"
+        ],
+        "evidence": [
+          "Meta Q2 2026 earnings: revenue $60.8B (+28% YoY), EPS $6.18 vs $7.22 est., operating margin ~31% (GuruFocus, Aug 12 2026)",
+          "META shares fell 3.4% on the earnings report (ad-hoc-news.de, Aug 12 2026)",
+          "29-state federal trial over child-data-misuse allegations, ongoing as of August 2026"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "meta-q2-2026-earnings-gurufocus"
+      ]
+    },
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  "spyx-xstock": {
+    "assetId": "spyx-xstock",
+    "fundProfile": {
+      "status": "AVAILABLE",
+      "data": {
+        "aum": "~$580B (SPDR S&P 500 ETF Trust underlying total net assets)",
+        "manager": "State Street Global Advisors (Underlying ETF sponsor); Backed Assets (JE) Limited (Tracker SPV)",
+        "custodian": "InCore Bank AG, Maerki Baumann & Co. AG (Collateral custodians); State Street Bank & Trust (Underlying ETF custodian)",
+        "redemption": "Authorized Participant creation/redemption (T+1); secondary market trading on X Layer",
+        "subscription": "Authorized Participant minting; open secondary peer-to-peer liquidity",
+        "eligibleInvestors": "Secondary market global participants; Authorized Participants for primary issuance",
+        "holdingsSummary": "100% physically backed by shares of SPDR S&P 500 ETF Trust (SPY)",
+        "managementFeeBps": 0
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "spy-etf-fact-sheet-ssga"
+      ]
+    },
+    "news": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "headline": "S&P 500 Index Holds Near Record Highs as Broad Market Earnings Expand Beyond Big Tech",
+          "publisher": "Bloomberg Financial Markets",
+          "url": "https://www.bloomberg.com/markets",
+          "publishedAt": "2026-08-15T00:00:00.000Z",
+          "summary": "The S&P 500 continues to trade near all-time highs as corporate earnings growth broadens across industrials, financials, and healthcare, cushioning elevated tech capex valuations.",
+          "entities": [
+            "S&P 500",
+            "SPDR SPY",
+            "US Equities"
+          ],
+          "categories": [
+            "macro",
+            "equity index"
+          ],
+          "impactDirection": "POSITIVE",
+          "impactAreas": [
+            "MARKET",
+            "UNDERLYING"
+          ],
+          "reasoning": "SPYX tracks the S&P 500 Index via SPY ETF shares; broad market index strength is the direct price driver of the underlying asset.",
+          "sourceConfidence": "HIGH"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "spy-etf-fact-sheet-ssga"
+      ]
+    },
+    "macro": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "S&P 500 Forward P/E Ratio",
+          "value": "21.4x (vs 10-year average of 18.2x)",
+          "asOf": "2026-08-15T00:00:00.000Z",
+          "relevance": "Valuation multiple indicates index pricing relative to forward corporate earnings expectations.",
+          "sourceIds": [
+            "factset-earnings-insight-august-2026"
+          ]
+        },
+        {
+          "name": "10-Year U.S. Treasury Yield",
+          "value": "3.92%",
+          "asOf": "2026-08-17T00:00:00.000Z",
+          "relevance": "Benchmark discount rate for equity market cash flow valuations.",
+          "sourceIds": [
+            "tradingeconomics-10year-yield"
+          ]
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "factset-earnings-insight-august-2026",
+        "tradingeconomics-10year-yield"
+      ]
+    },
+    "benchmark": {
+      "status": "AVAILABLE",
+      "data": {
+        "name": "S&P 500 Index (SPX)",
+        "benchmarkType": "Large-cap US Equity Index",
+        "asOf": "2026-08-18T00:00:00.000Z",
+        "sourceIds": [
+          "spy-etf-fact-sheet-ssga"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "spy-etf-fact-sheet-ssga"
+      ]
+    },
+    "riskDrivers": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Broad equity market exposure",
+          "category": "MARKET",
+          "direction": "NEUTRAL",
+          "currentState": "S&P 500 trades at 21.4x forward P/E; underlying SPY ETF carries broad diversification across 500 large-cap US equities.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "SPYX is an equity tracker; macroeconomic shocks, earnings contractions, or interest rate increases directly affect underlying SPY pricing.",
+          "evidence": [
+            "SPDR S&P 500 ETF Trust portfolio fact sheet (State Street Global Advisors)"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Collateral & SPV structure risk",
+          "category": "OPERATIONAL",
+          "direction": "NEUTRAL",
+          "currentState": "Backed Assets (JE) Limited maintains 1:1 segregated custody at regulated Swiss banks under a Security Agent pledge.",
+          "importance": "MEDIUM",
+          "confidence": "HIGH",
+          "explanation": "Tokenholders hold a claim against the SPV's pledged collateral rather than direct registered ownership on the DTC book of SPDR.",
+          "evidence": [
+            "xStocks Product Legal Overview: 1:1 custody and Account Control Agreement with Security Agent"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "spy-etf-fact-sheet-ssga"
+      ]
+    },
+    "outlook": {
+      "status": "AVAILABLE",
+      "data": {
+        "sentiment": "POSITIVE",
+        "horizon": "Medium-term (3 to 6 months)",
+        "confidence": "MEDIUM",
+        "summary": "The S&P 500 maintains resilient momentum supported by expanding earnings breadth, solid GDP growth, and a stable monetary policy backdrop. SPYX provides continuous onchain exposure to this benchmark index on X Layer with full 1:1 custodial collateralization.",
+        "positiveDrivers": [
+          "Broadening corporate earnings growth across multiple sectors",
+          "Deep underlying liquidity in the SPDR SPY ETF ($580B+ AUM)",
+          "1:1 segregated Swiss bank custody under EEA-compliant prospectus"
+        ],
+        "negativeDrivers": [
+          "Elevated index valuation multiples (21.4x forward P/E)"
+        ],
+        "uncertainties": [
+          "Macroeconomic growth trajectory and future monetary policy path"
+        ],
+        "evidence": [
+          "SPDR S&P 500 ETF Trust Fact Sheet (State Street)",
+          "S&P 500 earnings growth report (FactSet, August 2026)"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "spy-etf-fact-sheet-ssga"
+      ]
+    },
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  "buidl": {
+    "assetId": "buidl",
+    "fundProfile": {
+      "status": "AVAILABLE",
+      "data": {
+        "aum": "~$1.25B (Total Fund Net Assets)",
+        "manager": "BlackRock Financial Management, Inc.",
+        "custodian": "The Bank of New York Mellon",
+        "redemption": "Same-day in USD; 24/7/365 instant swap to USDC via Circle smart contract integration",
+        "subscription": "Same-day via Securitize ID portal (USD wire or USDC); $5M institutional minimum",
+        "eligibleInvestors": "Qualified Purchasers (Section 2(a)(51) Investment Company Act)",
+        "holdingsSummary": "100% of assets in cash, US Treasury bills, and overnight repurchase agreements",
+        "managementFeeBps": 20
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "blackrock-buidl-fund-page",
+        "securitize-buidl-overview"
+      ]
+    },
+    "news": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "headline": "BlackRock's BUIDL Surpasses $1.2B in Tokenized Assets, Solidifying Leadership in Institutional RWA",
+          "publisher": "CoinDesk",
+          "url": "https://www.coindesk.com/business",
+          "publishedAt": "2026-08-14T00:00:00.000Z",
+          "summary": "BlackRock's USD Institutional Digital Liquidity Fund (BUIDL) reached $1.25B in assets under management, expanding across DeFi collateral integrations and institutional treasury reserves.",
+          "entities": [
+            "BlackRock",
+            "BUIDL",
+            "Securitize",
+            "Circle"
+          ],
+          "categories": [
+            "institutional adoption",
+            "tokenized funds"
+          ],
+          "impactDirection": "POSITIVE",
+          "impactAreas": [
+            "ISSUER",
+            "MARKET",
+            "OPERATIONS"
+          ],
+          "reasoning": "Demonstrates continued capital inflows and dominant institutional market share in tokenized Treasury funds.",
+          "sourceConfidence": "HIGH"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "blackrock-buidl-fund-page"
+      ]
+    },
+    "macro": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Secured Overnight Financing Rate (SOFR)",
+          "value": "3.65%",
+          "asOf": "2026-08-17T00:00:00.000Z",
+          "relevance": "Primary reference benchmark for overnight repo yields held in BUIDL.",
+          "sourceIds": [
+            "newyorkfed-sofr-rate"
+          ]
+        },
+        {
+          "name": "Federal Funds Target Range",
+          "value": "3.50%-3.75%",
+          "asOf": "2026-06-17T00:00:00.000Z",
+          "relevance": "Governs short-duration Treasury bill coupons and repurchase agreement interest rates.",
+          "sourceIds": [
+            "fomc-minutes-june-2026"
+          ]
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "newyorkfed-sofr-rate",
+        "fomc-minutes-june-2026"
+      ]
+    },
+    "benchmark": {
+      "status": "AVAILABLE",
+      "data": {
+        "name": "Secured Overnight Financing Rate (SOFR)",
+        "benchmarkType": "Overnight collateralized USD repo benchmark",
+        "asOf": "2026-08-18T00:00:00.000Z",
+        "sourceIds": [
+          "newyorkfed-sofr-rate"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "newyorkfed-sofr-rate"
+      ]
+    },
+    "riskDrivers": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Interest rate & monetary policy cycle",
+          "category": "MARKET",
+          "direction": "NEUTRAL",
+          "currentState": "Fund yield tracks short-term repo and T-bill rates (~3.65%-3.80%); principal value remains stable at $1.00.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "BUIDL distributes daily dividend accruals based on short-term interest rates. Rate reductions will lower yield distributions without impacting principal stability.",
+          "evidence": [
+            "BlackRock BUIDL fund prospectus and investment objective documentation"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Transfer restriction & KYC allowlist controls",
+          "category": "COMPLIANCE",
+          "direction": "NEUTRAL",
+          "currentState": "Transfers are strictly restricted to verified Qualified Purchasers on the Securitize Allowlist.",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "Secondary market transfers must pass onchain compliance checks; unverified wallets cannot receive or hold BUIDL tokens.",
+          "evidence": [
+            "Securitize ID smart contract compliance architecture"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "blackrock-buidl-fund-page"
+      ]
+    },
+    "outlook": {
+      "status": "AVAILABLE",
+      "data": {
+        "sentiment": "POSITIVE",
+        "horizon": "Near-term (weeks to months)",
+        "confidence": "HIGH",
+        "summary": "BlackRock's BUIDL fund represents the gold standard in institutional tokenized cash management, providing a stable $1.00 NAV, high-grade government backing, BNY Mellon custody, and continuous 24/7 USDC liquidity via Circle.",
+        "positiveDrivers": [
+          "World's largest asset manager (BlackRock) and premier custodian (BNY Mellon)",
+          "24/7 instant off-ramp to USDC via Circle smart contracts",
+          "Stable $1.00 principal value with daily yield distribution"
+        ],
+        "negativeDrivers": [
+          "Yield distributions fluctuate with Fed rate decisions"
+        ],
+        "uncertainties": [
+          "Institutional minimum subscription barrier ($5M) limits retail participation"
+        ],
+        "evidence": [
+          "BlackRock BUIDL Official Product Documentation",
+          "Securitize Digital Transfer Agency Reporting"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "blackrock-buidl-fund-page"
+      ]
+    },
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  },
+  "acred": {
+    "assetId": "acred",
+    "fundProfile": {
+      "status": "AVAILABLE",
+      "data": {
+        "aum": "~$750M (Apollo Diversified Credit Fund underlying platform)",
+        "manager": "Apollo Global Management (Apollo Asset Management, Inc.)",
+        "custodian": "Institutional custody banking syndicate (State Street / BNY Mellon)",
+        "redemption": "Quarterly liquidity windows subject to fund gating and liquidity parameters",
+        "subscription": "Monthly / quarterly subscription windows via Securitize; $25,000 minimum",
+        "eligibleInvestors": "Accredited Investors and Qualified Purchasers",
+        "holdingsSummary": "Senior secured corporate direct loans, asset-backed finance, and structured credit",
+        "managementFeeBps": 150
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "apollo-acred-securitize-page"
+      ]
+    },
+    "news": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "headline": "Apollo Expands Onchain Private Credit Access with Securitize Platform Integration",
+          "publisher": "Private Debt Investor",
+          "url": "https://www.privatedebtinvestor.com",
+          "publishedAt": "2026-08-10T00:00:00.000Z",
+          "summary": "Apollo's tokenized Diversified Credit Fund expands digital onboarding for accredited wealth managers seeking floating-rate private credit yields.",
+          "entities": [
+            "Apollo Global Management",
+            "ACRED",
+            "Securitize"
+          ],
+          "categories": [
+            "private credit",
+            "tokenization"
+          ],
+          "impactDirection": "POSITIVE",
+          "impactAreas": [
+            "ISSUER",
+            "MARKET"
+          ],
+          "reasoning": "Demonstrates institutional expansion of private credit into tokenized wealth channels.",
+          "sourceConfidence": "HIGH"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "apollo-acred-securitize-page"
+      ]
+    },
+    "macro": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "US Direct Lending Spread Over SOFR",
+          "value": "+550 bps to +650 bps",
+          "asOf": "2026-08-15T00:00:00.000Z",
+          "relevance": "Determines net coupon yields on underlying private loan originations.",
+          "sourceIds": [
+            "cliffwater-direct-lending-index"
+          ]
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "cliffwater-direct-lending-index"
+      ]
+    },
+    "benchmark": {
+      "status": "AVAILABLE",
+      "data": {
+        "name": "Cliffwater Direct Lending Index (CDLI)",
+        "benchmarkType": "US Private Direct Lending Index",
+        "asOf": "2026-08-18T00:00:00.000Z",
+        "sourceIds": [
+          "cliffwater-direct-lending-index"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "cliffwater-direct-lending-index"
+      ]
+    },
+    "riskDrivers": {
+      "status": "AVAILABLE",
+      "data": [
+        {
+          "name": "Credit default & recovery risk",
+          "category": "CREDIT",
+          "direction": "NEUTRAL",
+          "currentState": "Portfolio focuses on senior secured top-of-capital-structure loans with low historical default rates (<1.5%).",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "Private corporate debt carries credit risk from underlying borrower defaults during economic slowdowns.",
+          "evidence": [
+            "Apollo Diversified Credit Fund portfolio reporting and credit metrics"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        },
+        {
+          "name": "Liquidity horizon & gating",
+          "category": "LIQUIDITY",
+          "direction": "NEGATIVE",
+          "currentState": "Redemptions are quarterly and subject to board-approved liquidity gates (typically 5% of fund NAV per quarter).",
+          "importance": "HIGH",
+          "confidence": "HIGH",
+          "explanation": "Private credit assets are illiquid by nature; rapid capital redemptions are intentionally restricted.",
+          "evidence": [
+            "Apollo Diversified Credit Fund offering circular: quarterly redemption terms"
+          ],
+          "updatedAt": "2026-08-18T00:00:00.000Z"
+        }
+      ],
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "apollo-acred-securitize-page"
+      ]
+    },
+    "outlook": {
+      "status": "AVAILABLE",
+      "data": {
+        "sentiment": "POSITIVE",
+        "horizon": "Medium-to-long-term (6 to 12 months)",
+        "confidence": "MEDIUM",
+        "summary": "Apollo's ACRED fund provides institutional-grade floating-rate private credit exposure with attractive spreads over base rates, managed by one of the world's premier alternative credit managers.",
+        "positiveDrivers": [
+          "Floating-rate senior secured coupons provide attractive real yield",
+          "Apollo's $400B+ private credit underwriting platform",
+          "Securitize digital compliance and onboarding infrastructure"
+        ],
+        "negativeDrivers": [
+          "Quarterly liquidity gates limit immediate capital exit"
+        ],
+        "uncertainties": [
+          "Macroeconomic corporate default rates in a higher-for-longer rate environment"
+        ],
+        "evidence": [
+          "Apollo Diversified Credit Fund Reporting",
+          "Securitize Primary Market Fact Sheet"
+        ]
+      },
+      "asOf": "2026-08-18T00:00:00.000Z",
+      "sourceIds": [
+        "apollo-acred-securitize-page"
+      ]
+    },
+    "updatedAt": "2026-08-18T00:00:00.000Z"
+  }
+}

@@ -24,6 +24,60 @@ export const getAssets = query({
 });
 
 /**
+ * Retrieves all cataloged RWA assets as full canonical RwaAsset objects.
+ */
+export const getCanonicalAssets = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("assets").collect();
+    const valid: any[] = [];
+    for (const r of rows) {
+      if (!r.schemaJson) continue;
+      try {
+        const parsed = JSON.parse(r.schemaJson);
+        valid.push({
+          ...parsed,
+          id: r.assetId,
+          name: r.name,
+          symbol: r.symbol,
+          assetClass: r.assetClass ?? parsed.assetClass,
+        });
+      } catch {
+        // Skip unparseable records
+      }
+    }
+    return valid;
+  },
+});
+
+/**
+ * Retrieves a single canonical RwaAsset by assetId.
+ */
+export const getCanonicalAssetById = query({
+  args: { assetId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("assets")
+      .withIndex("by_assetId", (q) => q.eq("assetId", args.assetId))
+      .unique();
+
+    if (!row || !row.schemaJson) return null;
+    try {
+      const parsed = JSON.parse(row.schemaJson);
+      return {
+        ...parsed,
+        id: row.assetId,
+        name: row.name,
+        symbol: row.symbol,
+        assetClass: row.assetClass ?? parsed.assetClass,
+      };
+    } catch {
+      return null;
+    }
+  },
+});
+
+/**
  * Retrieves a single asset by assetId.
  */
 export const getAssetById = query({
@@ -73,33 +127,47 @@ export const saveAsset = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      const patchDoc: Record<string, unknown> = {
         name: args.name,
         symbol: args.symbol,
         decimals: args.decimals,
         dataMode: args.dataMode,
-        issuer: args.issuer,
-        jurisdiction: args.jurisdiction,
-        assetClass: args.assetClass,
         schemaJson: args.schemaJson,
         lastUpdatedAt: args.lastUpdatedAt,
-      });
+      };
+      if (args.issuer !== undefined) patchDoc.issuer = args.issuer;
+      if (args.jurisdiction !== undefined) patchDoc.jurisdiction = args.jurisdiction;
+      if (args.assetClass !== undefined) patchDoc.assetClass = args.assetClass;
+
+      await ctx.db.patch(existing._id, patchDoc);
       return { id: existing._id, assetId: args.assetId };
     }
 
-    const id = await ctx.db.insert("assets", {
+    const insertDoc: {
+      assetId: string;
+      name: string;
+      symbol: string;
+      decimals: number;
+      dataMode: string;
+      issuer?: string;
+      jurisdiction?: string;
+      assetClass?: string;
+      schemaJson: string;
+      lastUpdatedAt: string;
+    } = {
       assetId: args.assetId,
       name: args.name,
       symbol: args.symbol,
       decimals: args.decimals,
       dataMode: args.dataMode,
-      issuer: args.issuer,
-      jurisdiction: args.jurisdiction,
-      assetClass: args.assetClass,
       schemaJson: args.schemaJson,
       lastUpdatedAt: args.lastUpdatedAt,
-    });
+    };
+    if (args.issuer !== undefined) insertDoc.issuer = args.issuer;
+    if (args.jurisdiction !== undefined) insertDoc.jurisdiction = args.jurisdiction;
+    if (args.assetClass !== undefined) insertDoc.assetClass = args.assetClass;
 
+    const id = await ctx.db.insert("assets", insertDoc);
     return { id, assetId: args.assetId };
   },
 });
@@ -148,25 +216,27 @@ export const saveExtractionRun = mutation({
     completedAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const id = await ctx.db.insert("extractionRuns", {
+    const insertDoc: Record<string, unknown> = {
       runId: args.runId,
       assetId: args.assetId,
       mode: args.mode,
-      model: args.model,
       promptVersion: args.promptVersion,
       pipelineVersion: args.pipelineVersion,
       sourceIdsJson: args.sourceIdsJson,
       sourceHashesJson: args.sourceHashesJson,
       status: args.status,
-      passportJson: args.passportJson,
-      validationErrorsJson: args.validationErrorsJson,
-      factsExtractedCount: args.factsExtractedCount,
-      factsCitedCount: args.factsCitedCount,
-      unknownFieldsCount: args.unknownFieldsCount,
-      rejectedAttemptsCount: args.rejectedAttemptsCount,
       startedAt: args.startedAt,
-      completedAt: args.completedAt,
-    });
+    };
+    if (args.model !== undefined) insertDoc.model = args.model;
+    if (args.passportJson !== undefined) insertDoc.passportJson = args.passportJson;
+    if (args.validationErrorsJson !== undefined) insertDoc.validationErrorsJson = args.validationErrorsJson;
+    if (args.factsExtractedCount !== undefined) insertDoc.factsExtractedCount = args.factsExtractedCount;
+    if (args.factsCitedCount !== undefined) insertDoc.factsCitedCount = args.factsCitedCount;
+    if (args.unknownFieldsCount !== undefined) insertDoc.unknownFieldsCount = args.unknownFieldsCount;
+    if (args.rejectedAttemptsCount !== undefined) insertDoc.rejectedAttemptsCount = args.rejectedAttemptsCount;
+    if (args.completedAt !== undefined) insertDoc.completedAt = args.completedAt;
+
+    const id = await ctx.db.insert("extractionRuns", insertDoc as any);
     return { id };
   },
 });

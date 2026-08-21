@@ -69,6 +69,21 @@ function demoConfig(): IntelligenceConfig {
   };
 }
 
+function markAssetAnalyzed(
+  catalog: Awaited<ReturnType<typeof loadRwaCatalog>>,
+  assetId: string,
+): void {
+  const asset = catalog.assets.find((candidate) => candidate.id === assetId);
+  if (!asset) throw new Error(`Test asset ${assetId} was not found.`);
+  asset.extraction = {
+    mode: "AI",
+    model: "llama-3.3-70b-versatile",
+    pipelineVersion: "2.0.0",
+    promptVersion: "2.0.0",
+    extractedAt: NOW.toISOString(),
+  };
+}
+
 describe("X Layer Trading API Endpoints", () => {
   it("GET /api/trade/payment-tokens returns verified X Layer payment tokens", async () => {
     const repository = new IntelligenceRepository(":memory:");
@@ -138,18 +153,7 @@ describe("X Layer Trading API Endpoints", () => {
   it("GET /api/assets/:assetId/trade-availability resolves real route status for analyzed WMETAX", async () => {
     const repository = new IntelligenceRepository(":memory:");
     const catalog = await loadRwaCatalog(catalogPath, () => NOW);
-    
-    // Seed verified extraction for meta-xstock
-    const metaAsset = catalog.assets.find((a) => a.id === "meta-xstock");
-    if (metaAsset) {
-      metaAsset.extraction = {
-        mode: "AI",
-        model: "llama-3.3-70b-versatile",
-        pipelineVersion: "2.0.0",
-        promptVersion: "2.0.0",
-        extractedAt: NOW.toISOString(),
-      };
-    }
+    markAssetAnalyzed(catalog, "meta-xstock");
     repository.replaceCatalog(catalog.assets);
 
     // Mock OkxTradeRouter with route
@@ -201,18 +205,7 @@ describe("X Layer Trading API Endpoints", () => {
   it("GET /api/assets/:assetId/trade-availability returns NO_ROUTE honestly when pool is unseeded for analyzed SPYX", async () => {
     const repository = new IntelligenceRepository(":memory:");
     const catalog = await loadRwaCatalog(catalogPath, () => NOW);
-    
-    // Seed verified extraction for spyx-xstock
-    const spyxAsset = catalog.assets.find((a) => a.id === "spyx-xstock");
-    if (spyxAsset) {
-      spyxAsset.extraction = {
-        mode: "AI",
-        model: "llama-3.3-70b-versatile",
-        pipelineVersion: "2.0.0",
-        promptVersion: "2.0.0",
-        extractedAt: NOW.toISOString(),
-      };
-    }
+    markAssetAnalyzed(catalog, "spyx-xstock");
     repository.replaceCatalog(catalog.assets);
 
     // Mock OkxTradeRouter with 0 liquidity
@@ -261,6 +254,7 @@ describe("X Layer Trading API Endpoints", () => {
   it("POST /api/trade/quote strictly resolves canonical target contract and returns normalized quote", async () => {
     const repository = new IntelligenceRepository(":memory:");
     const catalog = await loadRwaCatalog(catalogPath, () => NOW);
+    markAssetAnalyzed(catalog, "meta-xstock");
     repository.replaceCatalog(catalog.assets);
 
     const mockRouter = new OkxTradeRouter({
@@ -314,9 +308,72 @@ describe("X Layer Trading API Endpoints", () => {
     await app.close();
   });
 
+  it("POST /api/trade/quote blocks source-unverified assets before requesting a route", async () => {
+    const repository = new IntelligenceRepository(":memory:");
+    const catalog = await loadRwaCatalog(catalogPath, () => NOW);
+    const metaAsset = catalog.assets.find((asset) => asset.id === "meta-xstock");
+    if (!metaAsset) throw new Error("Test asset meta-xstock was not found.");
+    const fixtureSupportedFields = [
+      ...new Set(
+        metaAsset.sources.flatMap((source) => source.supportedFields),
+      ),
+    ];
+    metaAsset.dataMode = "DEMO";
+    metaAsset.sources = [
+      {
+        id: "meta-xstock-test-fixture",
+        title: "Meta xStock test fixture",
+        sourceType: "DEMO_FIXTURE",
+        fixtureId: "meta-xstock-test-fixture",
+        disclaimer: "Synthetic test fixture; not live market data.",
+        retrievedAt: NOW.toISOString(),
+        supportedFields: fixtureSupportedFields,
+      },
+    ];
+    repository.replaceCatalog(catalog.assets);
+
+    let routerCalls = 0;
+    const mockRouter = new OkxTradeRouter({
+      fetchImpl: (async () => {
+        routerCalls += 1;
+        throw new Error("Trade router must not be called for an unavailable asset.");
+      }) as any,
+    });
+    const app = await buildIntelligenceApp(demoConfig(), {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new CompositeMarketDataProvider(
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
+        new ControllableDemoMarketDataProvider(),
+      ),
+      tradeRouter: mockRouter,
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/trade/quote",
+      payload: {
+        assetId: "meta-xstock",
+        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
+        amount: "500",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: { code: "NOT_VERIFIED" },
+    });
+    expect(routerCalls).toBe(0);
+    await app.close();
+  });
+
   it("POST /api/trade/transaction builds calldata without server keys", async () => {
     const repository = new IntelligenceRepository(":memory:");
     const catalog = await loadRwaCatalog(catalogPath, () => NOW);
+    markAssetAnalyzed(catalog, "meta-xstock");
     repository.replaceCatalog(catalog.assets);
 
     const mockRouter = new OkxTradeRouter({
@@ -365,6 +422,54 @@ describe("X Layer Trading API Endpoints", () => {
     expect(json.transaction.chainId).toBe(196);
     expect(json.transaction.to.startsWith("0x")).toBe(true);
     expect(json.transaction.data.startsWith("0x")).toBe(true);
+    await app.close();
+  });
+
+  it("POST /api/trade/transaction blocks policy-restricted assets before constructing calldata", async () => {
+    const repository = new IntelligenceRepository(":memory:");
+    const catalog = await loadRwaCatalog(catalogPath, () => NOW);
+    const metaAsset = catalog.assets.find((asset) => asset.id === "meta-xstock");
+    if (!metaAsset) throw new Error("Test asset meta-xstock was not found.");
+    markAssetAnalyzed(catalog, "meta-xstock");
+    metaAsset.issuer = "unapproved-test-issuer";
+    repository.replaceCatalog(catalog.assets);
+
+    let routerCalls = 0;
+    const mockRouter = new OkxTradeRouter({
+      fetchImpl: (async () => {
+        routerCalls += 1;
+        throw new Error("Trade router must not be called for an unavailable asset.");
+      }) as any,
+    });
+    const app = await buildIntelligenceApp(demoConfig(), {
+      repository,
+      catalog,
+      llm: disabledLlm(),
+      marketData: new CompositeMarketDataProvider(
+        new ChainlinkDataFeedProvider(reader(), () => NOW),
+        new ControllableDemoMarketDataProvider(),
+      ),
+      tradeRouter: mockRouter,
+      eligibilitySigner: unconfiguredEligibilitySigner(),
+      now: () => NOW,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/trade/transaction",
+      payload: {
+        assetId: "meta-xstock",
+        fromTokenAddress: XLAYER_PAYMENT_TOKENS.USDC!.contractAddress,
+        amount: "500",
+        userWalletAddress: "0x1234567890123456789012345678901234567890",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: { code: "NOT_ELIGIBLE" },
+    });
+    expect(routerCalls).toBe(0);
     await app.close();
   });
 });

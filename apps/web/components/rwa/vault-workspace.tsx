@@ -13,7 +13,7 @@ import { WalletButton } from "@/components/wallet-shell";
 import { readRwaVault, type RwaVaultRead } from "@/lib/rwa-chain";
 import { rememberRwaState } from "@/lib/rwa-state";
 import { truncateIdentifier } from "@/lib/rwa-format";
-import { ErrorState, LoadingState, Notice, PageIntro, styles } from "./ui";
+import { Disclosure, ErrorState, LoadingState, Notice, OperationStatus, PageIntro, styles } from "./ui";
 
 const zeroAddress = `0x${"0".repeat(40)}`;
 const zeroHash = `0x${"0".repeat(64)}`;
@@ -53,7 +53,12 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
 
       {vault && !loading ? (
         <>
-          <section className={styles.section}>
+          <section className={styles.section} aria-live="polite">
+            <OperationStatus
+              title={vault.interfaceReadable ? "ALIVE vault interface confirmed" : vault.bytecodePresent ? "Contract found; interface unconfirmed" : "No contract bytecode found"}
+              detail={`${vault.chainName} / chain ${vault.chainId}`}
+              tone={vault.interfaceReadable ? "success" : "warning"}
+            />
             <div className={styles.panel}>
               <div className={styles.panelHeader}>
                 <div><p className={styles.kicker}>Address</p><h2>{truncateIdentifier(vault.address, 14, 12)}</h2><p>{vault.chainName} / chain {vault.chainId}</p></div>
@@ -76,8 +81,9 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
             <>
               <section className={styles.section} aria-labelledby="vault-facts-title">
                 <div className={styles.sectionHeader}><div><p className={styles.kicker}>Onchain facts</p><h2 id="vault-facts-title">Vault control plane</h2></div><VaultIcon size={27} color="currentColor" /></div>
-                <div className={styles.grid2}>
-                  <article className={styles.panel}>
+                <Disclosure title="Owner and active policy" summary="Public RPC reads from the configured chain." defaultOpen>
+                  <div className={styles.evidenceColumns}>
+                  <article className={styles.evidenceColumn}>
                     <div className={styles.panelHeader}><div><p className={styles.kicker}>Ownership</p><h2>User-controlled exit</h2></div><LockKeyIcon size={23} color="currentColor" /></div>
                     <dl className={styles.definitionList}>
                       <Fact label="Owner" value={vault.owner ?? "READ FAILED"} />
@@ -86,7 +92,7 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
                       <Fact label="Cash asset ID" value={vault.cashAssetId ?? "READ FAILED"} />
                     </dl>
                   </article>
-                  <article className={styles.panel}>
+                  <article className={styles.evidenceColumn}>
                     <div className={styles.panelHeader}><div><p className={styles.kicker}>Active policy</p><h2>{vault.activePolicyVersion ? `Version ${vault.activePolicyVersion}` : "No active version"}</h2></div></div>
                     <dl className={styles.definitionList}>
                       <Fact label="Version" value={String(vault.activePolicyVersion ?? "READ FAILED")} />
@@ -94,7 +100,8 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
                       <Fact label="Source" value="PUBLIC RPC READ" />
                     </dl>
                   </article>
-                </div>
+                  </div>
+                </Disclosure>
               </section>
               <section className={styles.section}>
                 <Notice title="Balances and execution history not indexed" tone="warning">This reader confirms the vault control interface only. The current app has no trusted holdings indexer or execution feed, so it does not estimate portfolio value or invent past trades.</Notice>
@@ -110,4 +117,3 @@ export function VaultWorkspace({ vaultAddress }: { vaultAddress: string }) {
 function Fact({ label, value }: { label: string; value: string | number }) {
   return <div className={styles.definitionRow}><dt>{label}</dt><dd className={styles.hash}>{value}</dd></div>;
 }
-

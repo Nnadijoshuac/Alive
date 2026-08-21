@@ -2,205 +2,237 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  ArrowRightIcon,
+  MagnifyingGlassIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import styles from "./landing.module.css";
 
+const evaluationSteps = [
+  {
+    source: "SOURCE",
+    title: "Issuer evidence",
+    description: "Facts stay attached to their documents.",
+    state: "REQUIRED",
+  },
+  {
+    source: "AI",
+    title: "Structured extraction",
+    description: "AI proposes cited facts. It does not decide.",
+    state: "BOUNDED",
+  },
+  {
+    source: "RULE",
+    title: "Eligibility policy",
+    description: "Deterministic rules return the verdict.",
+    state: "DECIDES",
+  },
+  {
+    source: "CHAIN",
+    title: "Contract enforcement",
+    description: "The approved boundary is enforced onchain.",
+    state: "ENFORCES",
+  },
+] as const;
+
+const productPath = [
+  {
+    label: "Verify",
+    title: "Start with the asset, not the ticker.",
+    description:
+      "Read the backing, sources, market freshness, current verdict, and the exact reasons behind it.",
+    href: "/overview",
+    action: "Verify an asset",
+  },
+  {
+    label: "Mandate",
+    title: "Turn intent into hard boundaries.",
+    description:
+      "Compile plain-language intent into a canonical policy, then review every rule before calculation.",
+    href: "/create",
+    action: "Build a mandate",
+  },
+  {
+    label: "Observe",
+    title: "See when the answer changes.",
+    description:
+      "Track expiry, policy outcomes, and evidence-backed activity without treating demo state as live state.",
+    href: "/activity",
+    action: "Open activity",
+  },
+] as const;
+
 export function LandingPage() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   return (
-    <div className={`${styles.stage} ${isOpen ? styles.isOpen : ""}`}>
-      {/* Background CloudFront Video */}
-      <div className={styles.plate}>
-        <video
-          className={styles.plateVideo}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          aria-hidden="true"
-        >
-          <source
-            src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_112712_da9d53df-6d27-4b12-bdf6-aa9dc2622bdf.mp4"
-            type="video/mp4"
-          />
-        </video>
-      </div>
+    <div className={styles.page}>
+      <span
+        hidden
+        aria-hidden="true"
+        dangerouslySetInnerHTML={{
+          __html:
+            "<!-- THESIS: show the verification mechanism before asking for trust. OWN-WORLD: a quiet institutional control room built from near-black planes, ruled evidence rows, and one scanner-green signal. STORY: choose an asset, inspect why it passes, then define what capital may do. FIRST VIEWPORT: statement and action at left, working evaluation rail at right, provenance vocabulary below. FORM: compact evidence terminal rather than a cinematic crypto landing page. -->",
+        }}
+      />
 
-      {/* Header Topbar */}
-      <header className={styles.topbar}>
-        <Link href="/" className={styles.brand} aria-label="ALIVE">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/assets/logo.webp"
-            alt="ALIVE"
-            className={styles.brandImg}
-            width={38}
-            height={38}
-          />
+      <header className={styles.header}>
+        <Link href="/" className={styles.brand} aria-label="ALIVE home">
+          <span className={styles.brandMark} aria-hidden="true">A</span>
+          <span>
+            <strong>ALIVE</strong>
+            <small>RWA policy intelligence</small>
+          </span>
         </Link>
 
-        <nav className={styles.links} aria-label="Primary">
-          <Link href="/explore">Explore</Link>
-          <Link href="/overview">Intelligence</Link>
-          <Link href="/protocol">How It Works</Link>
-          <Link href="/protocol#about">About</Link>
+        <nav className={styles.desktopNav} aria-label="Primary navigation">
+          <Link href="/overview">Verify</Link>
+          <Link href="/explore">Discover</Link>
+          <Link href="/create">Mandate</Link>
+          <Link href="/protocol">Protocol</Link>
         </nav>
 
-        <Link href="/explore" className={`${styles.pill} ${styles.pillNav}`}>
-          <span>Launch ALIVE</span>
+        <Link href="/overview" className={styles.headerAction}>
+          Open workspace
+          <ArrowRightIcon size={14} weight="bold" aria-hidden="true" />
         </Link>
 
         <button
           type="button"
-          className={styles.burger}
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label={isOpen ? "Close menu" : "Toggle menu"}
-          aria-expanded={isOpen}
-          aria-controls="mobileMenu"
+          className={styles.menuButton}
+          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
         >
-          <i className={styles.burgerBar}></i>
-          <i className={styles.burgerBar}></i>
+          {menuOpen ? <XIcon size={19} /> : <span aria-hidden="true">Menu</span>}
         </button>
       </header>
 
-      {/* Mobile Menu Overlay */}
-      <nav className={styles.menu} id="mobileMenu" aria-hidden={!isOpen}>
-        <div className={styles.menuInner}>
-          <p className={styles.menuEyebrow}>Menu</p>
-          <ul className={styles.menuList}>
-            <li>
-              <Link href="/explore" onClick={() => setIsOpen(false)}>
-                Explore
-              </Link>
-            </li>
-            <li>
-              <Link href="/overview" onClick={() => setIsOpen(false)}>
-                Intelligence
-              </Link>
-            </li>
-            <li>
-              <Link href="/protocol" onClick={() => setIsOpen(false)}>
-                How It Works
-              </Link>
-            </li>
-            <li>
-              <Link href="/protocol#about" onClick={() => setIsOpen(false)}>
-                About
-              </Link>
-            </li>
-          </ul>
-          <div className={styles.menuFoot}>
-            <Link
-              href="/explore"
-              className={`${styles.pill} ${styles.pillMenu}`}
-              onClick={() => setIsOpen(false)}
-            >
-              <span>Launch ALIVE</span>
-            </Link>
-            <Link
-              href="/protocol"
-              className={styles.ghostMenu}
-              onClick={() => setIsOpen(false)}
-            >
-              How ALIVE Works
-            </Link>
-          </div>
-        </div>
-      </nav>
+      {menuOpen ? (
+        <nav className={styles.mobileNav} aria-label="Mobile navigation">
+          <Link href="/overview" onClick={() => setMenuOpen(false)}>Verify</Link>
+          <Link href="/explore" onClick={() => setMenuOpen(false)}>Discover</Link>
+          <Link href="/create" onClick={() => setMenuOpen(false)}>Mandate</Link>
+          <Link href="/protocol" onClick={() => setMenuOpen(false)}>Protocol</Link>
+        </nav>
+      ) : null}
 
-      {/* Main Hero */}
-      <main className={styles.hero}>
-        <h1 className={styles.headline}>
-          <span>Know What’s</span>
-          <span>Behind The Token</span>
-        </h1>
-        <p className={styles.sub}>
-          <span>Verify the backing, understand what could move it,</span>
-          <span>and see whether it still meets the rules.</span>
-        </p>
-        <div className={styles.actions}>
-          <Link href="/explore" className={`${styles.pill} ${styles.pillCta}`}>
-            <span>Explore RWAs</span>
-          </Link>
-          <Link href="/protocol" className={styles.ghost}>
-            How ALIVE Works
-          </Link>
+      <main>
+        <section className={styles.hero}>
+          <div className={styles.heroCopy}>
+            <p className={styles.liveLabel}>
+              <i aria-hidden="true" />
+              Continuous verification · source-bound
+            </p>
+            <h1>Know what passes before capital moves.</h1>
+            <p className={styles.lede}>
+              ALIVE reads the evidence behind a tokenized asset, applies deterministic
+              eligibility rules, and exposes what a contract can enforce.
+            </p>
+            <div className={styles.actions}>
+              <Link href="/overview" className={styles.primaryAction}>
+                <MagnifyingGlassIcon size={16} weight="bold" aria-hidden="true" />
+                Verify an asset
+              </Link>
+              <Link href="/create" className={styles.secondaryAction}>
+                Build a mandate
+                <ArrowRightIcon size={14} aria-hidden="true" />
+              </Link>
+            </div>
+            <p className={styles.disclosure}>
+              Demo and snapshot data are labelled. Unsupported facts remain UNKNOWN.
+            </p>
+          </div>
+
+          <section className={styles.terminal} aria-labelledby="terminal-title">
+            <div className={styles.terminalHeader}>
+              <div>
+                <span>ELIGIBILITY CHECK</span>
+                <strong id="terminal-title">How an answer is produced</strong>
+              </div>
+              <span className={styles.workflowBadge}>WORKFLOW</span>
+            </div>
+
+            <div className={styles.pipeline}>
+              <div className={styles.scanSignal} aria-hidden="true" />
+              {evaluationSteps.map((step, index) => (
+                <article className={styles.pipelineRow} key={step.source}>
+                  <span className={styles.stepIndex}>{String(index + 1).padStart(2, "0")}</span>
+                  <div className={styles.stepCopy}>
+                    <span>{step.source}</span>
+                    <strong>{step.title}</strong>
+                    <p>{step.description}</p>
+                  </div>
+                  <span className={styles.stepState}>{step.state}</span>
+                </article>
+              ))}
+            </div>
+
+            <Link href="/overview" className={styles.terminalAction}>
+              <span>
+                <small>READY</small>
+                Select an asset to run the check
+              </span>
+              <ArrowRightIcon size={16} aria-hidden="true" />
+            </Link>
+          </section>
+        </section>
+
+        <div className={styles.truthStrip} aria-label="ALIVE evidence categories">
+          <span><b>SOURCE</b> cited facts</span>
+          <span><b>RULE</b> deterministic verdict</span>
+          <span><b>MARKET</b> timestamped snapshot</span>
+          <span><b>CHAIN</b> enforcement outcome</span>
         </div>
+
+        <section className={styles.pathSection} aria-labelledby="path-title">
+          <div className={styles.pathIntro}>
+            <p>ONE OPERATING LOOP</p>
+            <h2 id="path-title">Answer first. Reasons next. Proof when you need it.</h2>
+          </div>
+          <div className={styles.pathRows}>
+            {productPath.map((item, index) => (
+              <article className={styles.pathRow} key={item.label}>
+                <span className={styles.pathIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <span className={styles.pathLabel}>{item.label}</span>
+                  <h3>{item.title}</h3>
+                </div>
+                <p>{item.description}</p>
+                <Link href={item.href}>
+                  {item.action}
+                  <ArrowRightIcon size={14} aria-hidden="true" />
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.closeSection}>
+          <div>
+            <p>AI interprets. Code calculates. Contracts enforce.</p>
+            <h2>Move from ticker-level confidence to evidence-backed decisions.</h2>
+          </div>
+          <Link href="/overview" className={styles.primaryAction}>
+            Enter the workspace
+            <ArrowRightIcon size={15} weight="bold" aria-hidden="true" />
+          </Link>
+        </section>
       </main>
 
-      {/* Infrastructure Technology Strip */}
-      <div className={styles.logos}>
-        {/* CHAINLINK */}
-        <div className={`${styles.lg} ${styles.lg1}`}>
-          <svg
-            viewBox="0 0 28 32"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinejoin="round"
-          >
-            <path d="M14 2 L26 8.9 L26 23.1 L14 30 L2 23.1 L2 8.9 Z" />
-            <path
-              d="M14 9 L20 12.5 L20 19.5 L14 23 L8 19.5 L8 12.5 Z"
-              fill="currentColor"
-              stroke="none"
-            />
-          </svg>
-          <div className={styles.lgText}>
-            <span className={styles.lgWord}>CHAINLINK</span>
-            <span className={styles.lgSub}>Live oracle data</span>
-          </div>
-        </div>
-
-        {/* X LAYER */}
-        <div className={`${styles.lg} ${styles.lg2}`}>
-          <svg viewBox="0 0 32 32" fill="currentColor">
-            <rect x="2" y="2" width="8" height="8" rx="2" />
-            <rect x="22" y="2" width="8" height="8" rx="2" />
-            <rect x="12" y="12" width="8" height="8" rx="2" />
-            <rect x="2" y="22" width="8" height="8" rx="2" />
-            <rect x="22" y="22" width="8" height="8" rx="2" />
-          </svg>
-          <div className={styles.lgText}>
-            <span className={styles.lgWord}>X LAYER</span>
-            <span className={styles.lgSub}>Onchain enforcement</span>
-          </div>
-        </div>
-
-        {/* GROQ */}
-        <div className={`${styles.lg} ${styles.lg3}`}>
-          <svg viewBox="0 0 32 32" fill="currentColor">
-            <path d="M16 4C9.37 4 4 9.37 4 16s5.37 12 12 12c5.96 0 10.9-4.35 11.82-10.08h-4.14c-.84 3.48-3.99 6.08-7.68 6.08-4.41 0-8-3.59-8-8s3.59-8 8-8c3.69 0 6.84 2.6 7.68 6.08h4.14C26.9 8.35 21.96 4 16 4z" />
-            <rect x="18" y="14" width="10" height="4" rx="2" />
-          </svg>
-          <div className={styles.lgText}>
-            <span className={styles.lgWord}>GROQ</span>
-            <span className={styles.lgSub}>AI document intelligence</span>
-          </div>
-        </div>
-
-        {/* OKX */}
-        <div className={`${styles.lg} ${styles.lg4}`}>
-          <svg viewBox="0 0 32 32" fill="currentColor">
-            <rect x="3" y="3" width="7" height="26" rx="2" />
-            <rect x="12.5" y="3" width="7" height="26" rx="2" />
-            <rect x="22" y="3" width="7" height="26" rx="2" />
-          </svg>
-          <div className={styles.lgText}>
-            <span className={styles.lgWord}>OKX</span>
-            <span className={styles.lgSub}>X Layer trading</span>
-          </div>
-        </div>
-      </div>
+      <footer className={styles.footer}>
+        <span>ALIVE · RWA policy intelligence</span>
+        <span>Unaudited demo-stage software · Not investment advice</span>
+      </footer>
     </div>
   );
 }

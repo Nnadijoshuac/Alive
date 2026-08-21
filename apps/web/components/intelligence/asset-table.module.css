@@ -8,36 +8,37 @@
 }
 
 .tableWrapper::-webkit-scrollbar {
-  height: 6px;
-}
-
-.tableWrapper::-webkit-scrollbar-track {
-  background: transparent;
+  height: 5px;
 }
 
 .tableWrapper::-webkit-scrollbar-thumb {
+  border-radius: 3px;
   background: var(--hairline-strong);
-  border-radius: 999px;
 }
 
 .table {
   width: 100%;
-  min-width: 940px;
+  min-width: 1012px;
   border-collapse: collapse;
-  font-size: 13px;
-  table-layout: auto;
+  table-layout: fixed;
+  font-size: 11.5px;
 }
 
 .table thead th {
-  padding: 10px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--hairline-strong);
+  padding: 9px 11px;
   color: var(--muted-2);
-  font: 650 10px/1 var(--font-geist-mono), monospace;
-  letter-spacing: 0.06em;
+  background: var(--milk);
+  font:
+    650 8.5px/1 var(--font-geist-mono),
+    monospace;
+  letter-spacing: 0.07em;
   text-align: left;
   text-transform: uppercase;
   white-space: nowrap;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--paper-2);
 }
 
 .table thead th.valueCol,
@@ -49,68 +50,84 @@
 
 .row {
   border-top: 1px solid var(--hairline);
-  cursor: pointer;
-  transition: background 120ms ease;
+  background: var(--paper-2);
+}
+
+.row:first-child {
+  border-top: 0;
 }
 
 .row:hover {
+  background: var(--milk);
+}
+
+.row:focus-within {
   background: var(--milk-deep);
 }
 
 .row td {
-  padding: 12px 14px;
+  height: 54px;
+  padding: 9px 11px;
   vertical-align: middle;
 }
 
 .watchCol {
-  width: 38px;
+  width: 32px;
   padding-right: 0 !important;
 }
 
 .assetCol {
-  min-width: 200px;
+  width: 176px;
 }
 
 .typeCol {
-  min-width: 85px;
+  width: 70px;
   white-space: nowrap;
 }
 
 .issuerCol {
-  min-width: 160px;
-  max-width: 240px;
+  width: 120px;
 }
 
 .backingCol {
-  min-width: 130px;
+  width: 108px;
   white-space: nowrap;
 }
 
 .chainsCol {
-  min-width: 100px;
+  width: 82px;
 }
 
 .valueCol {
-  min-width: 85px;
+  width: 68px;
   white-space: nowrap;
 }
 
 .verificationCol,
-.eligibilityCol,
+.eligibilityCol {
+  width: 96px;
+  white-space: nowrap;
+}
+
 .dataCol {
-  min-width: 110px;
+  width: 78px;
   white-space: nowrap;
 }
 
 .checkedCol {
-  min-width: 100px;
+  width: 86px;
   white-space: nowrap;
 }
 
-.assetCell {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+.assetLink {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 5px;
+}
+
+.assetLink:hover {
+  color: var(--ink);
 }
 
 .symbol {
@@ -118,11 +135,13 @@
   font-weight: 650;
 }
 
-.assetName {
+.assetName,
+.issuer {
+  display: block;
   overflow: hidden;
-  max-width: 260px;
+  max-width: 220px;
   color: var(--muted-2);
-  font-size: 11.5px;
+  font-size: 10.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -131,17 +150,11 @@
   color: var(--muted-2);
 }
 
-.issuer {
-  overflow: hidden;
-  display: block;
-  max-width: 220px;
-  color: var(--muted-2);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
 .value {
   color: var(--ink);
+  font:
+    620 11px/1 var(--font-geist-mono),
+    monospace;
   font-variant-numeric: tabular-nums;
 }
 
@@ -149,97 +162,277 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 650;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font:
+    650 8.5px/1 var(--font-geist-mono),
+    monospace;
+  letter-spacing: 0.035em;
   white-space: nowrap;
 }
 
 .pill::before {
-  display: block;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: currentcolor;
   content: "";
 }
 
 .pillEligible {
   composes: pill;
+  border-color: color-mix(in srgb, var(--positive) 20%, transparent);
   color: var(--positive);
   background: var(--positive-bg);
 }
 
 .pillRestricted {
   composes: pill;
+  border-color: color-mix(in srgb, var(--negative) 20%, transparent);
   color: var(--negative);
   background: var(--negative-bg);
 }
 
 .pillUnknown {
   composes: pill;
-  color: var(--warning);
-  background: var(--warning-bg);
+  border-color: var(--hairline);
+  color: var(--muted-2);
+  background: var(--milk);
 }
 
 .backingBadge {
   color: var(--ink-soft);
-  font-size: 11px;
-  font-weight: 550;
-  text-transform: uppercase;
+  font:
+    600 9px/1.3 var(--font-geist-mono),
+    monospace;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .chainBadges {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
 }
 
 .chainBadge {
   border: 1px solid var(--hairline);
-  border-radius: 5px;
-  padding: 1px 6px;
+  border-radius: 4px;
+  padding: 2px 5px;
   color: var(--muted-2);
-  font: 620 10px/1.5 var(--font-geist-mono), monospace;
+  background: var(--milk);
+  font:
+    620 8.5px/1.4 var(--font-geist-mono),
+    monospace;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .watchButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  padding: 4px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0;
   color: var(--faint);
-  background: none;
+  background: transparent;
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: color 120ms ease;
 }
 
 .watchButton:hover {
+  border-color: var(--hairline);
   color: var(--ink);
+  background: var(--milk);
 }
 
 .watchButton[data-watched="true"] {
   color: var(--warning);
 }
 
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.empty,
+.loadingState {
+  display: grid;
+  justify-items: center;
   gap: 12px;
-  padding: 40px 12px;
+  min-height: 220px;
+  place-content: center;
+  padding: 32px 16px;
   color: var(--muted-2);
   text-align: center;
 }
 
-.empty p {
+.empty p,
+.loadingState > span {
   margin: 0;
+  font-size: 11.5px;
+}
+
+.loadingState > span {
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.03em;
+}
+
+.loadingRows {
+  display: grid;
+  gap: 7px;
+  width: min(520px, 76vw);
+}
+
+.loadingRows i {
+  display: block;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--hairline);
+}
+
+.loadingRows i:nth-child(2),
+.loadingRows i:nth-child(4) {
+  width: 78%;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .tableWrapper {
+    overflow: visible;
+  }
+
+  .table,
+  .table tbody {
+    display: block;
+    min-width: 0;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 8px;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 13px;
+  }
+
+  .row td {
+    display: grid;
+    height: auto;
+    gap: 5px;
+    padding: 0;
+    text-align: left !important;
+  }
+
+  .row td[data-label]::before {
+    color: var(--muted-2);
+    content: attr(data-label);
+    font:
+      650 8px/1 var(--font-geist-mono),
+      monospace;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .row .watchCol {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    z-index: 2;
+    display: block;
+    width: auto;
+  }
+
+  .row .assetCol {
+    grid-column: 1 / 3;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  .row .assetCol::before {
+    display: none;
+  }
+
+  .row .valueCol {
+    grid-column: 3;
+    align-content: center;
+    min-width: 0;
+    padding-right: 34px;
+    text-align: right !important;
+  }
+
+  .row .verificationCol {
+    grid-column: 1;
+  }
+
+  .row .eligibilityCol {
+    grid-column: 2;
+  }
+
+  .row .dataCol {
+    grid-column: 3;
+  }
+
+  .row .checkedCol {
+    grid-column: 1 / -1;
+    padding-top: 9px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .row .typeCol,
+  .row .issuerCol,
+  .row .backingCol,
+  .row .chainsCol {
+    display: none;
+  }
+
+  .pill {
+    width: fit-content;
+    max-width: 100%;
+    padding: 4px 5px;
+    font-size: 7.5px;
+  }
+}
+
+@media (max-width: 430px) {
+  .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .row .assetCol {
+    grid-column: 1;
+  }
+
+  .row .valueCol {
+    grid-column: 2;
+  }
+
+  .row .verificationCol,
+  .row .eligibilityCol,
+  .row .dataCol {
+    grid-column: auto;
+  }
+
+  .row .dataCol {
+    grid-column: 1 / -1;
+  }
 }

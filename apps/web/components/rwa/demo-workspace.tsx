@@ -20,7 +20,7 @@ import {
   type RebalanceResult,
 } from "@/lib/rwa-api";
 import { rwaContractConfiguration } from "@/lib/rwa-chain";
-import { clearRwaState, rememberRwaState } from "@/lib/rwa-state";
+import { clearRwaState, readRwaState, rememberRwaState } from "@/lib/rwa-state";
 import { formatBps, truncateIdentifier } from "@/lib/rwa-format";
 import {
   AllocationList,
@@ -28,6 +28,7 @@ import {
   LoadingState,
   ModeBadge,
   Notice,
+  OperationStatus,
   PolicyRuleGrid,
   ProposalMetrics,
   styles,
@@ -35,6 +36,12 @@ import {
 
 const demoMandate =
   "Protect my capital. Keep at least half in Treasuries. Give me some gold but not more than 20%. Equities can be at most 20%. Never put more than 25% with one issuer. Keep 10% liquid. Never put more than 20% in one asset.";
+
+function clearCompiledSelection() {
+  const { vaultAddress } = readRwaState();
+  clearRwaState();
+  if (vaultAddress) rememberRwaState({ vaultAddress });
+}
 
 const beats = ["Mandate", "Policy", "Portfolio", "Attack", "Rebalance", "Enforce"] as const;
 
@@ -51,6 +58,7 @@ export function DemoWorkspace() {
   const [rebalance, setRebalance] = useState<RebalanceResult>();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<unknown>();
+  const [mandateChanged, setMandateChanged] = useState(false);
 
   const concentrated = useMemo(
     () => [{ assetId: "tnvda", weightBps: 10_000 }],
@@ -67,10 +75,28 @@ export function DemoWorkspace() {
     setAttack(undefined);
     setRebalance(undefined);
     setError(undefined);
+    setMandateChanged(false);
+  }
+
+  function updateMandate(nextMandate: string) {
+    setMandate(nextMandate);
+    if (policy || proposal || attack || rebalance || approved) {
+      setPolicy(undefined);
+      setApproved(false);
+      setProposal(undefined);
+      setAttack(undefined);
+      setRebalance(undefined);
+      setBeat(0);
+      setMandateChanged(true);
+      clearCompiledSelection();
+    }
+    setError(undefined);
   }
 
   async function compile() {
     setBusy("compile"); setError(undefined);
+    setPolicy(undefined); setApproved(false); setProposal(undefined); setAttack(undefined); setRebalance(undefined); setMandateChanged(false);
+    clearCompiledSelection();
     try {
       const result = await compileRwaPolicy(mandate);
       setPolicy(result.policy);
@@ -83,6 +109,7 @@ export function DemoWorkspace() {
   async function optimize() {
     if (!policy || !approved) return;
     setBusy("optimize"); setError(undefined);
+    setProposal(undefined); setAttack(undefined); setRebalance(undefined);
     try {
       const result = await optimizeRwaPortfolio(policy.id);
       setProposal(result);
@@ -117,14 +144,14 @@ export function DemoWorkspace() {
       <header className={styles.demoHeader}>
         <div className={styles.demoBrand}><i className={styles.demoDot} /> ALIVE / GUIDED DEMO</div>
         <div className={styles.actions}>
-          <button className={styles.buttonQuiet} type="button" onClick={reset}><TrashIcon size={15} /> Reset demo state</button>
+          <button className={styles.buttonQuiet} type="button" onClick={reset} disabled={busy !== undefined}><TrashIcon size={15} /> Reset demo state</button>
           <Link className={styles.buttonSecondary} href="/dashboard"><ArrowLeftIcon size={15} /> Exit demo</Link>
         </div>
       </header>
       <div className={styles.demoGrid}>
         <nav className={styles.demoNav} aria-label="Demo steps">
           {beats.map((label, index) => (
-            <button type="button" key={label} onClick={() => setBeat(index)} aria-current={beat === index ? "step" : undefined}><span>{String(index + 1).padStart(2, "0")}</span>{label}</button>
+            <button type="button" key={label} onClick={() => setBeat(index)} aria-current={beat === index ? "step" : undefined} disabled={busy !== undefined}><span>{String(index + 1).padStart(2, "0")}</span>{label}</button>
           ))}
         </nav>
         <main className={styles.demoMain}>
@@ -135,8 +162,9 @@ export function DemoWorkspace() {
               <p className={styles.eyebrow}>01 / Human mandate</p>
               <h1>Start with what the capital must do.</h1>
               <p>This is a real request to the local intelligence service. The resulting compiler mode and strict policy come from its response.</p>
+              {mandateChanged ? <OperationStatus title="Previous demo results cleared" detail="Compile the edited mandate before continuing." tone="warning" /> : null}
               <div className={styles.panel}>
-                <label className={styles.field}><span className={styles.fieldLabel}>Demo mandate</span><textarea className={styles.textarea} value={mandate} onChange={(event) => setMandate(event.target.value)} maxLength={5_000} /></label>
+                <label className={styles.field}><span className={styles.fieldLabel}>Demo mandate</span><textarea className={styles.textarea} value={mandate} onChange={(event) => updateMandate(event.target.value)} maxLength={5_000} disabled={busy !== undefined} /></label>
                 <Notice title="Demo input">The mandate is editable. Reset restores the documented example and clears only ALIVE presentation IDs from this browser.</Notice>
                 <button className={styles.button} type="button" onClick={compile} disabled={mandate.trim().length < 3}>Compile policy <ArrowRightIcon size={16} /></button>
               </div>
@@ -152,7 +180,7 @@ export function DemoWorkspace() {
               <PolicyRuleGrid policy={policy.policy} />
               <div className={`${styles.panel} ${styles.panelAccent} ${styles.section}`}>
                 <label className={styles.checkboxRow}><input className={styles.checkbox} type="checkbox" checked={approved} onChange={(event) => setApproved(event.target.checked)} /> I reviewed this strict policy. Calculate a proposal without sending a transaction.</label>
-                <button className={styles.button} type="button" disabled={!approved} onClick={optimize}>Approve calculation <ArrowRightIcon size={16} /></button>
+                <button className={styles.button} type="button" disabled={!approved} onClick={optimize}>Calculate proposal <ArrowRightIcon size={16} /></button>
               </div>
             </> : <MissingStep target={0} setBeat={setBeat} />
           ) : null}
@@ -204,7 +232,7 @@ export function DemoWorkspace() {
               <p>The contract suite can enforce policies and single-use strategy capabilities. This demo reports only the configuration visible to the web client.</p>
               <div className={styles.grid2}>
                 <article className={styles.panel}><LockKeyIcon size={28} color="currentColor" /><h2>{rwaContractConfiguration.complete ? "Contract addresses configured" : "Contract configuration incomplete"}</h2><p className={styles.subtle}>{rwaContractConfiguration.configuredCount} / {rwaContractConfiguration.requiredCount} required addresses on {rwaContractConfiguration.chainName}.</p></article>
-                <article className={styles.panel}><CheckCircleIcon size={28} color="#e4b96f" /><h2>No transaction submitted</h2><p className={styles.subtle}>No policy registration, vault creation, deposit, strategy signature, or execution receipt exists in this guided flow.</p></article>
+                <article className={styles.panel}><CheckCircleIcon size={28} color="currentColor" /><h2>No transaction submitted</h2><p className={styles.subtle}>No policy registration, vault creation, deposit, strategy signature, or execution receipt exists in this guided flow.</p></article>
               </div>
               <Notice title="End of verified local flow" tone="warning">The working demo covers mandate compilation, strict validation, deterministic optimization, wrong-allocation rejection, and rebalance calculation. Onchain submission requires configured deployment addresses and a separate wallet-authorized transaction flow.</Notice>
               <div className={styles.actions}><Link className={styles.button} href="/protocol">Explore contract boundaries <ArrowRightIcon size={16} /></Link><Link className={styles.buttonSecondary} href="/dashboard">Open dashboard</Link></div>
@@ -219,4 +247,3 @@ export function DemoWorkspace() {
 function MissingStep({ target, setBeat }: { target: number; setBeat: (value: number) => void }) {
   return <div className={styles.empty}><div className={styles.emptyInner}><span className={styles.emptyIcon}><PlayIcon size={24} /></span><h2>Complete the earlier step</h2><p>This demo does not fabricate intermediate records when you jump ahead.</p><button className={styles.button} type="button" onClick={() => setBeat(target)}>Resume verified flow</button></div></div>;
 }
-
