@@ -135,6 +135,9 @@
 }
 
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.1875rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -142,6 +145,20 @@
   text-decoration: none;
   text-transform: uppercase;
   transition: opacity 0.2s ease;
+}
+
+.brandLogo {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.mobileBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .wordmark:hover {

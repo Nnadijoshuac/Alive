@@ -20,6 +20,14 @@ export const metadata: Metadata = {
     "X Layer",
     "deterministic portfolio optimization",
   ],
+  icons: {
+    icon: [
+      { url: "/asset/logo.png" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/asset/logo.png",
+    apple: "/asset/logo.png",
+  },
   openGraph: {
     title: "ALIVE | RWA Policy Intelligence",
     description:
@@ -27,7 +35,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/brand/alive-logo.png",
+        url: "/asset/logo.png",
         width: 1280,
         height: 1280,
         alt: "ALIVE logo",

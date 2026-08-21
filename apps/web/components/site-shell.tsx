@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -207,9 +208,14 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <aside className={styles.rail}>
         <div>
           <Link href="/" className={styles.brand} aria-label="ALIVE home">
-            <span className={styles.brandMark} aria-hidden="true">
-              A
-            </span>
+            <Image
+              src="/asset/logo.png"
+              alt="ALIVE"
+              width={28}
+              height={28}
+              className={styles.brandLogo}
+              priority
+            />
             <span className={styles.brandCopy}>
               <strong>ALIVE</strong>
               <small>Policy intelligence</small>

@@ -9,8 +9,8 @@ export function AliveLogo({ compact = false }: { compact?: boolean }) {
     >
       <span className="alive-logo-mark" aria-hidden="true">
         <Image
-          src="/brand/alive-logo.png"
-          alt=""
+          src="/asset/logo.png"
+          alt="ALIVE"
           width={76}
           height={76}
           sizes="38px"

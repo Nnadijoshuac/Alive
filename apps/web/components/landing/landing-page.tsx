@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import {
@@ -106,7 +107,15 @@ export function LandingPage() {
       <header className={styles.header}>
         <div className={styles.navLeft}>
           <Link href="/" className={styles.wordmark} aria-label="ALIVE home">
-            ALIVE
+            <Image
+              src="/asset/logo.png"
+              alt="ALIVE"
+              width={26}
+              height={26}
+              className={styles.brandLogo}
+              priority
+            />
+            <span>ALIVE</span>
           </Link>
 
           <nav className={styles.desktopNav} aria-label="Main Navigation">
@@ -206,7 +215,16 @@ export function LandingPage() {
         <div className={styles.mobileNavOverlay}>
           <div className={styles.mobileNavContent}>
             <div className={styles.mobileNavHeader}>
-              <span className={styles.mobileWordmark}>ALIVE</span>
+              <div className={styles.mobileBrand}>
+                <Image
+                  src="/asset/logo.png"
+                  alt="ALIVE"
+                  width={26}
+                  height={26}
+                  className={styles.brandLogo}
+                />
+                <span className={styles.mobileWordmark}>ALIVE</span>
+              </div>
               <button
                 type="button"
                 className={styles.mobileCloseBtn}
