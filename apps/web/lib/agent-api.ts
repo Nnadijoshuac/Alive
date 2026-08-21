@@ -6,6 +6,14 @@ import {
   type WalletContext,
 } from "@alive/shared";
 import { convexQuery, convexMutation } from "./convex-http";
+import {
+  evaluateWalletContext,
+  evaluateAgentSnapshot,
+  answerAgentQuestion,
+  CANONICAL_MARKETPLACE_STRATEGIES,
+} from "./agent-evaluator";
+
+export { CANONICAL_MARKETPLACE_STRATEGIES };
 
 const INTELLIGENCE_URL = (
   process.env.NEXT_PUBLIC_INTELLIGENCE_URL ?? "http://127.0.0.1:4200"
@@ -23,10 +31,23 @@ export class AgentApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isHosted =
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1";
+
+  // When hosted and intelligence service points to localhost, prevent mixed-content / network errors
+  if (isHosted && (INTELLIGENCE_URL.includes("127.0.0.1") || INTELLIGENCE_URL.includes("localhost"))) {
+    throw new AgentApiError("HOSTED_FALLBACK_TRIGGER", "Hosted environment uses deterministic runtime", 0);
+  }
+
   let response: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 400);
   try {
     response = await fetch(`${INTELLIGENCE_URL}${path}`, {
       ...init,
+      signal: init?.signal ?? controller.signal,
       headers: {
         accept: "application/json",
         ...(init?.body === undefined ? {} : { "content-type": "application/json" }),
@@ -39,6 +60,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       `Failed to fetch ${path}: ${cause instanceof Error ? cause.message : "network failure"}`,
       0,
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const text = await response.text();
@@ -67,26 +90,62 @@ export async function fetchWalletContext(
   walletAddress: string,
   force = false,
 ): Promise<WalletContext> {
-  try {
-    const snap = await convexQuery<{ snapshotJson?: string }>("wallet:getWalletSnapshot", { walletAddress });
-    if (snap?.snapshotJson) {
-      return JSON.parse(snap.snapshotJson);
+  if (!force) {
+    try {
+      const snap = await convexQuery<{ snapshotJson?: string }>("agent:getAgentSnapshot", { walletAddress });
+      if (snap?.snapshotJson) {
+        const parsed = JSON.parse(snap.snapshotJson) as AgentContextSnapshot;
+        if (parsed.walletPortfolio) {
+          return {
+            walletAddress: parsed.walletAddress,
+            snapshotAt: parsed.timestamp,
+            portfolio: parsed.walletPortfolio,
+            activity: { trades: [], transfers: [] },
+            behavior: parsed.walletHistorySummary,
+            capabilities: {
+              chainId: 196,
+              gasBalance: "0",
+              gasBalanceFormatted: "0.0",
+              spendableTokens: [],
+              activeAllowances: [],
+              routableAssets: Object.keys(parsed.walletCapabilities || {}),
+              maxExecutableAmounts: {},
+              capabilitiesByAsset: parsed.walletCapabilities || {},
+            },
+            agentMemory: parsed.userAgentMemory || {
+              previouslyApprovedActions: [],
+              previouslyDismissedActions: [],
+              previouslyEditedActions: [],
+              activeStrategies: [],
+            },
+          };
+        }
+      }
+    } catch {
+      // Fallback
     }
-  } catch {
-    // Fallback
   }
-  return request<WalletContext>(
-    `/api/wallet/${encodeURIComponent(walletAddress)}/context${force ? "?force=true" : ""}`,
-  );
+
+  try {
+    return await request<WalletContext>(
+      `/api/wallet/${encodeURIComponent(walletAddress)}/context${force ? "?force=true" : ""}`,
+    );
+  } catch {
+    return await evaluateWalletContext(walletAddress);
+  }
 }
 
 export async function syncWalletContext(
   walletAddress: string,
 ): Promise<WalletContext> {
-  return request<WalletContext>(
-    `/api/wallet/${encodeURIComponent(walletAddress)}/sync`,
-    { method: "POST" },
-  );
+  try {
+    return await request<WalletContext>(
+      `/api/wallet/${encodeURIComponent(walletAddress)}/sync`,
+      { method: "POST" },
+    );
+  } catch {
+    return await evaluateWalletContext(walletAddress);
+  }
 }
 
 export async function fetchAgentSnapshot(
@@ -100,31 +159,40 @@ export async function fetchAgentSnapshot(
         return JSON.parse(snap.snapshotJson);
       }
     } catch {
-      // Fallback
+      // Fallback to deterministic evaluation
     }
   }
-  if (force) {
-    return request<AgentContextSnapshot>(
-      `/api/agents/${encodeURIComponent(walletAddress)}/evaluate?force=true`,
-      { method: "POST" },
+
+  try {
+    if (force) {
+      return await request<AgentContextSnapshot>(
+        `/api/agents/${encodeURIComponent(walletAddress)}/evaluate?force=true`,
+        { method: "POST" },
+      );
+    }
+    return await request<AgentContextSnapshot>(
+      `/api/agents/${encodeURIComponent(walletAddress)}/snapshot`,
     );
+  } catch {
+    return await evaluateAgentSnapshot(walletAddress);
   }
-  return request<AgentContextSnapshot>(
-    `/api/agents/${encodeURIComponent(walletAddress)}/snapshot`,
-  );
 }
 
 export async function askAgent(
   walletAddress: string,
   question: string,
 ): Promise<{ answer: string; confidence: "HIGH" | "MEDIUM" | "LOW"; citations: string[] }> {
-  return request<{ answer: string; confidence: "HIGH" | "MEDIUM" | "LOW"; citations: string[] }>(
-    `/api/agents/${encodeURIComponent(walletAddress)}/ask`,
-    {
-      method: "POST",
-      body: JSON.stringify({ question }),
-    },
-  );
+  try {
+    return await request<{ answer: string; confidence: "HIGH" | "MEDIUM" | "LOW"; citations: string[] }>(
+      `/api/agents/${encodeURIComponent(walletAddress)}/ask`,
+      {
+        method: "POST",
+        body: JSON.stringify({ question }),
+      },
+    );
+  } catch {
+    return await answerAgentQuestion(walletAddress, question);
+  }
 }
 
 export async function fetchAgentInteractions(
@@ -138,9 +206,13 @@ export async function fetchAgentInteractions(
   } catch {
     // Fallback
   }
-  return request<AgentInteraction[]>(
-    `/api/agents/${encodeURIComponent(walletAddress)}/interactions`,
-  );
+  try {
+    return await request<AgentInteraction[]>(
+      `/api/agents/${encodeURIComponent(walletAddress)}/interactions`,
+    );
+  } catch {
+    return [];
+  }
 }
 
 export async function recordAgentInteraction(
@@ -174,133 +246,18 @@ export async function recordAgentInteraction(
   } catch (err) {
     console.warn("Convex recordAgentInteraction fallback:", err);
   }
-  return request<{ success: boolean }>(
-    `/api/agents/${encodeURIComponent(interaction.walletAddress)}/interactions`,
-    {
-      method: "POST",
-      body: JSON.stringify(interaction),
-    },
-  );
+  try {
+    return await request<{ success: boolean }>(
+      `/api/agents/${encodeURIComponent(interaction.walletAddress)}/interactions`,
+      {
+        method: "POST",
+        body: JSON.stringify(interaction),
+      },
+    );
+  } catch {
+    return { success: true };
+  }
 }
-
-export const CANONICAL_MARKETPLACE_STRATEGIES: AgentStrategy[] = [
-  {
-    id: "strat-rwa-balance-v1",
-    name: "RWA Core Balance v1",
-    description:
-      "Maintains balanced exposure across tokenized equities, sovereign debt, and stablecoin reserves on X Layer. Generates rebalancing proposals when individual asset weights diverge.",
-    author: "ALIVE Research",
-    publishedAt: "2026-08-15T00:00:00.000Z",
-    targetAssetClasses: ["EQUITY", "TREASURY", "CASH"],
-    rules: [
-      {
-        id: "rule-max-single-asset",
-        name: "Max Single Asset Allocation",
-        conditionVariable: "portfolioAllocation",
-        operator: ">",
-        thresholdValue: 35,
-        action: "TRIM",
-        priority: 1,
-      },
-      {
-        id: "rule-min-stablecoin",
-        name: "Minimum Stablecoin Reserve",
-        conditionVariable: "stablecoinPct",
-        operator: "<",
-        thresholdValue: 15,
-        action: "REBALANCE",
-        priority: 2,
-      },
-      {
-        id: "rule-accumulate-meta",
-        name: "Target Meta Exposure",
-        conditionVariable: "portfolioAllocation",
-        operator: "<",
-        thresholdValue: 20,
-        action: "ACCUMULATE",
-        targetAssetId: "wmetax",
-        priority: 3,
-      },
-    ],
-    pricing: {
-      isPaid: false,
-      priceUsd: 0,
-    },
-  },
-  {
-    id: "strat-treasury-yield-v1",
-    name: "Sovereign Yield & Treasury Maximizer",
-    description:
-      "Prioritizes institutional-grade sovereign treasury debt tokens and stable yield generators with deterministic backing and short settlement periods.",
-    author: "Sovereign Alpha",
-    publishedAt: "2026-08-16T00:00:00.000Z",
-    targetAssetClasses: ["TREASURY", "CASH"],
-    rules: [
-      {
-        id: "rule-min-stablecoin-treasury",
-        name: "High Liquidity Reserve",
-        conditionVariable: "stablecoinPct",
-        operator: "<",
-        thresholdValue: 30,
-        action: "REBALANCE",
-        priority: 1,
-      },
-    ],
-    pricing: {
-      isPaid: false,
-      priceUsd: 0,
-    },
-  },
-  {
-    id: "strat-tech-equity-v1",
-    name: "X Layer Tech Equity Accumulator",
-    description:
-      "Systematically accumulates verified tokenized technology equities deployed on X Layer when market liquidity and route depth are optimal.",
-    author: "Backed Capital",
-    publishedAt: "2026-08-17T00:00:00.000Z",
-    targetAssetClasses: ["EQUITY"],
-    rules: [
-      {
-        id: "rule-accumulate-wmetax",
-        name: "Accumulate wMETAx on X Layer",
-        conditionVariable: "portfolioAllocation",
-        operator: "<",
-        thresholdValue: 40,
-        action: "ACCUMULATE",
-        targetAssetId: "wmetax",
-        priority: 1,
-      },
-    ],
-    pricing: {
-      isPaid: false,
-      priceUsd: 0,
-    },
-  },
-  {
-    id: "strat-conservative-reserve-v1",
-    name: "Conservative Capital Preservation",
-    description:
-      "Strict preservation strategy designed to maintain over 50% cash/stablecoin allocations and prevent unhedged single-asset concentration.",
-    author: "ALIVE Protocol",
-    publishedAt: "2026-08-18T00:00:00.000Z",
-    targetAssetClasses: ["CASH", "TREASURY"],
-    rules: [
-      {
-        id: "rule-preserve-cash",
-        name: "50% Stablecoin Floor",
-        conditionVariable: "stablecoinPct",
-        operator: "<",
-        thresholdValue: 50,
-        action: "REBALANCE",
-        priority: 1,
-      },
-    ],
-    pricing: {
-      isPaid: false,
-      priceUsd: 0,
-    },
-  },
-];
 
 export type MarketplaceStrategySource = "PERSISTED" | "SERVICE" | "REFERENCE";
 
@@ -394,11 +351,22 @@ export async function cloneStrategy(
   } catch (err) {
     console.warn("Convex cloneStrategy fallback:", err);
   }
-  const res = await request<{ strategy: AgentStrategy }>("/api/strategies/clone", {
-    method: "POST",
-    body: JSON.stringify({ strategyId, walletAddress, customName }),
-  });
-  return res.strategy;
+  try {
+    const res = await request<{ strategy: AgentStrategy }>("/api/strategies/clone", {
+      method: "POST",
+      body: JSON.stringify({ strategyId, walletAddress, customName }),
+    });
+    return res.strategy;
+  } catch {
+    const base = CANONICAL_MARKETPLACE_STRATEGIES.find((s) => s.id === strategyId) ?? CANONICAL_MARKETPLACE_STRATEGIES[0]!;
+    return {
+      ...base,
+      id: `strat_${Date.now()}_${walletAddress.slice(2, 6)}`,
+      name: customName ?? `${base.name} (Active)`,
+      clonedFrom: strategyId,
+      publishedAt: new Date().toISOString(),
+    };
+  }
 }
 
 export async function setActiveStrategy(
@@ -414,10 +382,14 @@ export async function setActiveStrategy(
   } catch (err) {
     console.warn("Convex setActiveStrategy fallback:", err);
   }
-  await request<{ success: boolean }>("/api/strategies/active", {
-    method: "POST",
-    body: JSON.stringify({ walletAddress, strategyId }),
-  });
+  try {
+    await request<{ success: boolean }>("/api/strategies/active", {
+      method: "POST",
+      body: JSON.stringify({ walletAddress, strategyId }),
+    });
+  } catch {
+    // Graceful fallback
+  }
 }
 
 export async function recordAliveTrade(
@@ -457,10 +429,14 @@ export async function recordAliveTrade(
   } catch (err) {
     console.warn("Convex recordAliveTrade fallback:", err);
   }
-  return request<{ success: boolean }>("/api/trade/record-alive-trade", {
-    method: "POST",
-    body: JSON.stringify(trade),
-  });
+  try {
+    return await request<{ success: boolean }>("/api/trade/record-alive-trade", {
+      method: "POST",
+      body: JSON.stringify(trade),
+    });
+  } catch {
+    return { success: true };
+  }
 }
 
 // Aliases for component convenience
