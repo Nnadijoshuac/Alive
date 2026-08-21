@@ -1,0 +1,33 @@
+DEMO DATA — NOT LIVE MARKET DATA. This is a fictional demo fact sheet.
+
+ALIVE DEMO EQUITY ISSUER
+Product Fact Sheet: Test Broad Equity Index (tSP500)
+
+Test Broad Equity Index (symbol: tSP500) is a synthetic, fully fictional
+tokenized broad US equity index reference product created solely to
+exercise the ALIVE demo pipeline. It is issued by "ALIVE Demo Equity
+Issuer," a fictional entity with no affiliation to any real index provider,
+exchange, or fund manager. tSP500 makes no claim on any real equity index,
+index fund, or index-tracking security.
+
+Asset class: EQUITY. Underlying reference: a synthetic broad US equity
+index reference, tracked only during traditional market hours
+(America/New_York) for demo purposes.
+
+Redemption: redemption is supported and settles immediately within the
+ALIVE demo router (MockRwaRouter). A production tokenized equity index
+product of this type would typically settle on a T+2 basis in line with
+standard equity settlement conventions; this demo instrument does not model
+that delay.
+
+Documentation status: this fact sheet, together with the ALIVE demo market
+snapshot, is the complete and only source of information for tSP500.
+
+Key Facts:
+- Issuer: ALIVE Demo Equity Issuer
+- Asset class: EQUITY
+- Underlying: Synthetic broad US equity index reference
+- Redemption supported: true
+- Redemption frequency: Daily
+- Redemption settlement period: T+2 (demo router settles immediately)
+- Redemption minimum: 0

@@ -1,0 +1,46 @@
+{
+  "name": "@alive/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ALIVE RWA policy-vault and archived physical-state contract tooling",
+  "license": "MIT",
+  "scripts": {
+    "build": "hardhat compile",
+    "compile": "hardhat compile",
+    "node": "hardhat node",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "typecheck": "tsc --noEmit",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network xlayerTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network xlayerMainnet",
+    "deploy:core:mainnet": "hardhat run scripts/deploy-core-mainnet.ts --network xlayerMainnet",
+    "deploy:rwa:local": "hardhat run scripts/deploy-rwa.ts --network localhost",
+    "deploy:rwa:testnet": "hardhat run scripts/deploy-rwa.ts --network xlayerTestnet",
+    "prove:flow": "tsx scripts/prove-gateway-flow.ts",
+    "init:deployer": "tsx scripts/init-deployer.ts",
+    "sync:web-env": "tsx scripts/sync-web-env.ts",
+    "check:xlayer:testnet": "tsx scripts/check-xlayer.ts testnet",
+    "check:xlayer:mainnet": "tsx scripts/check-xlayer.ts mainnet"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.0",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.15.0",
+    "chai": "^4.5.0",
+    "dotenv": "^16.6.1",
+    "ethers": "^6.15.0",
+    "hardhat": "^2.26.3",
+    "solidity-coverage": "^0.8.16",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "viem": "^2.37.6"
+  }
+}
