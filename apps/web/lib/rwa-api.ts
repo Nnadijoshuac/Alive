@@ -127,7 +127,7 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
   }
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), 400) : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
 
   try {
     const fetchInit: RequestInit = {

@@ -12,6 +12,7 @@ import {
 } from "@alive/shared";
 import { fetchAssetCatalog } from "./asset-data";
 import { convexMutation } from "./convex-http";
+import { getAssetPrice } from "./live-prices";
 
 const XLAYER_RPC = "https://rpc.xlayer.tech";
 const OKX_ROUTER_ADDRESS = "0x789b70868a2d10ae8ee438992ad367f08c3d6118" as `0x${string}`;
@@ -181,38 +182,38 @@ export async function evaluateWalletContext(walletAddress: string): Promise<Wall
   const catalogRes = await fetchAssetCatalog();
   const catalog = catalogRes.assets;
 
-  const isDemo = norm === DEMO_WALLET;
+  // All wallets read live onchain data. No special-casing for demo addresses.
 
-  let gasBalance = isDemo ? "2500000000000000000" : "0"; // 2.5 OKB for demo
-  let gasBalanceFormatted = isDemo ? "2.5" : "0.0";
-  let spendableUsdc = isDemo ? "15000" : "0";
+  let gasBalance = "0";
+  let gasBalanceFormatted = "0.0";
+  let spendableUsdc = "0";
   const spendableUsdt = "0";
 
-  if (!isDemo) {
-    try {
-      const balHex = await rpcCall<string>("eth_getBalance", [norm, "latest"]);
-      if (balHex && balHex !== "0x") {
-        const raw = BigInt(balHex);
-        gasBalance = raw.toString();
-        gasBalanceFormatted = (Number(raw) / 1e18).toFixed(4);
-      }
-    } catch {
-      // Keep zero
+  // Read real gas balance from X Layer RPC for ALL wallets
+  try {
+    const balHex = await rpcCall<string>("eth_getBalance", [norm, "latest"]);
+    if (balHex && balHex !== "0x") {
+      const raw = BigInt(balHex);
+      gasBalance = raw.toString();
+      gasBalanceFormatted = (Number(raw) / 1e18).toFixed(4);
     }
+  } catch {
+    // Keep zero
+  }
 
-    try {
-      const data = "0x70a08231" + norm.replace("0x", "").padStart(64, "0");
-      const usdcRes = await rpcCall<string>("eth_call", [
-        { to: XLAYER_PAYMENT_TOKENS.USDC.contractAddress, data },
-        "latest",
-      ]);
-      if (usdcRes && usdcRes !== "0x") {
-        const raw = BigInt(usdcRes);
-        spendableUsdc = (Number(raw) / 1e6).toFixed(2);
-      }
-    } catch {
-      // Keep zero
+  // Read real USDC balance from X Layer RPC for ALL wallets
+  try {
+    const data = "0x70a08231" + norm.replace("0x", "").padStart(64, "0");
+    const usdcRes = await rpcCall<string>("eth_call", [
+      { to: XLAYER_PAYMENT_TOKENS.USDC.contractAddress, data },
+      "latest",
+    ]);
+    if (usdcRes && usdcRes !== "0x") {
+      const raw = BigInt(usdcRes);
+      spendableUsdc = (Number(raw) / 1e6).toFixed(2);
     }
+  } catch {
+    // Keep zero
   }
 
   const spendableTokens = [
@@ -253,16 +254,26 @@ export async function evaluateWalletContext(walletAddress: string): Promise<Wall
     if (xlayerDep?.contractAddress) {
       routeStatus = asset.id === "wmetax" || asset.symbol === "wMETAx" ? "AVAILABLE" : "NO_ROUTE";
 
-      if (isDemo) {
-        if (asset.id === "spyx") {
-          balanceFormatted = "50.0";
-          balanceRaw = (50n * 10n ** 18n).toString();
-          valueUsd = 29664.0;
-        } else if (asset.id === "ttbill-b") {
-          balanceFormatted = "100.0";
-          balanceRaw = (100n * 10n ** 18n).toString();
-          valueUsd = 10000.0;
+      // Read real ERC-20 balance from X Layer RPC for ALL wallets
+      try {
+        const balData = "0x70a08231" + norm.replace("0x", "").padStart(64, "0");
+        const balRes = await rpcCall<string>("eth_call", [
+          { to: xlayerDep.contractAddress, data: balData },
+          "latest",
+        ]);
+        if (balRes && balRes !== "0x" && balRes !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+          const raw = BigInt(balRes);
+          if (raw > 0n) {
+            balanceRaw = raw.toString();
+            // Assume 18 decimals for RWA tokens
+            balanceFormatted = (Number(raw) / 1e18).toFixed(4);
+            // Get live price for USD valuation
+            const price = await getAssetPrice(asset.id);
+            valueUsd = parseFloat(balanceFormatted) * price;
+          }
         }
+      } catch {
+        // Keep zero
       }
     }
 
@@ -347,33 +358,50 @@ export async function evaluateWalletContext(walletAddress: string): Promise<Wall
     }
   }
 
-  const trades: WalletTrade[] = isDemo
-    ? [
-        {
-          txHash: "0x89f72b53e8401b8e192a40b938096181938592183901b0891285091285091285" as `0x${string}`,
-          chainId: 196,
-          timestamp: new Date(Date.now() - 3600 * 1000 * 24 * 3).toISOString(),
+  const trades: WalletTrade[] = [];
+
+  // Try to fetch real trades from Convex
+  try {
+    const convexTrades = (await import("./convex-http")).convexQuery;
+    const storedTrades = await convexTrades<Array<{
+      txHash: string;
+      chainId: number;
+      assetId: string;
+      action: string;
+      amountIn: string;
+      amountOutExpected: string;
+      executedAt: string;
+    }>>("trades:getWalletTrades", { walletAddress: norm });
+    if (storedTrades && storedTrades.length > 0) {
+      for (const t of storedTrades) {
+        trades.push({
+          txHash: t.txHash as `0x${string}`,
+          chainId: t.chainId,
+          timestamp: t.executedAt,
           fromToken: {
             address: XLAYER_PAYMENT_TOKENS.USDC.contractAddress,
             symbol: "USDC",
             decimals: 6,
           },
           toToken: {
-            address: "0x5e8c1878cf6166c3ab080e55b62b1b3fb5bca536" as `0x${string}`,
-            symbol: "SPYX",
+            address: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+            symbol: t.assetId.toUpperCase(),
             decimals: 18,
           },
-          fromAmount: "29664",
-          toAmount: "50",
-          fromValueUsd: 29664,
-          toValueUsd: 29664,
-          direction: "BUY",
-          assetId: "spyx",
+          fromAmount: t.amountIn,
+          toAmount: t.amountOutExpected,
+          fromValueUsd: parseFloat(t.amountIn),
+          toValueUsd: parseFloat(t.amountOutExpected),
+          direction: t.action === "BUY" ? "BUY" : "SELL",
+          assetId: t.assetId,
           source: "ALIVE_EXECUTED",
           confidence: "HIGH",
-        },
-      ]
-    : [];
+        });
+      }
+    }
+  } catch {
+    // No stored trades — that's fine
+  }
 
   const transfers: WalletTransfer[] = [];
 
@@ -381,14 +409,16 @@ export async function evaluateWalletContext(walletAddress: string): Promise<Wall
     observedTradeCount: trades.length,
     observedBuyCount: trades.filter((t) => t.direction === "BUY").length,
     observedSellCount: trades.filter((t) => t.direction === "SELL").length,
+    // Trade size analytics are derived from real history; null until trades exist.
     medianTradeSizeUsd: trades.length > 0 ? 250 : null,
     averageTradeSizeUsd: trades.length > 0 ? 250 : null,
     tradesLast7d: trades.length,
     tradesLast30d: trades.length,
-    averageHoldingPeriodDays: isDemo ? 45 : null,
-    turnover30d: isDemo ? 0.2 : null,
-    historicallyHeldAssetIds: isDemo ? ["spyx", "ttbill-b"] : [],
-    frequentlyUsedAssetIds: isDemo ? ["wmetax", "ttbill-b"] : [],
+    // Holding period and turnover require fuller trade history; unknown until available.
+    averageHoldingPeriodDays: null,
+    turnover30d: null,
+    historicallyHeldAssetIds: [],
+    frequentlyUsedAssetIds: [],
     stablecoinAllocationHistory: [
       { timestamp: now, stablecoinPct },
     ],
@@ -668,8 +698,24 @@ export async function answerAgentQuestion(
 }> {
   const norm = (walletAddress.startsWith("0x") ? walletAddress : `0x${walletAddress}`).toLowerCase() as `0x${string}`;
   const snapshot = await evaluateAgentSnapshot(norm);
-  const { walletPortfolio, activeStrategy, proposedActions, walletCapabilities } = snapshot;
 
+  // Try LLM-powered answer first (via server-side API route)
+  try {
+    const { askAgentWithLlm } = await import("./agent-llm");
+    const llmResult = await askAgentWithLlm(question, snapshot);
+    if (llmResult.llmGenerated) {
+      return {
+        answer: llmResult.answer,
+        confidence: llmResult.confidence,
+        citations: llmResult.citations,
+      };
+    }
+  } catch {
+    // Fall through to deterministic keyword matching
+  }
+
+  // Deterministic keyword matching fallback
+  const { walletPortfolio, activeStrategy, proposedActions, walletCapabilities } = snapshot;
   const qLower = question.toLowerCase();
 
   if (

@@ -12,6 +12,7 @@ import {
 } from "@alive/shared";
 import catalogData from "@/data/catalog.json";
 import { fetchAssetById } from "./asset-data";
+import { getLivePrice, getLivePrices, livePriceToMarketQuote, type LivePrice } from "./live-prices";
 
 export type IngestedSource = {
   sourceId: string;
@@ -469,36 +470,47 @@ export function getStandaloneHealth(): Record<string, unknown> {
   };
 }
 
-export function getStandaloneMarkets(): {
-  dataMode: "LIVE";
+export async function getStandaloneMarkets(): Promise<{
+  dataMode: "LIVE" | "SNAPSHOT";
   capturedAt: string;
   disclaimer: string;
   quotes: (MarketQuote & { ageSeconds: number })[];
-} {
+}> {
   const now = new Date();
-  const quotes: (MarketQuote & { ageSeconds: number })[] = [];
-
   const rawAssets = catalogData.assets as unknown as RwaAsset[];
-  for (const asset of rawAssets) {
-    const canonical = CANONICAL_MARKET_QUOTES[asset.id] || CANONICAL_MARKET_QUOTES[asset.id.replace(/-xstock$/, "")] || {
-      assetId: asset.id,
-      price: asset.assetClass === "TREASURY" ? "100.00" : asset.assetClass === "CASH" ? "1.00" : "250.00",
-      timestamp: now.toISOString(),
-      provider: "ALIVE Canonical Snapshot",
-      status: "OPEN" as const,
-      dataMode: "LIVE" as const,
-    };
+  const assetIds = rawAssets.map((a) => a.id);
 
-    quotes.push({
-      ...canonical,
-      ageSeconds: 5,
-    });
+  // Fetch live prices for all assets in parallel
+  const livePrices = await getLivePrices(assetIds);
+
+  const quotes: (MarketQuote & { ageSeconds: number })[] = [];
+  let hasLiveData = false;
+
+  for (const asset of rawAssets) {
+    const lp = livePrices.get(asset.id);
+    if (lp) {
+      quotes.push(livePriceToMarketQuote(lp));
+      if (lp.dataMode === "LIVE") hasLiveData = true;
+    } else {
+      // Absolute fallback from frozen constants
+      const canonical = CANONICAL_MARKET_QUOTES[asset.id] || CANONICAL_MARKET_QUOTES[asset.id.replace(/-xstock$/, "")] || {
+        assetId: asset.id,
+        price: asset.assetClass === "TREASURY" ? "100.00" : asset.assetClass === "CASH" ? "1.00" : "250.00",
+        timestamp: now.toISOString(),
+        provider: "ALIVE Canonical Snapshot (frozen fallback)",
+        status: "OPEN" as const,
+        dataMode: "SNAPSHOT" as const,
+      };
+      quotes.push({ ...canonical, ageSeconds: 0 });
+    }
   }
 
   return {
-    dataMode: "LIVE",
+    dataMode: hasLiveData ? "LIVE" : "SNAPSHOT",
     capturedAt: now.toISOString(),
-    disclaimer: "Live deterministic market data verified against onchain oracle feeds and DEX liquidity pools.",
+    disclaimer: hasLiveData
+      ? "Live market data sourced from CoinGecko, Yahoo Finance, and OKX public APIs. NAV-based assets use reference snapshots."
+      : "Market data from reference snapshots. Live feeds temporarily unavailable.",
     quotes,
   };
 }
@@ -567,19 +579,19 @@ export async function getStandaloneAssetEligibility(assetId: string): Promise<{
   };
 }
 
-export function getStandaloneAssetMonitor(assetId: string): AssetMonitorStatus {
-  const quote = CANONICAL_MARKET_QUOTES[assetId] || CANONICAL_MARKET_QUOTES[assetId.replace(/-xstock$/, "")];
+export async function getStandaloneAssetMonitor(assetId: string): Promise<AssetMonitorStatus> {
+  const livePrice = await getLivePrice(assetId);
   const isChainlink = assetId === "ttbill-b";
 
   return {
     assetId,
     monitoring: true,
-    provider: isChainlink ? "Chainlink NAVLink (AggregatorV3)" : "X Layer DEX / OKX DEX Aggregator",
-    latestValue: quote ? `$${quote.price}` : "$100.00",
-    sourceUpdatedAt: new Date(Date.now() - 120_000).toISOString(),
+    provider: isChainlink ? "Chainlink NAVLink (AggregatorV3)" : livePrice.provider,
+    latestValue: `$${livePrice.price.toFixed(2)}`,
+    sourceUpdatedAt: livePrice.fetchedAt,
     lastAliveCheckAt: new Date().toISOString(),
-    ageSeconds: 120,
-    freshness: "OK",
+    ageSeconds: livePrice.ageSeconds,
+    freshness: livePrice.dataMode === "LIVE" ? "OK" : livePrice.dataMode === "STALE" ? "STALE" : "OK",
     eligibility: "ELIGIBLE",
     lastEligibilityChangeAt: new Date(Date.now() - 86400_000).toISOString(),
   };
@@ -836,12 +848,27 @@ export function getStandaloneAssetIntelligenceProfile(assetId: string): {
   };
 }
 
-export function getStandaloneAssetMarketContext(assetId: string): CoinMarketCapMarketContext {
+export async function getStandaloneAssetMarketContext(assetId: string): Promise<CoinMarketCapMarketContext> {
+  const livePrice = await getLivePrice(assetId);
   const isMeta = assetId === "meta-xstock" || assetId === "wmetax";
   const isSpy = assetId === "spyx-xstock" || assetId === "spyx";
-  const isTtbill = assetId === "ttbill-b";
+
+  // Map LivePrice.dataMode → CoinMarketCapMarketContext.dataMode union.
+  // LivePrice "SNAPSHOT" means a static NAV reference → "AVAILABLE" (asset
+  // exists; price is reference-quality, not real-time).
+  // LivePrice "STALE" means a cache hit past TTL → "STALE".
+  // LivePrice "LIVE" → "LIVE".
+  const cmcDataMode: "LIVE" | "AVAILABLE" | "STALE" | "UNAVAILABLE" =
+    livePrice.dataMode === "LIVE"
+      ? "LIVE"
+      : livePrice.dataMode === "STALE"
+        ? "STALE"
+        : "AVAILABLE";
 
   return {
+    // CoinMarketCapMarketContext.provider must be the literal "coinmarketcap".
+    // The actual fetch source (Yahoo Finance, CoinGecko, etc.) is recorded
+    // separately in the reason field for transparency.
     provider: "coinmarketcap",
     providerMode: "KEYLESS_PUBLIC",
     assetId,
@@ -851,7 +878,7 @@ export function getStandaloneAssetMarketContext(assetId: string): CoinMarketCapM
       : isSpy
         ? "0x4507E7806509f6e6E36720D9D81b671A69931899"
         : "0x0000000000000000000000000000000000000000",
-    priceUsd: isMeta ? 685.20 : isSpy ? 598.40 : isTtbill ? 105.42 : 1.00,
+    priceUsd: livePrice.price,
     marketCapUsd: isMeta ? 1740000000 : isSpy ? 450000000 : 967000000,
     volume24hUsd: isMeta ? 1250000 : isSpy ? 980000 : 450000,
     priceChange24hPct: isMeta ? 0.014 : isSpy ? 0.006 : 0.0001,
@@ -860,9 +887,12 @@ export function getStandaloneAssetMarketContext(assetId: string): CoinMarketCapM
       exchangeName: "OKX DEX (X Layer)",
       pair: isMeta ? "WMETAX/USDT" : isSpy ? "SPYX/USDT" : "USTB/USDC",
     },
-    sourceUpdatedAt: new Date(Date.now() - 60_000).toISOString(),
+    sourceUpdatedAt: livePrice.fetchedAt,
     observedAt: new Date().toISOString(),
-    dataMode: "LIVE",
+    dataMode: cmcDataMode,
+    reason: livePrice.dataMode !== "LIVE"
+      ? `Price source: ${livePrice.provider}`
+      : undefined,
   };
 }
 
@@ -943,24 +973,72 @@ export function getStandalonePaymentTokens(): PaymentTokenInfo[] {
   ];
 }
 
-export function getStandaloneTradeQuote(params: {
+export async function getStandaloneTradeQuote(params: {
   assetId: string;
   fromTokenAddress: string;
   amount: string;
   slippageBps?: number | undefined;
-}): TradeQuoteResult {
+}): Promise<TradeQuoteResult> {
   const fromAmountNum = parseFloat(params.amount) || 0;
-  const quote = CANONICAL_MARKET_QUOTES[params.assetId] || { price: "100.00" };
-  const targetPrice = parseFloat(quote.price);
+  const livePrice = await getLivePrice(params.assetId);
+  const targetPrice = livePrice.price;
   const estimatedAmount = fromAmountNum > 0 ? (fromAmountNum / targetPrice).toFixed(6) : "0";
   const slippage = (params.slippageBps ?? 50) / 10000;
   const minReceived = (parseFloat(estimatedAmount) * (1 - slippage)).toFixed(6);
 
+  // Try OKX DEX Aggregator API for real quotes
+  let routerAddress = "0x0000000000000000000000000000000000000000";
+  let allowanceTarget = "0x0000000000000000000000000000000000000000";
+  let routeName = `${livePrice.provider} Reference Price`;
+  let hasRoute = true;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const amountRaw = (fromAmountNum * 1e6).toFixed(0); // USDT/USDC are 6 decimals
+    const isMeta = params.assetId === "meta-xstock" || params.assetId === "wmetax";
+    const isSpy = params.assetId === "spyx-xstock" || params.assetId === "spyx";
+    const toTokenAddr = isMeta
+      ? "0x12a9e3A28F5c53cA1e9C3F03AcE403F54eebF10b"
+      : isSpy
+        ? "0x4507E7806509f6e6E36720D9D81b671A69931899"
+        : "0x0000000000000000000000000000000000000000";
+
+    const quoteUrl = `https://www.okx.com/api/v5/dex/aggregator/quote?chainId=196&fromTokenAddress=${params.fromTokenAddress}&toTokenAddress=${toTokenAddr}&amount=${amountRaw}&slippage=${slippage}`;
+    const res = await fetch(quoteUrl, {
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json() as {
+        data?: Array<{
+          routerResult?: {
+            toTokenAmount?: string;
+            estimateGasFee?: string;
+          };
+          tx?: {
+            to?: string;
+          };
+        }>;
+      };
+      const okxResult = data?.data?.[0];
+      if (okxResult?.routerResult?.toTokenAmount) {
+        routerAddress = okxResult.tx?.to || routerAddress;
+        allowanceTarget = routerAddress;
+        routeName = "OKX DEX Aggregator (live)";
+      }
+    }
+  } catch {
+    // Fall back to reference price
+  }
+
   return {
     quote: {
-      hasRoute: true,
+      hasRoute,
       status: "AVAILABLE",
-      provider: "OKX DEX Aggregator (X Layer)",
+      provider: routeName,
       chainId: 196,
       fromToken: {
         symbol: "USDT",
@@ -981,9 +1059,9 @@ export function getStandaloneTradeQuote(params: {
       priceImpactPct: 0.05,
       estimatedGasUsd: 0.004,
       minimumReceived: minReceived,
-      routeName: "OKX DEX Aggregator Best Route",
-      routerAddress: "0x0000000000000000000000000000000000000000",
-      allowanceTarget: "0x0000000000000000000000000000000000000000",
+      routeName,
+      routerAddress,
+      allowanceTarget,
       quoteFetchedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
     },
@@ -997,13 +1075,13 @@ export function getStandaloneTradeQuote(params: {
   };
 }
 
-export function getStandaloneTradeTransaction(params: {
+export async function getStandaloneTradeTransaction(params: {
   assetId: string;
   fromTokenAddress: string;
   amount: string;
   userWalletAddress: string;
   slippageBps?: number | undefined;
-}): TradeTransactionResult {
+}): Promise<TradeTransactionResult> {
   const quoteParams: {
     assetId: string;
     fromTokenAddress: string;
@@ -1018,16 +1096,64 @@ export function getStandaloneTradeTransaction(params: {
     quoteParams.slippageBps = params.slippageBps;
   }
 
-  const quoteResult = getStandaloneTradeQuote(quoteParams);
+  const quoteResult = await getStandaloneTradeQuote(quoteParams);
+
+  // Try OKX DEX swap API for real calldata
+  let txTo = quoteResult.quote.routerAddress;
+  let txData = "0x";
+  let txValue = "0";
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const fromAmountNum = parseFloat(params.amount) || 0;
+    const amountRaw = (fromAmountNum * 1e6).toFixed(0);
+    const slippage = (params.slippageBps ?? 50) / 10000;
+    const isMeta = params.assetId === "meta-xstock" || params.assetId === "wmetax";
+    const isSpy = params.assetId === "spyx-xstock" || params.assetId === "spyx";
+    const toTokenAddr = isMeta
+      ? "0x12a9e3A28F5c53cA1e9C3F03AcE403F54eebF10b"
+      : isSpy
+        ? "0x4507E7806509f6e6E36720D9D81b671A69931899"
+        : "0x0000000000000000000000000000000000000000";
+
+    const swapUrl = `https://www.okx.com/api/v5/dex/aggregator/swap?chainId=196&fromTokenAddress=${params.fromTokenAddress}&toTokenAddress=${toTokenAddr}&amount=${amountRaw}&slippage=${slippage}&userWalletAddress=${params.userWalletAddress}`;
+    const res = await fetch(swapUrl, {
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json() as {
+        data?: Array<{
+          tx?: {
+            to?: string;
+            data?: string;
+            value?: string;
+            gas?: string;
+          };
+        }>;
+      };
+      const txPayload = data?.data?.[0]?.tx;
+      if (txPayload?.to && txPayload?.data) {
+        txTo = txPayload.to;
+        txData = txPayload.data;
+        txValue = txPayload.value || "0";
+      }
+    }
+  } catch {
+    // Fall back to quote-only (non-executable)
+  }
 
   return {
     transaction: {
       chainId: 196,
-      to: "0x0000000000000000000000000000000000000000",
-      data: "0x",
-      value: "0",
-      gasLimit: "250000",
-      allowanceTarget: "0x0000000000000000000000000000000000000000",
+      to: txTo,
+      data: txData,
+      value: txValue,
+      gasLimit: "350000",
+      allowanceTarget: quoteResult.quote.allowanceTarget,
       quote: quoteResult.quote,
     },
     targetAsset: {

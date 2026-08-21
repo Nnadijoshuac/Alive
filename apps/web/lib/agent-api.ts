@@ -43,7 +43,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   let response: Response;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 400);
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
   try {
     response = await fetch(`${INTELLIGENCE_URL}${path}`, {
       ...init,
