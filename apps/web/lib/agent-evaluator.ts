@@ -16,7 +16,7 @@ import { getAssetPrice } from "./live-prices";
 
 const XLAYER_RPC = "https://rpc.xlayer.tech";
 const OKX_ROUTER_ADDRESS = "0x789b70868a2d10ae8ee438992ad367f08c3d6118" as `0x${string}`;
-const DEMO_WALLET = "0xe2475653b6f8a846152a5508a8e1b1faae1a44e5".toLowerCase();
+
 
 const XLAYER_PAYMENT_TOKENS = {
   USDC: {

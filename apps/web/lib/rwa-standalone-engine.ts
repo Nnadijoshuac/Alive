@@ -12,7 +12,7 @@ import {
 } from "@alive/shared";
 import catalogData from "@/data/catalog.json";
 import { fetchAssetById } from "./asset-data";
-import { getLivePrice, getLivePrices, livePriceToMarketQuote, type LivePrice } from "./live-prices";
+import { getLivePrice, getLivePrices, livePriceToMarketQuote } from "./live-prices";
 
 export type IngestedSource = {
   sourceId: string;
@@ -990,7 +990,7 @@ export async function getStandaloneTradeQuote(params: {
   let routerAddress = "0x0000000000000000000000000000000000000000";
   let allowanceTarget = "0x0000000000000000000000000000000000000000";
   let routeName = `${livePrice.provider} Reference Price`;
-  let hasRoute = true;
+  const hasRoute = true;
 
   try {
     const controller = new AbortController();
