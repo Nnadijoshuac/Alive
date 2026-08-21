@@ -16,7 +16,7 @@ import { truncateHash } from "@/lib/format";
 import styles from "./landing.module.css";
 
 const VIDEO_SRC =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260813_115057_94c3699b-0fd1-4124-bcf3-3626bb8c1f77.mp4";
+  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260423_161253_c72b1869-400f-45ed-ac0c-52f68c2ed5bd.mp4";
 
 const NAV_ITEMS = [
   { id: "01", label: "EXPLORE", href: "/explore" },
