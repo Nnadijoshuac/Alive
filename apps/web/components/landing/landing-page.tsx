@@ -25,30 +25,6 @@ const NAV_ITEMS = [
   { id: "04", label: "HOW IT WORKS", href: "/protocol" },
 ] as const;
 
-const NODES = [
-  {
-    id: "01",
-    tag: "ASSET",
-    line1: "What is it?",
-    line2: "What backs it?",
-    status: "VERIFIED",
-  },
-  {
-    id: "02",
-    tag: "MARKET",
-    line1: "What changed?",
-    line2: "What matters?",
-    status: "LIVE",
-  },
-  {
-    id: "03",
-    tag: "WALLET",
-    line1: "What does it",
-    line2: "mean for you?",
-    status: "CONTEXT",
-  },
-] as const;
-
 export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
@@ -77,7 +53,7 @@ export function LandingPage() {
 
   return (
     <main className={styles.heroContainer}>
-      {/* Background Cinematic Video */}
+      {/* Background Cinematic Video (Untinted) */}
       <div className={styles.videoWrapper} aria-hidden="true">
         <video
           ref={videoRef}
@@ -89,7 +65,6 @@ export function LandingPage() {
           playsInline
           preload="auto"
         />
-        <div className={styles.videoDarkener} />
       </div>
 
       {/* Subtle Geometric Grid & Intersection Plus Marks */}
@@ -305,79 +280,8 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* Center / Right: Connected Node System */}
-        <section
-          className={styles.nodeNetworkSection}
-          aria-label="How ALIVE assembles context"
-        >
-          <div className={styles.nodeNetwork}>
-            {/* SVG Connector Lines */}
-            <svg
-              className={styles.connectorSvg}
-              viewBox="0 0 720 280"
-              fill="none"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              {/* Path 1: Node 1 to Node 2 */}
-              <path
-                d="M 190 120 L 270 120"
-                className={styles.connectorLine}
-              />
-              {/* Path 2: Node 2 to Node 3 */}
-              <path
-                d="M 450 120 L 530 120"
-                className={styles.connectorLine}
-              />
-              {/* Junction Points */}
-              <circle cx="190" cy="120" r="3" className={styles.connectorDot} />
-              <circle cx="270" cy="120" r="3" className={styles.connectorDot} />
-              <circle cx="450" cy="120" r="3" className={styles.connectorDot} />
-              <circle cx="530" cy="120" r="3" className={styles.connectorDot} />
-            </svg>
-
-            {/* Rendered Nodes */}
-            <div className={styles.nodeTrack}>
-              {NODES.map((node, index) => (
-                <div
-                  key={node.id}
-                  className={`${styles.nodeCard} ${styles[`nodeDelay${index + 1}`]}`}
-                >
-                  <div className={styles.nodeHeader}>
-                    <span className={styles.nodeTag}>[ {node.tag} ]</span>
-                    <span className={styles.nodeStatus}>
-                      <span className={styles.statusDot} aria-hidden="true" />
-                      {node.status}
-                    </span>
-                  </div>
-                  <div className={styles.nodeBody}>
-                    <p className={styles.nodeLine}>{node.line1}</p>
-                    <p className={styles.nodeLine}>{node.line2}</p>
-                  </div>
-                  <div className={styles.nodeCornerMarks} aria-hidden="true">
-                    <span className={styles.cornerTL} />
-                    <span className={styles.cornerBR} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Visual Process Flow Ribbon */}
-            <div className={styles.nodeFlowSequence} aria-hidden="true">
-              <span>ASSET</span>
-              <span className={styles.sequenceArrow}>→</span>
-              <span>MARKET</span>
-              <span className={styles.sequenceArrow}>→</span>
-              <span>WALLET CONTEXT</span>
-              <span className={styles.sequenceArrow}>→</span>
-              <span className={styles.sequenceAction}>ACTION</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom Gutter Row: Primary CTA (Left) & Supporting Card (Right) */}
+        {/* Bottom Gutter Row: Primary CTA */}
         <footer className={styles.bottomRow}>
-          {/* Primary CTA Bottom-Left */}
           <div className={styles.ctaWrapper}>
             <Link href="/explore" className={styles.primaryCta}>
               <span className={styles.ctaStar} aria-hidden="true">✦</span>
@@ -389,26 +293,6 @@ export function LandingPage() {
                 aria-hidden="true"
               />
             </Link>
-          </div>
-
-          {/* Supporting Card Bottom-Right */}
-          <div className={styles.supportCardWrapper}>
-            <div className={styles.supportCard}>
-              <div className={styles.supportCardHeader}>
-                <span className={styles.supportPrehead}>
-                  LESS NOISE. MORE CONTEXT.
-                </span>
-              </div>
-              <p className={styles.supportMessage}>
-                See what matters
-                <br />
-                before you act.
-              </p>
-              <Link href="/protocol" className={styles.supportLink}>
-                <span>HOW ALIVE WORKS</span>
-                <ArrowRightIcon size={12} weight="bold" aria-hidden="true" />
-              </Link>
-            </div>
           </div>
         </footer>
       </div>

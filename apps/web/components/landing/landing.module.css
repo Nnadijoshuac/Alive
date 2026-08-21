@@ -18,7 +18,7 @@
 }
 
 /* ----------------------------------------------------------------
-   1. BACKGROUND VIDEO & DARKENING
+   1. BACKGROUND VIDEO (UNTINTED)
    ---------------------------------------------------------------- */
 
 .videoWrapper {
@@ -35,20 +35,11 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.48;
+  opacity: 1;
 }
 
 .videoDarkener {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-      circle at 65% 35%,
-      rgba(0, 0, 0, 0.4) 0%,
-      rgba(0, 0, 0, 0.82) 85%,
-      #000000 100%
-    ),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, transparent 20%, transparent 80%, rgba(0, 0, 0, 0.85) 100%);
-  pointer-events: none;
+  display: none;
 }
 
 /* ----------------------------------------------------------------
@@ -62,8 +53,8 @@
   height: 100%;
   background-size: 80px 80px;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   z-index: 2;
   pointer-events: none;
 }
@@ -72,7 +63,7 @@
   position: absolute;
   font-family: var(--font-geist-mono), monospace;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.3);
   line-height: 1;
   user-select: none;
 }
@@ -124,8 +115,11 @@
   justify-content: space-between;
   height: 76px;
   padding: 0 35px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .navLeft {
@@ -176,10 +170,11 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.65);
   transition: color 0.2s ease;
 }
 
@@ -192,27 +187,28 @@
 }
 
 .navLabel {
-  font-weight: 500;
+  color: inherit;
 }
 
 .navRight {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
 }
 
 .networkBadge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 7px;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .networkDot {
@@ -220,6 +216,11 @@
   height: 6px;
   border-radius: 50%;
   background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.networkText {
+  color: inherit;
 }
 
 .walletContainer {
@@ -230,42 +231,39 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
   background: #ffffff;
   color: #000000;
   border: 1px solid #ffffff;
   border-radius: 4px;
+  padding: 8px 14px;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.walletConnectBtn:hover {
-  background-color: #e5e5e5;
-}
-
-.walletConnectBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.walletConnectBtn:hover:not(:disabled) {
+  background: #e5e5e5;
+  transform: translateY(-1px);
 }
 
 .walletWarningBtn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid #f59e0b;
-  color: #f59e0b;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
   border-radius: 4px;
+  padding: 8px 14px;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   cursor: pointer;
+  animation: pulse 2s infinite;
 }
 
 .walletMenuWrapper {
@@ -276,20 +274,20 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
+  padding: 6px 12px;
   color: #ffffff;
-  cursor: pointer;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  transition: background-color 0.2s ease;
+  font-size: 0.75rem;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.2s ease;
 }
 
 .walletActiveBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .walletAddress {
@@ -298,44 +296,50 @@
 
 .connectedTag {
   color: #10b981;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
 }
 
 .walletDropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: #0d0f0d;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  width: 200px;
+  background: #0c0e0c;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   padding: 12px;
-  min-width: 170px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   z-index: 50;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.walletDropdownInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .walletDropdownInfo small {
-  display: block;
+  font-family: var(--font-geist-mono), monospace;
   font-size: 0.625rem;
   color: rgba(255, 255, 255, 0.4);
-  font-family: var(--font-geist-mono), monospace;
 }
 
 .walletDropdownInfo strong {
-  display: block;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: #ffffff;
-  font-family: var(--font-geist-mono), monospace;
 }
 
 .walletDisconnectBtn {
+  width: 100%;
+  padding: 6px 10px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
-  padding: 6px 10px;
   font-size: 0.6875rem;
   font-family: var(--font-geist-mono), monospace;
   font-weight: 600;
@@ -430,7 +434,8 @@
   padding-top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .mobileNetworkRow {
@@ -439,18 +444,19 @@
   gap: 8px;
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .mobileWalletBtn {
+  width: 100%;
+  padding: 12px 16px;
   background: #ffffff;
   color: #000000;
-  padding: 12px;
-  border: none;
-  border-radius: 4px;
   font-family: var(--font-geist-mono), monospace;
   font-weight: 700;
   font-size: 0.8125rem;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
 }
 
@@ -458,12 +464,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .mobileConnectedBox button {
@@ -482,23 +488,22 @@
   position: relative;
   z-index: 10;
   flex: 1;
-  display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  grid-template-rows: 1fr auto;
-  padding: 30px 35px 35px 35px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 35px 35px 35px;
   box-sizing: border-box;
-  gap: 20px;
 }
 
 /* Upper-Left Headline Area */
 .heroHeadlineSection {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding-left: 0;
+  max-width: 820px;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .headlineWrapper {
@@ -506,233 +511,42 @@
 }
 
 .mainHeadline {
-  font-size: clamp(2.6rem, 5vw, 4.5rem);
+  font-size: clamp(2.8rem, 5.5vw, 5.2rem);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.04;
   letter-spacing: -0.035em;
   color: #ffffff;
   margin: 0 0 24px 0;
   text-wrap: balance;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.7);
 }
 
 .supportingCopy {
-  font-size: clamp(1rem, 1.35vw, 1.25rem);
-  line-height: 1.48;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
   margin: 0;
   font-weight: 400;
-  max-width: 440px;
+  max-width: 520px;
   letter-spacing: -0.01em;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
 /* ----------------------------------------------------------------
-   6. CENTER / RIGHT CONNECTED NODE SYSTEM
-   ---------------------------------------------------------------- */
-
-.nodeNetworkSection {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.nodeNetwork {
-  position: relative;
-  width: 100%;
-  max-width: 660px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-}
-
-.connectorSvg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 160px;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.connectorLine {
-  stroke: rgba(255, 255, 255, 0.18);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 4;
-  animation: dashMove 20s linear infinite;
-}
-
-.connectorDot {
-  fill: #10b981;
-  opacity: 0.8;
-}
-
-.nodeTrack {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  width: 100%;
-}
-
-.nodeCard {
-  position: relative;
-  background: rgba(10, 12, 10, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 4px;
-  padding: 18px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
-  opacity: 0;
-  transform: translateY(16px);
-  animation: nodeEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.nodeCard:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-}
-
-.nodeDelay1 {
-  animation-delay: 0.3s;
-}
-
-.nodeDelay2 {
-  animation-delay: 0.5s;
-}
-
-.nodeDelay3 {
-  animation-delay: 0.7s;
-}
-
-.nodeHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 8px;
-}
-
-.nodeTag {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffffff;
-}
-
-.nodeStatus {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #10b981;
-}
-
-.statusDot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: #10b981;
-}
-
-.nodeBody {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nodeLine {
-  font-size: 0.8125rem;
-  line-height: 1.35;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  font-weight: 400;
-}
-
-.nodeCornerMarks {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.cornerTL {
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  width: 6px;
-  height: 6px;
-  border-top: 2px solid #ffffff;
-  border-left: 2px solid #ffffff;
-}
-
-.cornerBR {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 6px;
-  height: 6px;
-  border-bottom: 2px solid #ffffff;
-  border-right: 2px solid #ffffff;
-}
-
-/* Process Ribbon */
-.nodeFlowSequence {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.45);
-  padding: 6px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  opacity: 0;
-  animation: fadeIn 0.8s ease-out forwards;
-  animation-delay: 0.9s;
-}
-
-.sequenceArrow {
-  color: rgba(255, 255, 255, 0.25);
-}
-
-.sequenceAction {
-  color: #10b981;
-  font-weight: 600;
-}
-
-/* ----------------------------------------------------------------
-   7. BOTTOM GUTTER ROW: PRIMARY CTA & SUPPORTING CARD
+   6. BOTTOM GUTTER ROW: PRIMARY CTA
    ---------------------------------------------------------------- */
 
 .bottomRow {
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   box-sizing: border-box;
 }
 
 .ctaWrapper {
   animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.4s;
+  animation-delay: 0.3s;
   opacity: 0;
 }
 
@@ -742,7 +556,7 @@
   gap: 10px;
   background: #ffffff;
   color: #000000;
-  padding: 14px 26px;
+  padding: 14px 28px;
   font-weight: 700;
   font-size: 0.875rem;
   letter-spacing: 0.06em;
@@ -750,13 +564,14 @@
   text-decoration: none;
   border-radius: 4px;
   border: 1px solid #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .primaryCta:hover {
   background-color: #e5e5e5;
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .ctaStar {
@@ -776,68 +591,8 @@
   transform: translateX(3px);
 }
 
-.supportCardWrapper {
-  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.6s;
-  opacity: 0;
-}
-
-.supportCard {
-  background: rgba(12, 14, 12, 0.75);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 4px;
-  padding: 16px 20px;
-  max-width: 270px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-sizing: border-box;
-}
-
-.supportCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.supportPrehead {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.supportMessage {
-  font-size: 0.875rem;
-  line-height: 1.35;
-  color: #ffffff;
-  font-weight: 500;
-  margin: 0;
-}
-
-.supportLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffffff;
-  text-decoration: none;
-  margin-top: 4px;
-  transition: opacity 0.2s ease;
-}
-
-.supportLink:hover {
-  opacity: 0.75;
-}
-
 /* ----------------------------------------------------------------
-   8. ANIMATIONS & REDUCED MOTION
+   7. ANIMATIONS & REDUCED MOTION
    ---------------------------------------------------------------- */
 
 @keyframes fadeUp {
@@ -860,44 +615,17 @@
   }
 }
 
-@keyframes nodeEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes dashMove {
-  0% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: 80;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .headlineWrapper,
-  .ctaWrapper,
-  .supportCardWrapper,
-  .nodeCard,
-  .nodeFlowSequence {
+  .ctaWrapper {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
   }
-
-  .connectorLine {
-    animation: none !important;
-  }
 }
 
 /* ----------------------------------------------------------------
-   9. RESPONSIVE BREAKPOINTS (TABLET & MOBILE)
+   8. RESPONSIVE BREAKPOINTS (TABLET & MOBILE)
    ---------------------------------------------------------------- */
 
 @media (max-width: 1024px) {
@@ -918,31 +646,7 @@
   }
 
   .viewportBody {
-    padding: 24px 24px 28px 24px;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    overflow-y: auto;
-  }
-
-  .heroHeadlineSection {
-    grid-column: 1 / 2;
-    grid-row: 1 / 2;
-  }
-
-  .nodeNetworkSection {
-    grid-column: 1 / 2;
-    grid-row: 2 / 3;
-    justify-content: flex-start;
-    margin: 20px 0;
-  }
-
-  .connectorSvg {
-    display: none;
-  }
-
-  .bottomRow {
-    grid-column: 1 / 2;
-    grid-row: 3 / 4;
+    padding: 30px 24px 28px 24px;
   }
 }
 
@@ -978,55 +682,31 @@
   }
 
   .viewportBody {
-    padding: 20px 20px 24px 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    padding: 24px 20px 24px 20px;
     height: calc(100vh - 64px);
-    overflow-y: auto;
   }
 
   .mainHeadline {
-    font-size: clamp(2.2rem, 9vw, 3rem);
+    font-size: clamp(2.4rem, 9.5vw, 3.4rem);
     margin-bottom: 16px;
   }
 
   .supportingCopy {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     line-height: 1.45;
   }
 
-  .nodeNetworkSection {
-    margin: 16px 0;
-  }
-
-  .nodeTrack {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .nodeCard {
-    padding: 12px 14px;
-    gap: 6px;
-  }
-
-  .nodeFlowSequence {
-    display: none;
-  }
-
   .bottomRow {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
+    width: 100%;
+  }
+
+  .ctaWrapper {
+    width: 100%;
   }
 
   .primaryCta {
     width: 100%;
     justify-content: center;
     padding: 14px 20px;
-  }
-
-  .supportCard {
-    max-width: 100%;
   }
 }
